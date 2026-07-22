@@ -15,6 +15,7 @@ import { SettingsPanel } from './components/settings/SettingsPanel';
 import { DocumentationPage } from './components/docs/DocumentationPage';
 import { KeyboardShortcutsPage } from './components/docs/KeyboardShortcutsPage';
 import { GlobalDialog } from './components/common/GlobalDialog';
+import { useDialogStore } from './stores/dialogStore';
 import { useThemeStore } from './stores/themeStore';
 import { useSettingsStore } from './stores/settingsStore';
 import { useAppStore } from './stores/appStore';
@@ -137,6 +138,15 @@ const App: React.FC = () => {
     }
   }, [rootPath, sessionRestored]);
 
+  // ── Sync rootPath with workspace folders (auto-clear if removed) ──
+  useEffect(() => {
+    if (workspace.folders.length === 0) {
+      if (rootPath !== null) setRootPath(null);
+    } else if (!workspace.folders.includes(rootPath || '')) {
+      setRootPath(workspace.folders[0]);
+    }
+  }, [workspace.folders.join('|')]);
+
   // ── IPC listeners for application menu ──────────────────────────
   useEffect(() => {
     const api = window.api;
@@ -155,6 +165,39 @@ const App: React.FC = () => {
       on('menu:toggle-status-bar', () => useAppStore.getState().toggleStatusBar()),
       on('menu:toggle-fullscreen', () => { /* F11 handled via window api */ }),
       on('menu:toggle-zen-mode', () => useAppStore.getState().toggleZenMode()),
+      on('menu:about', () => setShowAbout(true)),
+      on('menu:check-update', async () => {
+        const { checkForUpdates, openReleaseUrl } = await import('./utils/updateChecker');
+        const info = await checkForUpdates();
+        if (info.error) {
+          useDialogStore.getState().showDialog({
+            title: 'Update Check',
+            message: `Failed to check for updates:\n${info.error}`,
+            type: 'alert',
+            buttons: [{ label: 'OK', variant: 'primary' }],
+          });
+          return;
+        }
+        if (info.hasUpdate) {
+          const btnIndex = await useDialogStore.getState().showDialog({
+            title: 'Update Available',
+            message: `A new version of ${APP_NAME} is available!\n\nCurrent: v${info.currentVersion}\nLatest: v${info.latestVersion}\n\nWould you like to download the update?`,
+            type: 'confirm',
+            buttons: [
+              { label: 'Later', variant: 'secondary' },
+              { label: 'Update Now', variant: 'primary' },
+            ],
+          });
+          if (btnIndex === 1) openReleaseUrl(info.releaseUrl);
+        } else {
+          useDialogStore.getState().showDialog({
+            title: 'Up to Date',
+            message: `You are running the latest version of ${APP_NAME} (v${info.currentVersion}).`,
+            type: 'alert',
+            buttons: [{ label: 'OK', variant: 'primary' }],
+          });
+        }
+      }),
     ];
     return () => cleanups.forEach((fn) => fn?.());
   }, []);

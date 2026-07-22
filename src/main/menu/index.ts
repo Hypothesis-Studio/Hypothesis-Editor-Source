@@ -140,12 +140,15 @@ export function createApplicationMenu(): Menu {
         {
           label: 'About Hypothesis',
           click: () => {
-            dialog.showMessageBox({
-              type: 'info',
-              title: 'About Hypothesis',
-              message: 'Hypothesis Editor',
-              detail: `Version: ${app.getVersion()}\nElectron: ${process.versions.electron}\nNode.js: ${process.versions.node}\nChromium: ${process.versions.chrome}`,
-            });
+            const win = BrowserWindow.getAllWindows()[0];
+            if (win) win.webContents.send('menu:about');
+          },
+        },
+        {
+          label: 'Check for Updates',
+          click: () => {
+            const win = BrowserWindow.getAllWindows()[0];
+            if (win) win.webContents.send('menu:check-update');
           },
         },
         { type: 'separator' },

@@ -135,10 +135,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       folders: [],
       currentWorkspace: null,
     });
+    const folders = data.folders || [];
     set({
-      folders: data.folders || [],
+      folders,
       currentWorkspace: data.currentWorkspace,
     });
+    // Validate that restored folders still exist on disk
+    if (folders.length > 0) {
+      (async () => {
+        const valid: string[] = [];
+        for (const f of folders) {
+          try {
+            const exists = await window.api.file.exists(f);
+            if (exists) valid.push(f);
+          } catch { /* skip missing */ }
+        }
+        if (valid.length !== folders.length) {
+          set({ folders: valid });
+          saveToStorage(STORAGE_KEY, { folders: valid, currentWorkspace: data.currentWorkspace });
+        }
+      })();
+    }
   },
 
   addRecentWorkspace: (path: string) => {

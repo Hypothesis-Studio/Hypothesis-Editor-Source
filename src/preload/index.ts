@@ -218,6 +218,7 @@ const api = {
     check: () => ipcRenderer.invoke(CH.UPDATE_CHECK),
     download: () => ipcRenderer.invoke(CH.UPDATE_DOWNLOAD),
     install: () => ipcRenderer.invoke(CH.UPDATE_INSTALL),
+    openRelease: (url: string) => ipcRenderer.invoke('update:openRelease', url),
     onAvailable: (callback: (info: unknown) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, info: unknown) => callback(info);
       ipcRenderer.on(CH.UPDATE_AVAILABLE, handler);

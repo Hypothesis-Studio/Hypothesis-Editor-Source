@@ -8,6 +8,7 @@ import { APP_NAME, APP_VERSION } from '../../../shared/utils/appMeta';
 import { DropdownMenu, type MenuItem } from '../common/DropdownMenu';
 import { WindowControls } from '../common/WindowControls';
 import { showAbout } from '../../stores/dialogStore';
+import { useDialogStore } from '../../stores/dialogStore';
 
 interface TitleBarProps {
   onNewFile?: () => void;
@@ -187,6 +188,39 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
     { label: 'Welcome', action: () => useEditorStore.setState({ tabs: [], activeTabId: null }) },
     { label: 'Documentation', keybinding: 'F1', action: () => onOpenDocs?.() },
     { label: 'Keyboard Shortcuts', keybinding: 'Ctrl+K Ctrl+S', action: () => onOpenShortcuts?.() },
+    { separator: true, label: '' },
+    { label: 'Check for Updates', action: async () => {
+      const { checkForUpdates, openReleaseUrl } = await import('../../utils/updateChecker');
+      const info = await checkForUpdates();
+      if (info.error) {
+        useDialogStore.getState().showDialog({
+          title: 'Update Check',
+          message: `Failed to check for updates:\n${info.error}`,
+          type: 'alert',
+          buttons: [{ label: 'OK', variant: 'primary' }],
+        });
+        return;
+      }
+      if (info.hasUpdate) {
+        const btnIndex = await useDialogStore.getState().showDialog({
+          title: 'Update Available',
+          message: `A new version of ${APP_NAME} is available!\n\nCurrent: v${info.currentVersion}\nLatest: v${info.latestVersion}\n\nWould you like to download the update?`,
+          type: 'confirm',
+          buttons: [
+            { label: 'Later', variant: 'secondary' },
+            { label: 'Update Now', variant: 'primary' },
+          ],
+        });
+        if (btnIndex === 1) openReleaseUrl(info.releaseUrl);
+      } else {
+        useDialogStore.getState().showDialog({
+          title: 'Up to Date',
+          message: `You are running the latest version of ${APP_NAME} (v${info.currentVersion}).`,
+          type: 'alert',
+          buttons: [{ label: 'OK', variant: 'primary' }],
+        });
+      }
+    }},
     { separator: true, label: '' },
     { label: `About ${APP_NAME}`, action: () => {
       const v = (typeof process !== 'undefined' && process.versions) ? process.versions : {} as any;

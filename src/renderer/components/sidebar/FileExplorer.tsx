@@ -45,6 +45,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
   const [clipboardVisible, setClipboardVisible] = useState(false);
   const clipboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
   const [sortBy, setSortBy] = useState<'name' | 'type' | 'modified'>('name');
   const revealedRef = useRef<Set<string>>(new Set());
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -166,12 +167,30 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
   const loadAllRoots = async () => {
     setIsLoading(true);
     const newMap = new Map<string, FileEntry[]>();
+    const removed: string[] = [];
     for (const rp of rootPaths) {
       try {
         const entries = await window.api.directory.read(rp);
         if (expandedRef.current.size > 0) await restoreExpandedChildren(entries, new Set(expandedRef.current));
         newMap.set(rp, entries);
-      } catch { newMap.set(rp, []); }
+      } catch {
+        // Folder missing — auto-remove from workspace + stop watcher
+        (window as any).api?.fileWatcher?.stop?.(rp);
+        removeFolder(rp);
+        removed.push(rp);
+      }
+    }
+    if (removed.length > 0) {
+      // Clean up local state for removed folders
+      const newExpanded = new Set(expandedRef.current);
+      for (const rp of removed) {
+        newMap.delete(rp);
+        for (const key of newExpanded) {
+          if (key === rp || key.startsWith(rp + '/') || key.startsWith(rp + '\\')) newExpanded.delete(key);
+        }
+      }
+      setExpandedSync(newExpanded);
+      if (selected && removed.some(rp => selected === rp || selected.startsWith(rp + '/') || selected.startsWith(rp + '\\'))) setSelected(null);
     }
     setRootFiles(newMap);
     setIsLoading(false);
@@ -182,7 +201,18 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
       const entries = await window.api.directory.read(rp);
       await restoreExpandedChildren(entries, new Set(expandedRef.current));
       setRootFiles(prev => { const n = new Map(prev); n.set(rp, entries); return n; });
-    } catch {}
+    } catch {
+      // Folder missing — auto-remove from workspace + stop watcher
+      (window as any).api?.fileWatcher?.stop?.(rp);
+      removeFolder(rp);
+      setRootFiles(prev => { const n = new Map(prev); n.delete(rp); return n; });
+      const newExpanded = new Set(expandedRef.current);
+      for (const key of newExpanded) {
+        if (key === rp || key.startsWith(rp + '/') || key.startsWith(rp + '\\')) newExpanded.delete(key);
+      }
+      setExpandedSync(newExpanded);
+      if (selected && (selected === rp || selected.startsWith(rp + '/') || selected.startsWith(rp + '\\'))) setSelected(null);
+    }
   };
 
   const restoreExpandedChildren = async (entries: FileEntry[], ep: Set<string>) => {
@@ -602,7 +632,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
             <button onClick={e => { e.stopPropagation(); refreshRoot(rp); }} className="p-0.5 rounded" style={{ color: 'var(--theme-fg-muted)' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }} title="Refresh">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             </button>
-            <button onClick={e => { e.stopPropagation(); removeFolder(rp); }} className="p-0.5 rounded" style={{ color: 'var(--theme-fg-muted)' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-error)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }} title="Remove">
+            <button onClick={e => { e.stopPropagation(); (window as any).api?.fileWatcher?.stop?.(rp); removeFolder(rp); setRootFiles(prev => { const n = new Map(prev); n.delete(rp); return n; }); const newExpanded = new Set(expanded); for (const key of newExpanded) { if (key === rp || key.startsWith(rp + '/') || key.startsWith(rp + '\\')) newExpanded.delete(key); } setExpandedSync(newExpanded); if (selected && (selected === rp || selected.startsWith(rp + '/') || selected.startsWith(rp + '\\'))) setSelected(null); }} className="p-0.5 rounded" style={{ color: 'var(--theme-fg-muted)' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-error)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }} title="Remove">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
