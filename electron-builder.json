@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/electron-builder.json",
+  "appId": "com.hypothesis.editor",
+  "productName": "Hypothesis",
+  "copyright": "Copyright © 2026 Hypothesis Team",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    { "from": "build/app-update.yml", "to": "app-update.yml" }
+  ],
+  "asar": true,
+  "npmRebuild": false,
+  "forceCodeSigning": false,
+  "win": {
+    "target": [
+      { "target": "nsis", "arch": ["x64"] },
+      { "target": "portable", "arch": ["x64"] }
+    ],
+    "icon": "build/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Hypothesis",
+    "deleteAppDataOnUninstall": false
+  },
+  "mac": {
+    "target": [
+      { "target": "dmg", "arch": ["x64", "arm64"] },
+      { "target": "zip", "arch": ["x64", "arm64"] }
+    ],
+    "icon": "build/icon.icns",
+    "category": "public.app-category.developer-tools"
+  },
+  "dmg": {
+    "contents": [
+      { "x": 130, "y": 220 },
+      { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+    ]
+  },
+  "linux": {
+    "target": [
+      { "target": "AppImage", "arch": ["x64"] },
+      { "target": "deb", "arch": ["x64"] }
+    ],
+    "icon": "build/icon.png",
+    "category": "Development"
+  },
+  "deb": {
+    "depends": ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils"]
+  }
+}
