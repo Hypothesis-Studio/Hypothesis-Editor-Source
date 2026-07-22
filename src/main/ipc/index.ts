@@ -11,6 +11,8 @@ import { registerThemeIPC } from './theme.ipc';
 import { registerWindowIPC } from './window.ipc';
 import { registerPluginIPC } from './plugin.ipc';
 import { registerUpdateIPC } from './update.ipc';
+import { registerExtensionIPC } from './extension.ipc';
+import './format.ipc';
 import type { AppStore } from '../services/AppStore';
 import type { SettingsService } from '../services/SettingsService';
 import type { ThemeService } from '../services/ThemeService';
@@ -38,4 +40,12 @@ export function registerIPC(deps: IPCDependencies): void {
   registerWindowIPC();
   registerPluginIPC(deps.pluginService);
   registerUpdateIPC();
+  registerExtensionIPC(
+    deps.appStore,
+    deps.pluginService,
+    deps.settingsService,
+    deps.themeService,
+    deps.fileService,
+    deps.gitService,
+  );
 }

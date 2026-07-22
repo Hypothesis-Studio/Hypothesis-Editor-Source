@@ -261,6 +261,226 @@ const api = {
     recovery: () => ipcRenderer.invoke(CH.CRASH_RECOVERY),
   },
 
+  // Extension API - Full access for plugins
+  extension: {
+    // Commands
+    commands: {
+      register: (commandId: string) => ipcRenderer.invoke('ext:commands:register', commandId),
+      execute: (commandId: string, args?: unknown[]) => ipcRenderer.invoke('ext:commands:execute', commandId, args),
+      list: () => ipcRenderer.invoke('ext:commands:list'),
+    },
+
+    // Editor
+    editor: {
+      getActiveDocument: () => ipcRenderer.invoke('ext:editor:getActiveDocument'),
+      getOpenDocuments: () => ipcRenderer.invoke('ext:editor:getOpenDocuments'),
+      openFile: (filePath: string) => ipcRenderer.invoke('ext:editor:openFile', filePath),
+      saveFile: (filePath: string, content: string) => ipcRenderer.invoke('ext:editor:saveFile', filePath, content),
+      getDocumentContent: (filePath: string) => ipcRenderer.invoke('ext:editor:getDocumentContent', filePath),
+      pushState: (doc: { uri: string; content: string; language: string; filePath: string | null } | null) => ipcRenderer.send('ext:editor:stateUpdate', doc),
+      pushSelection: (sel: { start: { line: number; column: number }; end: { line: number; column: number } } | null) => ipcRenderer.send('ext:editor:selectionUpdate', sel),
+      onOpenFile: (callback: (data: { filePath: string; content: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { filePath: string; content: string }) => callback(data);
+        ipcRenderer.on('ext:editor:openFile', handler);
+        return () => ipcRenderer.removeListener('ext:editor:openFile', handler);
+      },
+      onFileSaved: (callback: (data: { filePath: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { filePath: string }) => callback(data);
+        ipcRenderer.on('ext:editor:fileSaved', handler);
+        return () => ipcRenderer.removeListener('ext:editor:fileSaved', handler);
+      },
+    },
+
+    // Format
+    format: (payload: { text: string; languageId: string; filePath: string }) =>
+      ipcRenderer.invoke('editor:format', payload),
+
+    // Settings
+    settings: {
+      get: <T>(key: string): Promise<T> => ipcRenderer.invoke('ext:settings:get', key),
+      set: (key: string, value: unknown) => ipcRenderer.invoke('ext:settings:set', key, value),
+      getAll: () => ipcRenderer.invoke('ext:settings:getAll'),
+      getSection: (section: string) => ipcRenderer.invoke('ext:settings:getSection', section),
+    },
+
+    // Theme
+    theme: {
+      getCurrent: () => ipcRenderer.invoke('ext:theme:getCurrent'),
+      list: () => ipcRenderer.invoke('ext:theme:list'),
+      set: (themeId: string) => ipcRenderer.invoke('ext:theme:set', themeId),
+      register: (themeDef: unknown) => ipcRenderer.invoke('ext:theme:register', themeDef),
+      onRegistered: (callback: (themeDef: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, themeDef: unknown) => callback(themeDef);
+        ipcRenderer.on('ext:theme:registered', handler);
+        return () => ipcRenderer.removeListener('ext:theme:registered', handler);
+      },
+    },
+
+    // File System
+    fs: {
+      readFile: (filePath: string) => ipcRenderer.invoke('ext:fs:readFile', filePath),
+      writeFile: (filePath: string, content: string) => ipcRenderer.invoke('ext:fs:writeFile', filePath, content),
+      exists: (filePath: string) => ipcRenderer.invoke('ext:fs:exists', filePath),
+      readDir: (dirPath: string) => ipcRenderer.invoke('ext:fs:readDir', dirPath),
+      mkdir: (dirPath: string, options?: { recursive?: boolean }) => ipcRenderer.invoke('ext:fs:mkdir', dirPath, options),
+      delete: (targetPath: string, options?: { recursive?: boolean }) => ipcRenderer.invoke('ext:fs:delete', targetPath, options),
+      rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('ext:fs:rename', oldPath, newPath),
+      stat: (filePath: string) => ipcRenderer.invoke('ext:fs:stat', filePath),
+      watch: (filePath: string) => ipcRenderer.invoke('ext:fs:watch', filePath),
+      unwatch: (filePath: string) => ipcRenderer.invoke('ext:fs:unwatch', filePath),
+    },
+
+    // Terminal
+    terminal: {
+      create: (options?: unknown) => ipcRenderer.invoke('ext:terminal:create', options),
+      write: (terminalId: string, data: string) => ipcRenderer.invoke('ext:terminal:write', terminalId, data),
+      close: (terminalId: string) => ipcRenderer.invoke('ext:terminal:close', terminalId),
+      list: () => ipcRenderer.invoke('ext:terminal:list'),
+      runCommand: (command: string, cwd?: string) => ipcRenderer.invoke('ext:terminal:runCommand', command, cwd),
+      onData: (callback: (data: { terminalId: string; data: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { terminalId: string; data: string }) => callback(data);
+        ipcRenderer.on('ext:terminal:data', handler);
+        return () => ipcRenderer.removeListener('ext:terminal:data', handler);
+      },
+      onExit: (callback: (data: { terminalId: string; exitCode: number }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { terminalId: string; exitCode: number }) => callback(data);
+        ipcRenderer.on('ext:terminal:exit', handler);
+        return () => ipcRenderer.removeListener('ext:terminal:exit', handler);
+      },
+    },
+
+    // Git
+    git: {
+      status: (repoPath: string) => ipcRenderer.invoke('ext:git:status', repoPath),
+      log: (repoPath: string, maxCount?: number) => ipcRenderer.invoke('ext:git:log', repoPath, maxCount),
+      diff: (repoPath: string, file?: string) => ipcRenderer.invoke('ext:git:diff', repoPath, file),
+      branch: (repoPath: string) => ipcRenderer.invoke('ext:git:branch', repoPath),
+      commit: (repoPath: string, message: string, files?: string[]) => ipcRenderer.invoke('ext:git:commit', repoPath, message, files),
+      push: (repoPath: string, remote?: string) => ipcRenderer.invoke('ext:git:push', repoPath, remote),
+      pull: (repoPath: string, remote?: string) => ipcRenderer.invoke('ext:git:pull', repoPath, remote),
+      fetch: (repoPath: string, remote?: string) => ipcRenderer.invoke('ext:git:fetch', repoPath, remote),
+      add: (repoPath: string, files: string[]) => ipcRenderer.invoke('ext:git:add', repoPath, files),
+      reset: (repoPath: string, files?: string[]) => ipcRenderer.invoke('ext:git:reset', repoPath, files),
+      stash: (repoPath: string) => ipcRenderer.invoke('ext:git:stash', repoPath),
+      checkout: (repoPath: string, branch: string) => ipcRenderer.invoke('ext:git:checkout', repoPath, branch),
+      merge: (repoPath: string, branch: string) => ipcRenderer.invoke('ext:git:merge', repoPath, branch),
+      init: (repoPath: string) => ipcRenderer.invoke('ext:git:init', repoPath),
+    },
+
+    // Workspace
+    workspace: {
+      getRootPath: () => ipcRenderer.invoke('ext:workspace:getRootPath'),
+      getFolders: () => ipcRenderer.invoke('ext:workspace:getFolders'),
+      getRecent: () => ipcRenderer.invoke('ext:workspace:getRecent'),
+      openFolder: () => ipcRenderer.invoke('ext:workspace:openFolder'),
+      openFile: () => ipcRenderer.invoke('ext:workspace:openFile'),
+    },
+
+    // UI
+    ui: {
+      showMessage: (type: 'info' | 'warning' | 'error', message: string, items?: string[]) => ipcRenderer.invoke('ext:ui:showMessage', type, message, items),
+      showInput: (options: unknown) => ipcRenderer.invoke('ext:ui:showInput', options),
+      showQuickPick: (items: unknown[], options?: unknown) => ipcRenderer.invoke('ext:ui:showQuickPick', items, options),
+      showDialog: (options: unknown) => ipcRenderer.invoke('ext:ui:showDialog', options),
+      showOpenDialog: (options: unknown) => ipcRenderer.invoke('ext:ui:showOpenDialog', options),
+      showSaveDialog: (options: unknown) => ipcRenderer.invoke('ext:ui:showSaveDialog', options),
+      setStatusBar: (id: string, text: string, alignment: 'left' | 'right', priority?: number) => ipcRenderer.invoke('ext:ui:setStatusBar', id, text, alignment, priority),
+      updateStatusBar: (id: string, text: string) => ipcRenderer.invoke('ext:ui:updateStatusBar', id, text),
+      createPanel: (id: string, title: string, content: string) => ipcRenderer.invoke('ext:ui:createPanel', id, title, content),
+      updatePanel: (id: string, content: string) => ipcRenderer.invoke('ext:ui:updatePanel', id, content),
+      showPanel: (id: string) => ipcRenderer.invoke('ext:ui:showPanel', id),
+      hidePanel: (id: string) => ipcRenderer.invoke('ext:ui:hidePanel', id),
+      createSidebarView: (id: string, title: string, content: string) => ipcRenderer.invoke('ext:ui:createSidebarView', id, title, content),
+      showSidebarView: (id: string) => ipcRenderer.invoke('ext:ui:showSidebarView', id),
+      // Event listeners
+      onMessage: (callback: (data: { type: string; message: string; items?: string[] }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { type: string; message: string; items?: string[] }) => callback(data);
+        ipcRenderer.on('ext:ui:message', handler);
+        return () => ipcRenderer.removeListener('ext:ui:message', handler);
+      },
+      onNotification: (callback: (data: { message: string; type: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { message: string; type: string }) => callback(data);
+        ipcRenderer.on('ext:notification', handler);
+        return () => ipcRenderer.removeListener('ext:notification', handler);
+      },
+      onSetStatusBar: (callback: (data: { id: string; text: string; alignment: string; priority?: number }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string; text: string; alignment: string; priority?: number }) => callback(data);
+        ipcRenderer.on('ext:ui:setStatusBar', handler);
+        return () => ipcRenderer.removeListener('ext:ui:setStatusBar', handler);
+      },
+      onUpdateStatusBar: (callback: (data: { id: string; text: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string; text: string }) => callback(data);
+        ipcRenderer.on('ext:ui:updateStatusBar', handler);
+        return () => ipcRenderer.removeListener('ext:ui:updateStatusBar', handler);
+      },
+      onCreatePanel: (callback: (data: { id: string; title: string; content: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string; title: string; content: string }) => callback(data);
+        ipcRenderer.on('ext:ui:createPanel', handler);
+        return () => ipcRenderer.removeListener('ext:ui:createPanel', handler);
+      },
+      onUpdatePanel: (callback: (data: { id: string; content: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string; content: string }) => callback(data);
+        ipcRenderer.on('ext:ui:updatePanel', handler);
+        return () => ipcRenderer.removeListener('ext:ui:updatePanel', handler);
+      },
+      onShowPanel: (callback: (data: { id: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string }) => callback(data);
+        ipcRenderer.on('ext:ui:showPanel', handler);
+        return () => ipcRenderer.removeListener('ext:ui:showPanel', handler);
+      },
+      onHidePanel: (callback: (data: { id: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string }) => callback(data);
+        ipcRenderer.on('ext:ui:hidePanel', handler);
+        return () => ipcRenderer.removeListener('ext:ui:hidePanel', handler);
+      },
+      onCreateSidebarView: (callback: (data: { id: string; title: string; content: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string; title: string; content: string }) => callback(data);
+        ipcRenderer.on('ext:ui:createSidebarView', handler);
+        return () => ipcRenderer.removeListener('ext:ui:createSidebarView', handler);
+      },
+      onShowSidebarView: (callback: (data: { id: string }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: { id: string }) => callback(data);
+        ipcRenderer.on('ext:ui:showSidebarView', handler);
+        return () => ipcRenderer.removeListener('ext:ui:showSidebarView', handler);
+      },
+    },
+
+    // Clipboard
+    clipboard: {
+      read: () => ipcRenderer.invoke('ext:clipboard:read'),
+      write: (text: string) => ipcRenderer.invoke('ext:clipboard:write', text),
+    },
+
+    // Storage (per-extension key-value)
+    storage: {
+      get: <T>(pluginId: string, key: string): Promise<T> => ipcRenderer.invoke('ext:storage:get', pluginId, key),
+      set: (pluginId: string, key: string, value: unknown) => ipcRenderer.invoke('ext:storage:set', pluginId, key, value),
+      getAll: (pluginId: string) => ipcRenderer.invoke('ext:storage:getAll', pluginId),
+      delete: (pluginId: string, key: string) => ipcRenderer.invoke('ext:storage:delete', pluginId, key),
+      clear: (pluginId: string) => ipcRenderer.invoke('ext:storage:clear', pluginId),
+    },
+
+    // HTTP
+    http: {
+      fetch: (url: string, options?: { method?: string; headers?: Record<string, string>; body?: string; timeout?: number }) =>
+        ipcRenderer.invoke('ext:http:fetch', url, options),
+    },
+
+    // Process
+    process: {
+      exec: (command: string, options?: { cwd?: string; env?: Record<string, string>; timeout?: number }) =>
+        ipcRenderer.invoke('ext:process:exec', command, options),
+      getEnv: (key: string) => ipcRenderer.invoke('ext:process:getEnv', key),
+      getPlatform: () => ipcRenderer.invoke('ext:process:getPlatform'),
+      getArch: () => ipcRenderer.invoke('ext:process:getArch'),
+      getVersion: () => ipcRenderer.invoke('ext:process:getVersion'),
+      getAppPath: () => ipcRenderer.invoke('ext:process:getAppPath'),
+      getExtensionPath: (pluginId: string) => ipcRenderer.invoke('ext:process:getExtensionPath', pluginId),
+      getTempPath: () => ipcRenderer.invoke('ext:process:getTempPath'),
+      getHomePath: () => ipcRenderer.invoke('ext:process:getHomePath'),
+    },
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),

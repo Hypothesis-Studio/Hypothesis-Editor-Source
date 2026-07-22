@@ -64,6 +64,10 @@ if (!gotTheLock) {
 
     await settingsService.initialize();
     await themeService.initialize();
+
+    // Inject service dependencies into PluginService for extension context
+    pluginService.setDependencies({ gitService, themeService });
+
     await pluginService.initialize();
 
     // Auto-updater (wrapped — fails silently for dev/portable builds)

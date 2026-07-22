@@ -2,6 +2,9 @@
  * Command Registry - Central command management with keybinding support.
  */
 import type { Command, Keybinding } from '../../shared/types';
+import { useEditorStore } from '../stores/editorStore';
+import { useAppStore } from '../stores/appStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 export class CommandRegistry {
   private commands = new Map<string, Command>();
@@ -168,7 +171,11 @@ export function registerDefaultCommands(): void {
       category: 'File',
       keybinding: 'Ctrl+N',
       handler: () => {
-        // Create new untitled file
+        window.api?.menu?.onChannel?.('menu:file-new', () => {});
+        // Dispatch via IPC like the menu does
+        const { BrowserWindow } = window as any;
+        // Use the same path as App.tsx keyboard handler
+        window.dispatchEvent(new CustomEvent('hypothesis:command', { detail: { command: 'file.new' } }));
       },
     },
     {
@@ -186,7 +193,7 @@ export function registerDefaultCommands(): void {
       category: 'File',
       keybinding: 'Ctrl+S',
       handler: () => {
-        // Save current file
+        window.dispatchEvent(new CustomEvent('hypothesis:command', { detail: { command: 'file.save' } }));
       },
     },
     {
@@ -195,7 +202,7 @@ export function registerDefaultCommands(): void {
       category: 'File',
       keybinding: 'Ctrl+Shift+S',
       handler: () => {
-        // Save as
+        window.dispatchEvent(new CustomEvent('hypothesis:command', { detail: { command: 'file.saveAs' } }));
       },
     },
     {
@@ -204,7 +211,7 @@ export function registerDefaultCommands(): void {
       category: 'File',
       keybinding: 'Ctrl+K S',
       handler: () => {
-        // Save all files
+        window.dispatchEvent(new CustomEvent('hypothesis:command', { detail: { command: 'file.saveAll' } }));
       },
     },
     {
@@ -213,7 +220,7 @@ export function registerDefaultCommands(): void {
       category: 'Edit',
       keybinding: 'Ctrl+F',
       handler: () => {
-        // Open find widget
+        useEditorStore.getState().triggerFind();
       },
     },
     {
@@ -222,7 +229,7 @@ export function registerDefaultCommands(): void {
       category: 'Edit',
       keybinding: 'Ctrl+H',
       handler: () => {
-        // Open find and replace widget
+        useEditorStore.getState().triggerReplace();
       },
     },
     {
@@ -231,7 +238,7 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+Shift+P',
       handler: () => {
-        // Open command palette
+        useAppStore.getState().toggleCommandPalette();
       },
     },
     {
@@ -240,7 +247,7 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+P',
       handler: () => {
-        // Open quick open
+        useAppStore.getState().showCommandPalette();
       },
     },
     {
@@ -249,7 +256,7 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+B',
       handler: () => {
-        // Toggle sidebar
+        useAppStore.getState().toggleSidebar();
       },
     },
     {
@@ -258,7 +265,9 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+`',
       handler: () => {
-        // Toggle terminal
+        const app = useAppStore.getState();
+        app.togglePanel();
+        app.setActivePanel('terminal');
       },
     },
     {
@@ -267,7 +276,8 @@ export function registerDefaultCommands(): void {
       category: 'Edit',
       keybinding: 'Shift+Alt+F',
       handler: () => {
-        // Format document
+        const { triggerFormat } = useEditorStore.getState();
+        triggerFormat();
       },
     },
     {
@@ -276,7 +286,7 @@ export function registerDefaultCommands(): void {
       category: 'Edit',
       keybinding: 'Ctrl+/',
       handler: () => {
-        // Toggle comment
+        useEditorStore.getState().triggerComment();
       },
     },
     {
@@ -285,7 +295,11 @@ export function registerDefaultCommands(): void {
       category: 'Edit',
       keybinding: 'Shift+Alt+A',
       handler: () => {
-        // Toggle block comment
+        const editor = useEditorStore.getState().activeEditor;
+        if (editor) {
+          editor.trigger('menu', 'editor.action.blockComment', undefined);
+          editor.focus();
+        }
       },
     },
     {
@@ -294,7 +308,11 @@ export function registerDefaultCommands(): void {
       category: 'Edit',
       keybinding: 'Ctrl+D',
       handler: () => {
-        // Add selection
+        const editor = useEditorStore.getState().activeEditor;
+        if (editor) {
+          editor.trigger('menu', 'editor.action.addSelectionToNextFindMatch', undefined);
+          editor.focus();
+        }
       },
     },
     {
@@ -303,7 +321,11 @@ export function registerDefaultCommands(): void {
       category: 'Edit',
       keybinding: 'Ctrl+Shift+L',
       handler: () => {
-        // Select all
+        const editor = useEditorStore.getState().activeEditor;
+        if (editor) {
+          editor.trigger('menu', 'editor.action.selectHighlights', undefined);
+          editor.focus();
+        }
       },
     },
     {
@@ -312,7 +334,8 @@ export function registerDefaultCommands(): void {
       category: 'File',
       keybinding: 'Ctrl+W',
       handler: () => {
-        // Close active editor
+        const { activeTabId, closeTab } = useEditorStore.getState();
+        if (activeTabId) closeTab(activeTabId);
       },
     },
     {
@@ -321,7 +344,8 @@ export function registerDefaultCommands(): void {
       category: 'File',
       keybinding: 'Ctrl+Shift+W',
       handler: () => {
-        // Close all editors
+        const { tabs, closeTab } = useEditorStore.getState();
+        [...tabs].forEach((t) => closeTab(t.id));
       },
     },
     {
@@ -330,7 +354,11 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+PageDown',
       handler: () => {
-        // Next editor
+        const { tabs, activeTabId, setActiveTab } = useEditorStore.getState();
+        if (tabs.length <= 1) return;
+        const idx = tabs.findIndex((t) => t.id === activeTabId);
+        const next = (idx + 1) % tabs.length;
+        setActiveTab(tabs[next].id);
       },
     },
     {
@@ -339,7 +367,11 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+PageUp',
       handler: () => {
-        // Previous editor
+        const { tabs, activeTabId, setActiveTab } = useEditorStore.getState();
+        if (tabs.length <= 1) return;
+        const idx = tabs.findIndex((t) => t.id === activeTabId);
+        const prev = (idx - 1 + tabs.length) % tabs.length;
+        setActiveTab(tabs[prev].id);
       },
     },
     {
@@ -348,7 +380,9 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+=',
       handler: () => {
-        // Zoom in
+        const { settings, setSetting } = useSettingsStore.getState();
+        const current = (settings['editor.fontSize'] as number) || 14;
+        setSetting('editor.fontSize', Math.min(current + 1, 40));
       },
     },
     {
@@ -357,7 +391,9 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+-',
       handler: () => {
-        // Zoom out
+        const { settings, setSetting } = useSettingsStore.getState();
+        const current = (settings['editor.fontSize'] as number) || 14;
+        setSetting('editor.fontSize', Math.max(current - 1, 8));
       },
     },
     {
@@ -366,7 +402,7 @@ export function registerDefaultCommands(): void {
       category: 'View',
       keybinding: 'Ctrl+0',
       handler: () => {
-        // Reset zoom
+        useSettingsStore.getState().setSetting('editor.fontSize', 14);
       },
     },
   ];

@@ -50,6 +50,7 @@ interface EditorState {
   triggerReplace: () => void;
   triggerSelectAll: () => void;
   triggerFormat: () => void;
+  triggerFormatSelection: () => void;
   triggerComment: () => void;
   triggerFoldAll: () => void;
   triggerUnfoldAll: () => void;
@@ -284,7 +285,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   triggerFormat: () => {
     const editor = get().activeEditor;
     if (editor) {
-      editor.trigger('menu', 'editor.action.formatDocument', undefined);
+      // Use the custom format function attached by MonacoEditor
+      const fn = (editor as any).__hypothesis_formatDocument;
+      if (fn) {
+        fn(editor);
+      } else {
+        // Fallback to Monaco action trigger
+        editor.trigger('menu', 'editor.action.formatDocument', undefined);
+      }
+      editor.focus();
+    }
+  },
+
+  triggerFormatSelection: () => {
+    const editor = get().activeEditor;
+    if (editor) {
+      const fn = (editor as any).__hypothesis_formatSelection;
+      if (fn) {
+        fn(editor);
+      } else {
+        editor.trigger('menu', 'editor.action.formatSelection', undefined);
+      }
       editor.focus();
     }
   },

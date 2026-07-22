@@ -22,6 +22,7 @@ import { useAppStore } from './stores/appStore';
 import { useEditorStore } from './stores/editorStore';
 import { useSessionStore } from './stores/sessionStore';
 import { useWorkspaceStore } from './stores/workspaceStore';
+import { pluginManager } from './plugins/PluginManager';
 import { WelcomePage } from './components/pages/WelcomePage';
 import { AboutDialog } from './components/docs/AboutDialog';
 
@@ -45,6 +46,55 @@ const App: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [sessionRestored, setSessionRestored] = useState(false);
+
+  // ── Wire stores to PluginManager for extension API ─────────────
+  useEffect(() => {
+    pluginManager.wireStores({
+      editorStore: useEditorStore,
+      appStore: useAppStore,
+      settingsStore: useSettingsStore,
+    });
+  }, []);
+
+  // ── Push editor state to main process for extensions ──────────
+  const _extActiveTabId = useEditorStore((s) => s.activeTabId);
+  const _extEditorTabs = useEditorStore((s) => s.tabs);
+  const _extCursorPos = useEditorStore((s) => s.cursorPosition);
+  const _extLastPushRef = React.useRef<string>('');
+
+  // Push active document state on tab switch or save
+  useEffect(() => {
+    const tab = _extEditorTabs.find(t => t.id === _extActiveTabId);
+    if (tab) {
+      const key = tab.filePath + '|' + tab.isDirty;
+      if (key !== _extLastPushRef.current || !_extLastPushRef.current) {
+        _extLastPushRef.current = key;
+        (window as any).api?.extension?.editor?.pushState?.({
+          uri: tab.filePath || '',
+          content: tab.content,
+          language: tab.language,
+          filePath: tab.filePath,
+        });
+      }
+    } else {
+      if (_extLastPushRef.current !== '') {
+        _extLastPushRef.current = '';
+        (window as any).api?.extension?.editor?.pushState?.(null);
+      }
+    }
+  }, [_extActiveTabId, _extEditorTabs.length, _extEditorTabs.find(t => t.id === _extActiveTabId)?.isDirty]);
+
+  // Push cursor changes (debounced)
+  const _extCursorTimerRef = React.useRef<any>(null);
+  useEffect(() => {
+    if (_extCursorTimerRef.current) clearTimeout(_extCursorTimerRef.current);
+    _extCursorTimerRef.current = setTimeout(() => {
+      (window as any).api?.extension?.editor?.pushSelection?.({
+        start: { line: _extCursorPos.line, column: _extCursorPos.column },
+        end: { line: _extCursorPos.line, column: _extCursorPos.column },
+      });
+    }, 150);
+  }, [_extCursorPos.line, _extCursorPos.column]);
 
   // ── Sync theme from settings ──────────────────────────────────
   const settings = useSettingsStore((s) => s.settings);
@@ -166,6 +216,16 @@ const App: React.FC = () => {
       on('menu:toggle-fullscreen', () => { /* F11 handled via window api */ }),
       on('menu:toggle-zen-mode', () => useAppStore.getState().toggleZenMode()),
       on('menu:about', () => setShowAbout(true)),
+      // Edit menu actions
+      on('menu:undo', () => useEditorStore.getState().triggerUndo()),
+      on('menu:redo', () => useEditorStore.getState().triggerRedo()),
+      on('menu:cut', () => useEditorStore.getState().triggerCut()),
+      on('menu:copy', () => useEditorStore.getState().triggerCopy()),
+      on('menu:paste', () => useEditorStore.getState().triggerPaste()),
+      on('menu:select-all', () => useEditorStore.getState().triggerSelectAll()),
+      on('menu:find', () => useEditorStore.getState().triggerFind()),
+      on('menu:replace', () => useEditorStore.getState().triggerReplace()),
+      on('menu:format-document', () => useEditorStore.getState().triggerFormat()),
       on('menu:check-update', async () => {
         const { checkForUpdates, openReleaseUrl } = await import('./utils/updateChecker');
         const info = await checkForUpdates();

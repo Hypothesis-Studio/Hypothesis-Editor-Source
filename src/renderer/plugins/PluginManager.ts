@@ -24,6 +24,20 @@ export class PluginManager {
   private activationEvents = new Map<string, Set<string>>();
   private commandRegistry = new CommandAPIImpl();
 
+  /**
+   * Wire renderer stores so the SDK can access live state.
+   * Call once during app initialization.
+   */
+  wireStores(stores: {
+    editorStore?: any;
+    appStore?: any;
+    settingsStore?: any;
+  }) {
+    if (stores.editorStore) (window as any).__hypothesisEditorStore = stores.editorStore;
+    if (stores.appStore) (window as any).__hypothesisAppStore = stores.appStore;
+    if (stores.settingsStore) (window as any).__hypothesisSettingsStore = stores.settingsStore;
+  }
+
   async loadPlugin(manifest: PluginManifest, pluginPath: string): Promise<void> {
     const context = createPluginContext(manifest);
 

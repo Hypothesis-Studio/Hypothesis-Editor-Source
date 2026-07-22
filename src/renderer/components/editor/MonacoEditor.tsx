@@ -3,6 +3,13 @@
  */
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import * as monaco from 'monaco-editor';
+import { format as prettierFormat } from 'prettier';
+import * as prettierBabel from 'prettier/plugins/babel';
+import * as prettierEstree from 'prettier/plugins/estree';
+import * as prettierTypescript from 'prettier/plugins/typescript';
+import * as prettierHtml from 'prettier/plugins/html';
+import * as prettierCss from 'prettier/plugins/postcss';
+import * as prettierMarkdown from 'prettier/plugins/markdown';
 import { useEditorStore } from '../../stores/editorStore';
 import { useAppStore } from '../../stores/appStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -128,7 +135,8 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({ tab, isActive }) => 
       },
       hover: {
         enabled: true,
-        delay: 300,
+        delay: 0,
+        sticky: false,
       },
       links: true,
       colorDecorators: true,
@@ -361,15 +369,280 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({ tab, isActive }) => 
       },
     });
 
+    // --- Formatting helpers (shared by actions + providers) ---
+
+    const builtinFormat = (text: string, langId: string, tabSz: number, useSpaces: boolean): string => {
+      const lines = text.split('\n');
+      const indentChar = useSpaces ? ' '.repeat(tabSz) : '\t';
+      const formatted = lines.map((line) => {
+        // Trim trailing whitespace
+        let trimmed = line.replace(/\s+$/, '');
+        // Normalize leading whitespace to consistent indentation
+        if (trimmed.length > 0) {
+          const match = trimmed.match(/^(\s*)/);
+          if (match) {
+            const rawIndent = match[1];
+            if (useSpaces && rawIndent.includes('\t')) {
+              // Convert tabs to spaces
+              let col = 0;
+              for (const ch of rawIndent) {
+                col += ch === '\t' ? tabSz - (col % tabSz) : 1;
+              }
+              const indentLevel = Math.floor(col / tabSz);
+              trimmed = indentChar.repeat(indentLevel) + trimmed.slice(rawIndent.length);
+            } else if (!useSpaces && rawIndent.includes(' ')) {
+              // Convert spaces to tabs
+              let col = 0;
+              for (const ch of rawIndent) {
+                col += ch === ' ' ? 1 : (ch === '\t' ? tabSz : 1);
+              }
+              const indentLevel = Math.floor(col / tabSz);
+              trimmed = indentChar.repeat(indentLevel) + trimmed.slice(rawIndent.length);
+            }
+          }
+        }
+        return trimmed;
+      });
+      let result = formatted.join('\n');
+      // Ensure final newline
+      if (!result.endsWith('\n')) {
+        result += '\n';
+      }
+      return result;
+    };
+
+    const langToPlugin: Record<string, string> = {
+      javascript: 'babel', typescript: 'typescript', json: 'json',
+      html: 'html', css: 'css', scss: 'css', less: 'css',
+      markdown: 'markdown', yaml: 'babel', graphql: 'babel',
+    };
+
+    const tryPrettierFormat = async (text: string, langId: string): Promise<string | null> => {
+      try {
+        // Resolve parser
+        let parser = langToPlugin[langId];
+        if (!parser && tab.filePath) {
+          const ext = tab.filePath.split('.').pop()?.toLowerCase();
+          const extMap: Record<string, string> = {
+            js: 'babel', jsx: 'babel', mjs: 'babel', cjs: 'babel',
+            ts: 'typescript', tsx: 'typescript',
+            json: 'json', html: 'html', css: 'css', scss: 'css', less: 'css',
+            md: 'markdown', yml: 'babel', yaml: 'babel',
+          };
+          if (ext) parser = extMap[ext];
+        }
+        if (!parser) parser = 'babel';
+
+        // Build plugins array based on parser
+        const plugins: any[] = [];
+        if (parser === 'babel') {
+          plugins.push(prettierBabel, prettierEstree);
+        } else if (parser === 'typescript') {
+          plugins.push(prettierTypescript, prettierEstree);
+        } else if (parser === 'html') {
+          plugins.push(prettierHtml);
+        } else if (parser === 'css') {
+          plugins.push(prettierCss);
+        } else if (parser === 'markdown') {
+          plugins.push(prettierMarkdown);
+        }
+
+        const result = await prettierFormat(text, {
+          parser,
+          plugins,
+          filepath: tab.filePath || undefined,
+          singleQuote: true,
+          trailingComma: 'all',
+          tabWidth: fmtTabSize,
+          semi: true,
+          printWidth: 100,
+        });
+
+        if (result && typeof result === 'string' && result !== text) {
+          return result;
+        }
+      } catch (err) {
+        console.warn('[Format] Prettier error:', (err as any)?.message);
+      }
+      return null;
+    };
+
+    const fmtTabSize = (settings['editor.tabSize'] as number) || 2;
+    const fmtInsertSpaces = (settings['editor.insertSpaces'] as boolean) !== false;
+
+    // Core format functions (used by actions, providers, and store triggers)
+    const doFormatDocument = async (ed: monaco.editor.IStandaloneCodeEditor) => {
+      const model = ed.getModel();
+      if (!model) return;
+      const currentText = model.getValue();
+      const langId = model.getLanguageId();
+      const formatted = await tryPrettierFormat(currentText, langId)
+        ?? builtinFormat(currentText, langId, fmtTabSize, fmtInsertSpaces);
+      if (formatted !== currentText) {
+        ed.executeEdits('builtin-format', [{ range: model.getFullModelRange(), text: formatted }]);
+      }
+    };
+
+    const doFormatSelection = async (ed: monaco.editor.IStandaloneCodeEditor) => {
+      const model = ed.getModel();
+      if (!model) return;
+      const selection = ed.getSelection();
+      if (!selection || selection.isEmpty()) return;
+      const selectedText = model.getValueInRange(selection);
+      const langId = model.getLanguageId();
+      const formatted = await tryPrettierFormat(selectedText, langId)
+        ?? builtinFormat(selectedText, langId, fmtTabSize, fmtInsertSpaces);
+      if (formatted !== selectedText) {
+        ed.executeEdits('builtin-format-selection', [{ range: selection, text: formatted }]);
+      }
+    };
+
+    // Disable Monaco's built-in context menu — we provide our own
+    editor.updateOptions({ contextmenu: false });
+
+    // Expose format functions on the editor instance for external triggers
+    (editor as any).__hypothesis_formatDocument = doFormatDocument;
+    (editor as any).__hypothesis_formatSelection = doFormatSelection;
+
+    // Register keyboard shortcut action
+    const formatAction = editor.addAction({
+      id: 'hypothesis.action.formatDocument',
+      label: 'Format Document',
+      keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+      run: doFormatDocument,
+    });
+
+    // Register fast hover provider — must register per-language to override
+    // Monaco's built-in TS/JS worker hover that shows "Loading..."
+    const provideHover = (model: monaco.editor.ITextModel, position: monaco.Position) => {
+      const word = model.getWordAtPosition(position);
+      if (!word) return null;
+      const wordText = word.word;
+      const langId = model.getLanguageId();
+
+      let content = '';
+      if (/^(const|let|var|function|class|interface|type|enum|import|export|return|if|else|for|while|switch|case|break|continue|try|catch|finally|throw|new|this|super|extends|implements|async|await|yield|typeof|instanceof|void|null|undefined|true|false)$/.test(wordText)) {
+        content = `**${wordText}** — keyword`;
+      } else if (/^[A-Z]/.test(wordText)) {
+        content = `**${wordText}** — type/class (line ${position.lineNumber})`;
+      } else {
+        const lines = model.getValue().split('\n');
+        let defLine = '';
+        for (let i = 0; i < lines.length; i++) {
+          const l = lines[i];
+          if (l.includes(wordText) && i + 1 !== position.lineNumber) {
+            const trimmed = l.trim();
+            if (trimmed.match(new RegExp(`(function|const|let|var|class|interface|type|enum|def|fn|method)\\s+${wordText}`)) ||
+                trimmed.match(new RegExp(`^${wordText}\\s*[=:(]`))) {
+              defLine = trimmed;
+              break;
+            }
+          }
+        }
+        if (defLine) {
+          const shortDef = defLine.length > 80 ? defLine.substring(0, 80) + '...' : defLine;
+          content = `**${wordText}**\n\n\`\`\`${langId}\n${shortDef}\n\`\`\``;
+        } else {
+          content = `**${wordText}** — symbol (line ${position.lineNumber})`;
+        }
+      }
+
+      return {
+        range: new monaco.Range(
+          position.lineNumber, word.startColumn,
+          position.lineNumber, word.endColumn,
+        ),
+        contents: [{ value: content }],
+      };
+    };
+
+    const hoverLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact'];
+    const hoverProviders = hoverLanguages.map(lang =>
+      monaco.languages.registerHoverProvider(lang, { provideHover })
+    );
+    // Also register for all other languages
+    const fallbackHover = monaco.languages.registerHoverProvider('*', { provideHover });
+
+    // Custom right-click context menu
+    const contextMenuHandler = (e: MouseEvent) => {
+      e.preventDefault();
+      // Remove any existing custom menu
+      document.querySelectorAll('.hypothesis-context-menu').forEach(el => el.remove());
+
+      const hasSelection = !editor.getSelection()?.isEmpty();
+      const items: Array<{ label: string; shortcut?: string; action: () => void; className?: string } | 'separator'> = [
+        { label: 'Cut', shortcut: 'Ctrl+X', action: () => { editor.trigger('menu', 'editor.action.clipboardCutAction', undefined); } },
+        { label: 'Copy', shortcut: 'Ctrl+C', action: () => { editor.trigger('menu', 'editor.action.clipboardCopyAction', undefined); } },
+        { label: 'Paste', shortcut: 'Ctrl+V', action: () => { editor.trigger('menu', 'editor.action.clipboardPasteAction', undefined); } },
+        'separator',
+        { label: 'Select All', shortcut: 'Ctrl+A', action: () => { editor.trigger('menu', 'editor.action.selectAll', undefined); } },
+        'separator',
+        { label: 'Format Document', shortcut: 'Shift+Alt+F', action: () => doFormatDocument(editor) },
+        ...(hasSelection ? [{ label: 'Format Selection', action: () => doFormatSelection(editor) }] as const : []),
+        'separator',
+        { label: 'Go to Definition', shortcut: 'F12', action: () => { editor.trigger('menu', 'editor.action.revealDefinition', undefined); } },
+        { label: 'Peek Definition', shortcut: 'Alt+F12', action: () => { editor.trigger('menu', 'editor.action.peekDefinition', undefined); } },
+        'separator',
+        { label: 'Command Palette', shortcut: 'Ctrl+Shift+P', action: () => { useAppStore.getState().toggleCommandPalette(); } },
+      ];
+
+      const menu = document.createElement('div');
+      menu.className = 'hypothesis-context-menu';
+      menu.style.cssText = `position:fixed;z-index:99999;left:${Math.min(e.clientX, window.innerWidth - 220)}px;top:${Math.min(e.clientY, window.innerHeight - items.length * 30)}px;`
+        + `background:var(--theme-editor-background,#1e1e1e);border:1px solid var(--theme-border,#3c3c3c);`
+        + `border-radius:4px;padding:4px 0;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.4);font-size:13px;`
+        + `font-family:var(--theme-font-family,sans-serif);color:var(--theme-foreground,#ccc);`;
+
+      items.forEach(item => {
+        if (item === 'separator') {
+          const sep = document.createElement('div');
+          sep.style.cssText = 'height:1px;background:var(--theme-border,#3c3c3c);margin:4px 0;';
+          menu.appendChild(sep);
+        } else {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;justify-content:space-between;padding:4px 12px;cursor:pointer;white-space:nowrap;';
+          row.onmouseenter = () => { row.style.background = 'var(--theme-accent,#094771)'; };
+          row.onmouseleave = () => { row.style.background = 'transparent'; };
+          row.textContent = item.label;
+          if ('shortcut' in item && item.shortcut) {
+            const shortcutEl = document.createElement('span');
+            shortcutEl.textContent = item.shortcut;
+            shortcutEl.style.cssText = 'opacity:0.5;margin-left:24px;font-size:12px;';
+            row.appendChild(shortcutEl);
+          }
+          row.onclick = () => { menu.remove(); item.action(); };
+          menu.appendChild(row);
+        }
+      });
+
+      document.body.appendChild(menu);
+
+      const closeMenu = (ev: MouseEvent) => {
+        if (!menu.contains(ev.target as Node)) {
+          menu.remove();
+          document.removeEventListener('mousedown', closeMenu);
+        }
+      };
+      setTimeout(() => document.addEventListener('mousedown', closeMenu), 0);
+    };
+
+    const editorDom = editor.getDomNode();
+    if (editorDom) editorDom.addEventListener('contextmenu', contextMenuHandler);
+
     // Focus editor if active
     if (isActive) {
       editor.focus();
     }
 
     return () => {
+      formatAction.dispose();
+      hoverProviders.forEach(p => p.dispose());
+      fallbackHover.dispose();
       contentChangeDisposable.dispose();
       cursorChangeDisposable.dispose();
       scrollChangeDisposable.dispose();
+      if (editorDom) editorDom.removeEventListener('contextmenu', contextMenuHandler);
+      document.querySelectorAll('.hypothesis-context-menu').forEach(el => el.remove());
       editor.dispose();
       monacoRef.current = null;
     };

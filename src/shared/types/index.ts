@@ -474,14 +474,157 @@ export interface PluginContext {
   commands: PluginCommandRegistry;
   window: PluginWindowRegistry;
   languages: PluginLanguageRegistry;
-  editor?: PluginEditorAPI;
-  terminal?: PluginTerminalAPI;
-  statusbar?: PluginStatusBarAPI;
-  panels?: PluginPanelAPI;
-  menus?: PluginMenuAPI;
-  events?: PluginEventAPI;
-  formatters?: PluginFormatterAPI;
-  linters?: PluginLinterAPI;
+  editor: PluginEditorAPI;
+  terminal: PluginTerminalAPI;
+  statusbar: PluginStatusBarAPI;
+  panels: PluginPanelAPI;
+  menus: PluginMenuAPI;
+  events: PluginEventAPI;
+  formatters: PluginFormatterAPI;
+  linters: PluginLinterAPI;
+  settings: PluginSettingsAPI;
+  theme: PluginThemeAPI;
+  fs: PluginFileSystemAPI;
+  git: PluginGitAPI;
+  storage: PluginStorageAPI;
+  clipboard: PluginClipboardAPI;
+  http: PluginHTTPAPI;
+  process: PluginProcessAPI;
+  ui: PluginUIAPI;
+  notifications: PluginNotificationAPI;
+}
+
+// ── Comprehensive Extension API Types ───────────────────────────
+
+export interface PluginSettingsAPI {
+  get<T>(key: string): T | undefined;
+  get<T>(key: string, defaultValue: T): T;
+  set(key: string, value: unknown): Promise<boolean>;
+  getAll(): Record<string, unknown>;
+  getSection(section: string): Record<string, unknown>;
+  onDidChange(listener: (settings: Record<string, unknown>) => void): PluginDisposable;
+}
+
+export interface PluginThemeAPI {
+  getCurrent(): ThemeDefinition | undefined;
+  list(): ThemeDefinition[];
+  set(themeId: string): Promise<boolean>;
+  register(theme: ThemeDefinition): PluginDisposable;
+  onDidChange(listener: (themeId: string) => void): PluginDisposable;
+}
+
+export interface PluginFileSystemAPI {
+  readFile(filePath: string): Promise<string>;
+  writeFile(filePath: string, content: string): Promise<boolean>;
+  exists(filePath: string): Promise<boolean>;
+  readDir(dirPath: string): Promise<Array<{ name: string; isDirectory: boolean; isFile: boolean; isSymbolicLink: boolean }>>;
+  mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<boolean>;
+  delete(targetPath: string, options?: { recursive?: boolean }): Promise<boolean>;
+  rename(oldPath: string, newPath: string): Promise<boolean>;
+  stat(filePath: string): Promise<{ size: number; isFile: boolean; isDirectory: boolean; isSymbolicLink: boolean; createdAt: string; modifiedAt: string }>;
+  watch(filePath: string, listener: (event: { type: string; path: string }) => void): PluginDisposable;
+  getWorkspacePath(): string | undefined;
+  resolvePath(...segments: string[]): string;
+}
+
+export interface PluginGitAPI {
+  status(repoPath: string): Promise<GitStatus>;
+  log(repoPath: string, maxCount?: number): Promise<GitCommit[]>;
+  diff(repoPath: string, file?: string): Promise<GitDiff>;
+  branch(repoPath: string): Promise<GitBranch[]>;
+  commit(repoPath: string, message: string, files?: string[]): Promise<string>;
+  push(repoPath: string, remote?: string): Promise<boolean>;
+  pull(repoPath: string, remote?: string): Promise<boolean>;
+  fetch(repoPath: string, remote?: string): Promise<boolean>;
+  add(repoPath: string, files: string[]): Promise<boolean>;
+  reset(repoPath: string, files?: string[]): Promise<boolean>;
+  stash(repoPath: string): Promise<boolean>;
+  checkout(repoPath: string, branch: string): Promise<boolean>;
+  merge(repoPath: string, branch: string): Promise<boolean>;
+  init(repoPath: string): Promise<boolean>;
+}
+
+export interface PluginStorageAPI {
+  get<T>(key: string): T | undefined;
+  set(key: string, value: unknown): Promise<boolean>;
+  delete(key: string): Promise<boolean>;
+  getAll(): Record<string, unknown>;
+  clear(): Promise<boolean>;
+}
+
+export interface PluginClipboardAPI {
+  read(): Promise<string>;
+  write(text: string): Promise<boolean>;
+}
+
+export interface PluginHTTPAPI {
+  fetch(url: string, options?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    timeout?: number;
+  }): Promise<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body: string;
+  }>;
+}
+
+export interface PluginProcessAPI {
+  exec(command: string, options?: {
+    cwd?: string;
+    env?: Record<string, string>;
+    timeout?: number;
+  }): Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  getEnv(key: string): string | undefined;
+  getPlatform(): string;
+  getArch(): string;
+  getVersion(): string;
+  getAppPath(): string;
+  getExtensionPath(pluginId: string): string | null;
+  getTempPath(): string;
+  getHomePath(): string;
+}
+
+export interface PluginUIAPI {
+  showMessage(type: 'info' | 'warning' | 'error', message: string, items?: string[]): Promise<string | undefined>;
+  showDialog(options: {
+    type?: 'info' | 'warning' | 'error' | 'question';
+    title?: string;
+    message: string;
+    detail?: string;
+    buttons?: string[];
+    defaultId?: number;
+    cancelId?: number;
+  }): Promise<{ response: number; checkboxChecked: boolean }>;
+  showOpenDialog(options: {
+    title?: string;
+    defaultPath?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
+    properties?: string[];
+  }): Promise<{ canceled: boolean; filePaths: string[] }>;
+  showSaveDialog(options: {
+    title?: string;
+    defaultPath?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
+  }): Promise<{ canceled: boolean; filePath: string }>;
+  createStatusBarItem(id: string, text: string, alignment: 'left' | 'right', priority?: number): PluginDisposable;
+  updateStatusBarItem(id: string, text: string): void;
+  createPanel(id: string, title: string, content: string): PluginDisposable;
+  updatePanel(id: string, content: string): void;
+  showPanel(id: string): void;
+  hidePanel(id: string): void;
+  createSidebarView(id: string, title: string, content: string): PluginDisposable;
+  showSidebarView(id: string): void;
+}
+
+export interface PluginNotificationAPI {
+  info(message: string): void;
+  warn(message: string): void;
+  error(message: string): void;
+  success(message: string): void;
 }
 
 export interface PluginDisposable {
@@ -493,6 +636,11 @@ export interface PluginWorkspace {
   workspaceFolders: WorkspaceFolder[] | undefined;
   getConfiguration(section: string): unknown;
   onDidChangeConfiguration: (listener: () => void) => PluginDisposable;
+  onDidOpenTextDocument: (listener: (doc: any) => void) => PluginDisposable;
+  onDidSaveTextDocument: (listener: (doc: any) => void) => PluginDisposable;
+  onDidCloseTextDocument: (listener: (doc: any) => void) => PluginDisposable;
+  openTextDocument: (uri: string) => Promise<any>;
+  applyEdit: (edit: any) => Promise<boolean>;
 }
 
 export interface PluginCommandRegistry {
@@ -518,6 +666,14 @@ export interface PluginLanguageRegistry {
     selector: string,
     provider: DefinitionProvider,
   ): PluginDisposable;
+  registerDocumentFormattingEditProvider(selector: string, provider: any): PluginDisposable;
+  registerDocumentSymbolProvider(selector: string, provider: any): PluginDisposable;
+  registerCodeActionProvider(selector: string, provider: any): PluginDisposable;
+  registerCodeLensProvider(selector: string, provider: any): PluginDisposable;
+  registerReferenceProvider(selector: string, provider: any): PluginDisposable;
+  registerRenameProvider(selector: string, provider: any): PluginDisposable;
+  registerSignatureHelpProvider(selector: string, provider: any): PluginDisposable;
+  registerFoldingRangeProvider(selector: string, provider: any): PluginDisposable;
 }
 
 export interface InputBoxOptions {
@@ -559,11 +715,17 @@ export interface DefinitionProvider {
 
 export interface PluginEditorAPI {
   getActiveDocument(): { uri: string; content: string; language: string } | null;
+  getOpenDocuments(): Array<{ uri: string; content: string; language: string }>;
   getSelection(): { start: CursorPosition; end: CursorPosition } | null;
   insertText(uri: string, position: CursorPosition, text: string): Promise<void>;
   replaceText(uri: string, range: { start: CursorPosition; end: CursorPosition }, text: string): Promise<void>;
+  openFile(filePath: string): Promise<{ filePath: string; content: string }>;
+  saveFile(filePath: string, content: string): Promise<boolean>;
+  getDocumentContent(filePath: string): Promise<string>;
   openDocument(uri: string): Promise<void>;
   closeDocument(uri: string): Promise<void>;
+  onOpenFile(listener: (data: { filePath: string; content: string }) => void): PluginDisposable;
+  onFileSaved(listener: (data: { filePath: string }) => void): PluginDisposable;
   onDidChangeActiveEditor(listener: (editor: { uri: string } | null) => void): PluginDisposable;
 }
 
