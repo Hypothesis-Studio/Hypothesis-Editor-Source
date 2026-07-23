@@ -3,6 +3,7 @@
  */
 import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
+import type { AIProviderConfig, AIModelConfig } from '../../shared/types/agent';
 
 interface SettingsState {
   settings: Partial<AppSettings>;

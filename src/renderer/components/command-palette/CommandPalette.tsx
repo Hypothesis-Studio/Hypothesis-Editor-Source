@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { APP_NAME } from '../../../shared/utils/appMeta';
 import { useAppStore } from '../../stores/appStore';
 import { useEditorStore } from '../../stores/editorStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 interface CommandItem {
   id: string;
@@ -13,6 +14,7 @@ interface CommandItem {
   category?: string;
   keybinding?: string;
   action: () => void;
+  hidden?: boolean;
 }
 
 interface CommandPaletteProps {
@@ -28,11 +30,12 @@ interface CommandPaletteProps {
   onOpenShortcuts?: () => void;
   onOpenWelcome?: () => void;
   onOpenAbout?: () => void;
+  onOpenAgent?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose, onNewFile, onOpenFile, onOpenFolder, onCloseFolder, onOpenSettings, onSave, onSaveAs,
-  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout,
+  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent,
 }) => {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -41,6 +44,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   const app = useAppStore;
   const editor = useEditorStore;
+  const settings = useSettingsStore.getState().settings;
+  const agentEnabled = settings['agent.enabled'] !== false;
 
   // Load extension commands on mount and refresh on IPC events
   useEffect(() => {
@@ -74,6 +79,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'view.search', label: 'Show Search', category: 'View', keybinding: 'Ctrl+Shift+F', action: () => { app.getState().setActiveSidebarView('search'); app.getState().sidebarVisible || app.getState().toggleSidebar(); onClose(); } },
     { id: 'view.git', label: 'Show Source Control', category: 'View', keybinding: 'Ctrl+Shift+G', action: () => { app.getState().setActiveSidebarView('git'); app.getState().sidebarVisible || app.getState().toggleSidebar(); onClose(); } },
     { id: 'view.extensions', label: 'Show Extensions', category: 'View', keybinding: 'Ctrl+Shift+X', action: () => { app.getState().setActiveSidebarView('extensions'); app.getState().sidebarVisible || app.getState().toggleSidebar(); onClose(); } },
+    { id: 'view.agent', label: 'Open AI Agent', category: 'View', keybinding: 'Ctrl+Shift+A', action: () => { onOpenAgent?.(); onClose(); }, hidden: !agentEnabled },
 
     // ── View: Toggles ──────────────────────────────────────────────
     { id: 'view.toggleSidebar', label: 'Toggle Sidebar', category: 'View', keybinding: 'Ctrl+B', action: () => { app.getState().toggleSidebar(); onClose(); } },
@@ -170,6 +176,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   ];
 
   const filtered = commands.filter(c => {
+    if (c.hidden) return false;
     const q = query.toLowerCase();
     return c.label.toLowerCase().includes(q) || c.category?.toLowerCase().includes(q) || c.id.includes(q);
   });

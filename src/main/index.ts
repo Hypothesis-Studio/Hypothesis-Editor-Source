@@ -16,6 +16,14 @@ import { GitService } from './services/GitService';
 import { PluginService } from './services/PluginService';
 import { SettingsService } from './services/SettingsService';
 import { RecentService } from './services/RecentService';
+import { AgentService } from './services/agent/AgentService';
+import { ProviderRegistry } from './services/agent/ProviderRegistry';
+import { ToolRegistry } from './services/agent/ToolRegistry';
+import { MemoryService } from './services/agent/MemoryService';
+import { TaskService } from './services/agent/TaskService';
+import { SessionPersistence } from './services/agent/SessionPersistence';
+import { AgentLogService } from './services/agent/AgentLogService';
+import { RateLimiter } from './services/agent/RateLimiter';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -70,6 +78,28 @@ if (!gotTheLock) {
 
     await pluginService.initialize();
 
+    // Initialize Agent system
+    const providerRegistry = new ProviderRegistry(appStore);
+    const toolRegistry = new ToolRegistry(fileService, gitService);
+    const memoryService = new MemoryService(appStore);
+    const taskService = new TaskService(appStore);
+    const sessionPersistence = new SessionPersistence(appStore);
+    const agentLogService = new AgentLogService();
+    const rateLimiter = new RateLimiter();
+
+    toolRegistry.initialize();
+    memoryService.initialize();
+    taskService.initialize();
+    sessionPersistence.initialize();
+    await providerRegistry.initialize();
+
+    const agentService = new AgentService(
+      appStore, providerRegistry, toolRegistry,
+      memoryService, taskService, sessionPersistence,
+      agentLogService, rateLimiter,
+    );
+    await agentService.initialize();
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -111,6 +141,7 @@ if (!gotTheLock) {
       gitService,
       pluginService,
       recentService,
+      agentService,
     });
 
     // Create application menu

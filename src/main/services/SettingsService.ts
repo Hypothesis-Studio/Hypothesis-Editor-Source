@@ -106,6 +106,25 @@ const DEFAULT_SETTINGS: Partial<AppSettings> = {
   'extensions.showRecommendationsOnlyOnDemand': false,
   'update.channel': 'stable',
   'accessibility.supportAccessibilityMode': false,
+
+  // Agent defaults
+  'agent.enabled': true,
+  'agent.defaultTemperature': 0.7,
+  'agent.defaultMaxTokens': 4096,
+  'agent.streaming': true,
+  'agent.maxTurns': 20,
+  'agent.maxToolCalls': 10,
+  'agent.toolCallTimeout': 30000,
+  'agent.memoryEnabled': true,
+  'agent.memoryMaxTokens': 4000,
+  'agent.planningEnabled': true,
+  'agent.planningMaxSteps': 10,
+  'agent.retryOnFailure': true,
+  'agent.maxRetries': 3,
+  'agent.retryDelayMs': 1000,
+  'agent.requestTimeout': 60000,
+  'agent.logLevel': 'info',
+  'agent.telemetryEnabled': false,
 };
 
 export class SettingsService {

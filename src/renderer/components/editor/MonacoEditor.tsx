@@ -58,6 +58,9 @@ const setupMonacoWorkers = () => {
 setupMonacoWorkers();
 
 export const MonacoEditor: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
+  // Skip Monaco for agent virtual tab
+  if (tab.id === 'agent-tab') return null;
+
   const editorRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const { updateTab, setCursorPosition, setTabDirty } = useEditorStore();
@@ -512,55 +515,13 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({ tab, isActive }) => 
       run: doFormatDocument,
     });
 
-    // Register fast hover provider — must register per-language to override
-    // Monaco's built-in TS/JS worker hover that shows "Loading..."
-    const provideHover = (model: monaco.editor.ITextModel, position: monaco.Position) => {
-      const word = model.getWordAtPosition(position);
-      if (!word) return null;
-      const wordText = word.word;
-      const langId = model.getLanguageId();
-
-      let content = '';
-      if (/^(const|let|var|function|class|interface|type|enum|import|export|return|if|else|for|while|switch|case|break|continue|try|catch|finally|throw|new|this|super|extends|implements|async|await|yield|typeof|instanceof|void|null|undefined|true|false)$/.test(wordText)) {
-        content = `**${wordText}** — keyword`;
-      } else if (/^[A-Z]/.test(wordText)) {
-        content = `**${wordText}** — type/class (line ${position.lineNumber})`;
-      } else {
-        const lines = model.getValue().split('\n');
-        let defLine = '';
-        for (let i = 0; i < lines.length; i++) {
-          const l = lines[i];
-          if (l.includes(wordText) && i + 1 !== position.lineNumber) {
-            const trimmed = l.trim();
-            if (trimmed.match(new RegExp(`(function|const|let|var|class|interface|type|enum|def|fn|method)\\s+${wordText}`)) ||
-                trimmed.match(new RegExp(`^${wordText}\\s*[=:(]`))) {
-              defLine = trimmed;
-              break;
-            }
-          }
-        }
-        if (defLine) {
-          const shortDef = defLine.length > 80 ? defLine.substring(0, 80) + '...' : defLine;
-          content = `**${wordText}**\n\n\`\`\`${langId}\n${shortDef}\n\`\`\``;
-        } else {
-          content = `**${wordText}** — symbol (line ${position.lineNumber})`;
-        }
-      }
-
-      return {
-        range: new monaco.Range(
-          position.lineNumber, word.startColumn,
-          position.lineNumber, word.endColumn,
-        ),
-        contents: [{ value: content }],
-      };
-    };
+    // Hover provider - disabled for clean UI
+    const provideHover = () => null;
 
     const hoverLanguages = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact'];
     const hoverProviders = hoverLanguages.map(lang =>
       monaco.languages.registerHoverProvider(lang, { provideHover })
     );
-    // Also register for all other languages
     const fallbackHover = monaco.languages.registerHoverProvider('*', { provideHover });
 
     // Custom right-click context menu
@@ -582,6 +543,19 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({ tab, isActive }) => 
         'separator',
         { label: 'Go to Definition', shortcut: 'F12', action: () => { editor.trigger('menu', 'editor.action.revealDefinition', undefined); } },
         { label: 'Peek Definition', shortcut: 'Alt+F12', action: () => { editor.trigger('menu', 'editor.action.peekDefinition', undefined); } },
+        ...(hasSelection ? [
+          'separator',
+          { label: 'Ask AI Agent', action: () => {
+            const sel = editor.getSelection();
+            const selectedText = sel && !sel.isEmpty() ? editor.getModel()?.getValueInRange(sel) || '' : '';
+            window.dispatchEvent(new CustomEvent('hypothesis:open-agent-tab', { detail: { code: selectedText, mode: 'ask' } }));
+          }},
+          { label: 'Fix With AI Agent', action: () => {
+            const sel = editor.getSelection();
+            const selectedText = sel && !sel.isEmpty() ? editor.getModel()?.getValueInRange(sel) || '' : '';
+            window.dispatchEvent(new CustomEvent('hypothesis:open-agent-tab', { detail: { code: selectedText, mode: 'fix' } }));
+          }},
+        ] as const : []),
         'separator',
         { label: 'Command Palette', shortcut: 'Ctrl+Shift+P', action: () => { useAppStore.getState().toggleCommandPalette(); } },
       ];

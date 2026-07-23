@@ -20,6 +20,8 @@ import type { FileService } from '../services/FileService';
 import type { GitService } from '../services/GitService';
 import type { PluginService } from '../services/PluginService';
 import type { RecentService } from '../services/RecentService';
+import type { AgentService } from '../services/agent/AgentService';
+import { registerAgentIPC } from './agent.ipc';
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -29,6 +31,7 @@ interface IPCDependencies {
   gitService: GitService;
   pluginService: PluginService;
   recentService: RecentService;
+  agentService: AgentService;
 }
 
 export function registerIPC(deps: IPCDependencies): void {
@@ -48,4 +51,5 @@ export function registerIPC(deps: IPCDependencies): void {
     deps.fileService,
     deps.gitService,
   );
+  registerAgentIPC(deps.agentService);
 }

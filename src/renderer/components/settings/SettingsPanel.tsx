@@ -6,6 +6,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAppStore } from '../../stores/appStore';
 import { DropdownSelect } from '../common/DropdownSelect';
+import { AgentSettingsPanel } from './AgentSettingsPanel';
 
 interface SettingItem {
   key: string;
@@ -114,6 +115,14 @@ const SETTINGS_SCHEMA: SettingItem[] = [
 
   // Accessibility
   { key: 'accessibility.supportAccessibilityMode', label: 'Accessibility Mode', description: 'Optimize the editor for screen readers.', type: 'boolean', default: false, category: 'Accessibility' },
+
+  // AI Agent - Basic toggles only (detailed config is in AgentSettingsPanel)
+  { key: 'agent.enabled', label: 'Agent Enabled', description: 'Enable or disable the AI agent system.', type: 'boolean', default: true, category: 'AI Agent' },
+  { key: 'agent.streaming', label: 'Streaming Responses', description: 'Stream agent responses in real-time.', type: 'boolean', default: true, category: 'AI Agent' },
+  { key: 'agent.memoryEnabled', label: 'Memory Enabled', description: 'Remember context across sessions.', type: 'boolean', default: true, category: 'AI Agent' },
+  { key: 'agent.planningEnabled', label: 'Planning Enabled', description: 'Enable multi-step task planning.', type: 'boolean', default: true, category: 'AI Agent' },
+  { key: 'agent.retryOnFailure', label: 'Retry on Failure', description: 'Automatically retry failed API calls.', type: 'boolean', default: true, category: 'AI Agent' },
+  { key: 'agent.telemetryEnabled', label: 'Telemetry', description: 'Send anonymous usage telemetry.', type: 'boolean', default: false, category: 'AI Agent' },
 ];
 
 // ── Map settings to appStore actions ──────────────────────────────
@@ -151,10 +160,14 @@ function applySettingToApp(key: string, value: unknown) {
   }
 }
 
-export const SettingsPanel: React.FC = () => {
+interface SettingsPanelProps {
+  initialCategory?: string;
+}
+
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({ initialCategory }) => {
   const { settings, loadSettings, setSetting, resetSetting, resetAllSettings, exportSettings, importSettings } = useSettingsStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null);
   const [isJsonMode, setIsJsonMode] = useState(false);
 
   useEffect(() => {
@@ -351,7 +364,9 @@ export const SettingsPanel: React.FC = () => {
 
         {/* Settings list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-          {isJsonMode ? (
+          {selectedCategory === 'AI Agent' ? (
+            <AgentSettingsPanel />
+          ) : isJsonMode ? (
             <textarea
               value={JSON.stringify(settings, null, 2)}
               onChange={(e) => {

@@ -7,14 +7,16 @@ import { MonacoEditor } from './MonacoEditor';
 import { EditorTabs } from '../tabs/EditorTabs';
 import { Breadcrumb } from './Breadcrumb';
 import { WelcomePage } from '../pages/WelcomePage';
+import { AgentPanel } from '../agent/AgentPanel';
 import { useAppStore } from '../../stores/appStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
 interface EditorAreaProps {
   onOpenFolder?: (path: string) => void;
+  onOpenSettings?: (category?: string) => void;
 }
 
-export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder }) => {
+export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSettings }) => {
   const { tabs, activeTabId, splits } = useEditorStore();
   const { breadcrumbsVisible } = useAppStore();
   const showTabs = useSettingsStore((s) => s.settings['workbench.editor.showTabs'] !== false);
@@ -28,12 +30,17 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder }) => {
     );
   }
 
+  // Check if active tab is the agent tab
+  const isAgentTab = activeTab?.id === 'agent-tab';
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--theme-bg)' }}>
       {showTabs && <EditorTabs />}
-      {activeTab && breadcrumbsVisible && <Breadcrumb tab={activeTab} />}
+      {activeTab && breadcrumbsVisible && !isAgentTab && <Breadcrumb tab={activeTab} />}
       <div className="flex-1 overflow-hidden">
-        {splits.length <= 1 ? (
+        {isAgentTab ? (
+          <AgentPanel onOpenSettings={onOpenSettings} />
+        ) : splits.length <= 1 ? (
           tabs.map((tab) => (
             <MonacoEditor key={tab.id} tab={tab} isActive={tab.id === activeTabId} />
           ))

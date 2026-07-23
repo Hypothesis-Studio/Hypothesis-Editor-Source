@@ -1,11 +1,14 @@
 /**
  * ActivityBar - Left icon bar for switching sidebar views and panels.
+ * AI Agent opens as an editor tab, not a sidebar view.
  */
 import React from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 interface ActivityBarProps {
   onOpenSettings?: () => void;
+  onOpenAgent?: () => void;
 }
 
 const views = [
@@ -22,6 +25,7 @@ const bottomItems = [
 ];
 
 const settingsIcon = 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4';
+const agentIcon = 'M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5';
 
 const Icon: React.FC<{ path: string; size?: number }> = ({ path, size = 20 }) => (
   <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,11 +33,12 @@ const Icon: React.FC<{ path: string; size?: number }> = ({ path, size = 20 }) =>
   </svg>
 );
 
-export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings }) => {
+export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpenAgent }) => {
   const {
     activeSidebarView, setActiveSidebarView,
     togglePanel, panelVisible, activePanel, setActivePanel,
   } = useAppStore();
+  const agentEnabled = useSettingsStore((s) => s.settings['agent.enabled'] !== false);
 
   const handlePanelClick = (id: string) => {
     const { panelVisible, activePanel } = useAppStore.getState();
@@ -78,6 +83,19 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings }) => {
 
       {/* Bottom panels */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 8, gap: 4 }}>
+        {/* AI Agent - opens as editor tab */}
+        {agentEnabled && (
+          <button
+            onClick={onOpenAgent}
+            style={{ ...iconBtnStyle(false) }}
+            title="AI Agent (Ctrl+Shift+A)"
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--theme-fg)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
+          >
+            <Icon path={agentIcon} />
+          </button>
+        )}
+
         {bottomItems.map((p) => (
           <button
             key={p.id}

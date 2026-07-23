@@ -1200,6 +1200,12 @@ export interface StoreSchema {
   language: string;
   snippets: Snippet[];
   pluginStates: Record<string, { enabled: boolean; config: unknown }>;
+  // Agent data (stored as JSON-serializable arrays)
+  'agent.providers': unknown[];
+  'agent.configs': unknown[];
+  'agent.sessions': unknown[];
+  'agent.memory': unknown[];
+  'agent.tasks': unknown[];
 }
 
 // ============================================================================

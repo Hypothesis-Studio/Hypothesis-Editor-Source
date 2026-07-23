@@ -481,6 +481,75 @@ const api = {
     },
   },
 
+  // Agent
+  agent: {
+    chat: {
+      send: (sessionId: string, content: string, agentId?: string, workspacePath?: string) => ipcRenderer.invoke('agent:chat:send', sessionId, content, agentId, workspacePath),
+      stream: (sessionId: string, content: string, agentId?: string, workspacePath?: string) => ipcRenderer.invoke('agent:chat:stream', sessionId, content, agentId, workspacePath),
+      cancel: (sessionId: string) => ipcRenderer.invoke('agent:chat:cancel', sessionId),
+      history: (sessionId: string) => ipcRenderer.invoke('agent:chat:history', sessionId),
+    },
+    session: {
+      create: (agentId: string, title?: string) => ipcRenderer.invoke('agent:session:create', agentId, title),
+      list: (agentId?: string, limit?: number) => ipcRenderer.invoke('agent:session:list', agentId, limit),
+      delete: (sessionId: string) => ipcRenderer.invoke('agent:session:delete', sessionId),
+      get: (sessionId: string) => ipcRenderer.invoke('agent:session:get', sessionId),
+    },
+    provider: {
+      list: () => ipcRenderer.invoke('agent:provider:list'),
+      add: (config: unknown) => ipcRenderer.invoke('agent:provider:add', config),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('agent:provider:update', id, updates),
+      remove: (id: string) => ipcRenderer.invoke('agent:provider:remove', id),
+      test: (id: string) => ipcRenderer.invoke('agent:provider:test', id),
+      models: (id: string) => ipcRenderer.invoke('agent:provider:models', id),
+    },
+    config: {
+      list: () => ipcRenderer.invoke('agent:config:list'),
+      get: (id: string) => ipcRenderer.invoke('agent:config:get', id),
+      create: (config: unknown) => ipcRenderer.invoke('agent:config:create', config),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('agent:config:update', id, updates),
+      delete: (id: string) => ipcRenderer.invoke('agent:config:delete', id),
+    },
+    task: {
+      list: (filters?: unknown) => ipcRenderer.invoke('agent:task:list', filters),
+      get: (id: string) => ipcRenderer.invoke('agent:task:get', id),
+      cancel: (id: string) => ipcRenderer.invoke('agent:task:cancel', id),
+      delete: (id: string) => ipcRenderer.invoke('agent:task:delete', id),
+    },
+    tool: {
+      list: () => ipcRenderer.invoke('agent:tool:list'),
+      enable: (id: string) => ipcRenderer.invoke('agent:tool:enable', id),
+      disable: (id: string) => ipcRenderer.invoke('agent:tool:disable', id),
+    },
+    memory: {
+      search: (query: unknown) => ipcRenderer.invoke('agent:memory:search', query),
+      list: (limit?: number) => ipcRenderer.invoke('agent:memory:list', limit),
+      clear: (sessionId?: string) => ipcRenderer.invoke('agent:memory:clear', sessionId),
+    },
+    log: {
+      list: (filters?: unknown) => ipcRenderer.invoke('agent:log:list', filters),
+      clear: () => ipcRenderer.invoke('agent:log:clear'),
+    },
+    status: () => ipcRenderer.invoke('agent:status'),
+    stream: {
+      onEvent: (callback: (event: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+        ipcRenderer.on('agent:stream:event', handler);
+        return () => { ipcRenderer.removeListener('agent:stream:event', handler); };
+      },
+      onEnd: (callback: (data: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+        ipcRenderer.on('agent:stream:end', handler);
+        return () => { ipcRenderer.removeListener('agent:stream:end', handler); };
+      },
+    },
+    onLogEntry: (callback: (entry: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, entry: unknown) => callback(entry);
+      ipcRenderer.on('agent:log:entry', handler);
+      return () => { ipcRenderer.removeListener('agent:log:entry', handler); };
+    },
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),

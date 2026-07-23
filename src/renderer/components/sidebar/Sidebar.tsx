@@ -56,6 +56,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, rootPath, activeFi
         return <SearchView />;
       case 'git':
         return <GitView repoPath={rootPath} />;
+      case 'agent':
+        return null; // Agent is now an editor tab, not a sidebar view
       case 'extensions':
         return <ExtensionsView />;
       default:
@@ -73,6 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, rootPath, activeFi
         {activeView === 'explorer' && 'Explorer'}
         {activeView === 'search' && 'Search'}
         {activeView === 'git' && 'Source Control'}
+        {activeView === 'agent' && 'AI Agent'}
         {activeView === 'extensions' && 'Extensions'}
       </div>
 

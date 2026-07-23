@@ -139,5 +139,60 @@ interface Window {
       error(message: string, ...args: unknown[]): void;
       debug(message: string, ...args: unknown[]): void;
     };
+    agent: {
+      chat: {
+        send(sessionId: string, content: string, agentId?: string, workspacePath?: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        stream(sessionId: string, content: string, agentId?: string, workspacePath?: string): Promise<{ success: boolean; error?: string }>;
+        cancel(sessionId: string): Promise<{ success: boolean; error?: string }>;
+        history(sessionId: string): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+      };
+      session: {
+        create(agentId: string, title?: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        list(agentId?: string, limit?: number): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        delete(sessionId: string): Promise<{ success: boolean; error?: string }>;
+        get(sessionId: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      };
+      provider: {
+        list(): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        add(config: unknown): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        update(id: string, updates: unknown): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        remove(id: string): Promise<{ success: boolean; error?: string }>;
+        test(id: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        models(id: string): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+      };
+      config: {
+        list(): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        get(id: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        create(config: unknown): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        update(id: string, updates: unknown): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        delete(id: string): Promise<{ success: boolean; error?: string }>;
+      };
+      task: {
+        list(filters?: unknown): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        get(id: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        cancel(id: string): Promise<{ success: boolean; error?: string }>;
+        delete(id: string): Promise<{ success: boolean; error?: string }>;
+      };
+      tool: {
+        list(): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        enable(id: string): Promise<{ success: boolean; error?: string }>;
+        disable(id: string): Promise<{ success: boolean; error?: string }>;
+      };
+      memory: {
+        search(query: unknown): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        list(limit?: number): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        clear(sessionId?: string): Promise<{ success: boolean; error?: string }>;
+      };
+      log: {
+        list(filters?: unknown): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
+        clear(): Promise<{ success: boolean; error?: string }>;
+      };
+      status(): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      stream: {
+        onEvent(callback: (event: unknown) => void): () => void;
+        onEnd(callback: (data: unknown) => void): () => void;
+      };
+      onLogEntry(callback: (entry: unknown) => void): () => void;
+    };
   };
 }

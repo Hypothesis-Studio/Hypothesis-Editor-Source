@@ -36,11 +36,24 @@ const App: React.FC = () => {
     toggleZenMode, toggleWordWrap, toggleMinimap, toggleLineNumbers,
     toggleStickyScroll, activityBarVisible, statusBarVisible,
   } = useAppStore();
-  const { openTab, tabs, activeTabId, setTabDirty, updateTab } = useEditorStore();
+  const { openTab, tabs, activeTabId, setTabDirty, updateTab, closeTab } = useEditorStore();
+  const settings = useSettingsStore((s) => s.settings);
+  const agentEnabled = settings['agent.enabled'] !== false; // default true
+
+  // Close agent tab when agent is disabled
+  useEffect(() => {
+    if (!agentEnabled) {
+      const agentTab = useEditorStore.getState().tabs.find(t => t.id === 'agent-tab');
+      if (agentTab) {
+        useEditorStore.getState().closeTab('agent-tab');
+      }
+    }
+  }, [agentEnabled]);
   const session = useSessionStore();
   const workspace = useWorkspaceStore();
   const [rootPath, setRootPath] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsCategory, setSettingsCategory] = useState<string | undefined>(undefined);
   const [showDocs, setShowDocs] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -97,7 +110,6 @@ const App: React.FC = () => {
   }, [_extCursorPos.line, _extCursorPos.column]);
 
   // ── Sync theme from settings ──────────────────────────────────
-  const settings = useSettingsStore((s) => s.settings);
   const setTheme = useThemeStore((s) => s.setTheme);
   useEffect(() => {
     // Load settings on mount so theme + all prefs restore on restart
@@ -185,6 +197,8 @@ const App: React.FC = () => {
       if (rootPath && !workspace.folders.includes(rootPath)) {
         workspace.addFolder(rootPath);
       }
+      // Expose rootPath globally for agent workspace detection
+      (window as any).__hypothesis_rootPath = rootPath;
     }
   }, [rootPath, sessionRestored]);
 
@@ -195,9 +209,21 @@ const App: React.FC = () => {
     } else if (!workspace.folders.includes(rootPath || '')) {
       setRootPath(workspace.folders[0]);
     }
+    // Keep global rootPath in sync for agent
+    (window as any).__hypothesis_rootPath = workspace.folders.length > 0 ? workspace.folders[0] : null;
   }, [workspace.folders.join('|')]);
 
-  // ── IPC listeners for application menu ──────────────────────────
+  // ── Persist rootPath changes ────────────────────────────────────
+  useEffect(() => {
+    if (sessionRestored) {
+      session.setRootPath(rootPath);
+      if (rootPath && !workspace.folders.includes(rootPath)) {
+        workspace.addFolder(rootPath);
+      }
+      // Expose rootPath globally for agent workspace detection
+      (window as any).__hypothesis_rootPath = rootPath;
+    }
+  }, [rootPath, sessionRestored]);
   useEffect(() => {
     const api = window.api;
     const on = (ch: string, cb: () => void) => api.menu.onChannel(ch, cb);
@@ -215,6 +241,7 @@ const App: React.FC = () => {
       on('menu:toggle-status-bar', () => useAppStore.getState().toggleStatusBar()),
       on('menu:toggle-fullscreen', () => { /* F11 handled via window api */ }),
       on('menu:toggle-zen-mode', () => useAppStore.getState().toggleZenMode()),
+      on('menu:toggle-agent', () => openAgentTab()),
       on('menu:about', () => setShowAbout(true)),
       // Edit menu actions
       on('menu:undo', () => useEditorStore.getState().triggerUndo()),
@@ -292,6 +319,7 @@ const App: React.FC = () => {
       else if (ctrl && shift && e.key === 'E') { e.preventDefault(); setActiveSidebarView('explorer'); }
       else if (ctrl && shift && e.key === 'G') { e.preventDefault(); setActiveSidebarView('git'); }
       else if (ctrl && shift && e.key === 'X') { e.preventDefault(); setActiveSidebarView('extensions'); }
+      else if (ctrl && shift && e.key === 'A') { e.preventDefault(); openAgentTab(); }
       else if (ctrl && shift && e.key === 'Delete') { e.preventDefault(); togglePanel(); setActivePanel('problems'); }
       else if (e.key === 'F11') { e.preventDefault(); window.api.window.maximize(); }
       else if (ctrl && shift && e.key === 'Z') { e.preventDefault(); useAppStore.getState().toggleZenMode(); }
@@ -344,6 +372,51 @@ const App: React.FC = () => {
     document.addEventListener('drop', onDrop);
     return () => { document.removeEventListener('dragover', onDragOver); document.removeEventListener('drop', onDrop); };
   }, [openTab]);
+
+  // ── Open AI Agent as editor tab ──────────────────────────────────
+  const openAgentTab = useCallback(() => {
+    if (!agentEnabled) return;
+    const agentTabId = 'agent-tab';
+    const existing = useEditorStore.getState().tabs.find(t => t.id === agentTabId);
+    if (existing) {
+      useEditorStore.getState().setActiveTab(agentTabId);
+    } else {
+      useEditorStore.getState().openTab({
+        id: agentTabId,
+        filePath: null,
+        fileName: 'AI Agent',
+        language: 'agent',
+        content: '',
+        isDirty: false,
+        isPinned: true,
+        isPreview: false,
+        viewState: null,
+        scrollTop: 0,
+        scrollLeft: 0,
+        cursorPosition: { line: 1, column: 1 },
+        encoding: 'UTF-8',
+        lineEnding: 'LF',
+        savedContent: '',
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+      });
+    }
+  }, []);
+
+  // Listen for open-agent-tab events from editor context menu
+  useEffect(() => {
+    const handler = (e: Event) => {
+      openAgentTab();
+      const detail = (e as CustomEvent).detail;
+      if (detail?.code) {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('hypothesis:agent-with-code', { detail }));
+        }, 200);
+      }
+    };
+    window.addEventListener('hypothesis:open-agent-tab', handler);
+    return () => window.removeEventListener('hypothesis:open-agent-tab', handler);
+  }, [openAgentTab, agentEnabled]);
 
   // ── Actions ─────────────────────────────────────────────────────
   const handleNewFile = useCallback(() => {
@@ -473,7 +546,7 @@ const App: React.FC = () => {
           {/* Right: Window Controls */}
           <WindowControls />
         </div>
-        <div className="flex-1 overflow-hidden"><SettingsPanel /></div>
+        <div className="flex-1 overflow-hidden"><SettingsPanel initialCategory={settingsCategory} /></div>
       </div>
     );
   }
@@ -530,7 +603,7 @@ const App: React.FC = () => {
         onOpenShortcuts={() => setShowShortcuts(true)}
       />
       <div className="flex flex-1 overflow-hidden">
-        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} />}
+        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} />}
         {sidebarVisible && (
           <Sidebar
             activeView={activeSidebarView}
@@ -542,7 +615,10 @@ const App: React.FC = () => {
         )}
         <div className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-hidden">
-            <EditorArea onOpenFolder={(p) => { setRootPath(p); setActiveSidebarView('explorer'); }} />
+            <EditorArea
+              onOpenFolder={(p) => { setRootPath(p); setActiveSidebarView('explorer'); }}
+              onOpenSettings={(category) => { setSettingsCategory(category); setShowSettings(true); }}
+            />
           </div>
           {panelVisible && <Panel />}
         </div>
@@ -562,6 +638,7 @@ const App: React.FC = () => {
           onOpenShortcuts={() => { hideCommandPalette(); setShowShortcuts(true); }}
           onOpenWelcome={() => { hideCommandPalette(); setShowWelcome(true); }}
           onOpenAbout={() => { hideCommandPalette(); setShowAbout(true); }}
+          onOpenAgent={agentEnabled ? () => { hideCommandPalette(); openAgentTab(); } : undefined}
         />
       )}
 

@@ -38,6 +38,11 @@ export class AppStore {
         language: 'en',
         snippets: [],
         pluginStates: {},
+        'agent.providers': [],
+        'agent.configs': [],
+        'agent.sessions': [],
+        'agent.memory': [],
+        'agent.tasks': [],
       },
       watch: true,
     });
