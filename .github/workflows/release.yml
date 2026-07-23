@@ -32,6 +32,7 @@ jobs:
           if-no-files-found: error
           path: |
             release/*.exe
+            release/*.zip
             release/*.blockmap
             release/latest.yml
 
