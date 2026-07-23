@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 jobs:
   release-win:
     runs-on: windows-latest
@@ -21,7 +24,7 @@ jobs:
       - run: npm run build
       - run: npm run package:win
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: *** secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
@@ -41,7 +44,7 @@ jobs:
       - run: npm run build
       - run: npm run package:mac
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: *** secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
       - uses: actions/upload-artifact@v4
         with:
@@ -62,7 +65,7 @@ jobs:
       - run: npm run build
       - run: npm run package:linux
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: *** secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux
@@ -86,4 +89,4 @@ jobs:
           generate_release_notes: true
           files: artifacts/**/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: *** secrets.GITHUB_TOKEN }}
