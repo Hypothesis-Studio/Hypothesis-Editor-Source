@@ -97,62 +97,57 @@ jobs:
       - name: List release assets
         run: find artifacts -type f | sort
 
-      - name: Create tag on release repo
+      - name: Collect assets
+        id: collect
         run: |
-          TAG="${{ github.ref_name }}"
-          DEFAULT_BRANCH=$(gh api repos/${{ env.RELEASE_REPO }}/default_branch --jq '.')
-          HEAD_SHA=$(gh api repos/${{ env.RELEASE_REPO }}/git/refs/heads/${DEFAULT_BRANCH} --jq '.object.sha')
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find artifacts -type f -print0)
 
-          EXISTING=$(gh api repos/${{ env.RELEASE_REPO }}/git/ref/tags/${TAG} --jq '.object.sha' 2>/dev/null || echo "")
-          if [ -z "$EXISTING" ]; then
-            gh api repos/${{ env.RELEASE_REPO }}/git/refs \
-              --method POST \
-              --field ref="refs/tags/${TAG}" \
-              --field sha="${HEAD_SHA}"
-            echo "Tag ${TAG} created on release repo"
-          else
-            echo "Tag ${TAG} already exists on release repo (sha: $EXISTING)"
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No artifacts found to upload"
+            exit 1
           fi
 
-      - name: Create or update release
+          echo "Found ${#files[@]} assets:"
+          for f in "${files[@]}"; do
+            echo "  $(basename "$f")"
+          done
+
+      - name: Create or update release and upload assets
         run: |
           TAG="${{ github.ref_name }}"
+
+          # Collect files into array
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find artifacts -type f -print0)
 
           # Check if release already exists
           if gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists on ${{ env.RELEASE_REPO }}, will upload assets"
+            echo "Release ${TAG} already exists on ${{ env.RELEASE_REPO }}"
+
+            # Update release notes
+            gh release edit "${TAG}" \
+              --repo "${{ env.RELEASE_REPO }}" \
+              --generate-notes
+            echo "Release notes updated"
+
+            # Upload assets (clobber overwrites existing)
+            echo "Uploading ${#files[@]} assets..."
+            gh release upload "${TAG}" \
+              --repo "${{ env.RELEASE_REPO }}" \
+              --clobber \
+              "${files[@]}"
           else
             echo "Creating release ${TAG} on ${{ env.RELEASE_REPO }}"
             gh release create "${TAG}" \
               --repo "${{ env.RELEASE_REPO }}" \
               --title "Hypothesis ${TAG}" \
               --generate-notes \
-              --latest
+              "${files[@]}"
           fi
 
-      - name: Upload all release assets
-        run: |
-          TAG="${{ github.ref_name }}"
-          UPLOAD_ARGS=""
-
-          # Collect all files to upload
-          for f in artifacts/*; do
-            [ -f "$f" ] || continue
-            UPLOAD_ARGS="$UPLOAD_ARGS $f"
-          done
-
-          if [ -z "$UPLOAD_ARGS" ]; then
-            echo "No artifacts found to upload"
-            exit 1
-          fi
-
-          echo "Uploading assets to ${{ env.RELEASE_REPO }} release ${TAG}:"
-          echo "$UPLOAD_ARGS" | tr ' ' '\n' | while read f; do [ -f "$f" ] && basename "$f"; done
-
-          # Upload with --clobber to overwrite existing assets (idempotent)
-          gh release upload "${TAG}" \
-            --repo "${{ env.RELEASE_REPO }}" \
-            --clobber \
-            $UPLOAD_ARGS
-
-          echo "All assets uploaded successfully"
+          echo "Release ${TAG} published to ${{ env.RELEASE_REPO }} with ${#files[@]} assets"
