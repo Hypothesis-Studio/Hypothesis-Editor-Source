@@ -25,7 +25,7 @@ jobs:
       - run: npm run build
       - run: npm run package:win
         env:
-          GH_TOKEN: *** secrets.RELEASE_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
@@ -47,7 +47,7 @@ jobs:
       - run: npm run build
       - run: npm run package:mac
         env:
-          GH_TOKEN: *** secrets.RELEASE_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
       - uses: actions/upload-artifact@v4
         with:
@@ -71,7 +71,7 @@ jobs:
       - run: npm run build
       - run: npm run package:linux
         env:
-          GH_TOKEN: *** secrets.RELEASE_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux
@@ -87,7 +87,7 @@ jobs:
     needs: [release-win, release-mac, release-linux]
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: *** secrets.RELEASE_PAT }}
+      GH_TOKEN: ${{ secrets.RELEASE_PAT }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -97,9 +97,11 @@ jobs:
       - name: List release assets
         run: find artifacts -type f | sort
 
-      - name: Collect assets
-        id: collect
+      - name: Create or update release and upload assets
         run: |
+          TAG="${{ github.ref_name }}"
+
+          # Collect files into array (safe with spaces in filenames)
           files=()
           while IFS= read -r -d '' file; do
             files+=("$file")
@@ -114,16 +116,6 @@ jobs:
           for f in "${files[@]}"; do
             echo "  $(basename "$f")"
           done
-
-      - name: Create or update release and upload assets
-        run: |
-          TAG="${{ github.ref_name }}"
-
-          # Collect files into array
-          files=()
-          while IFS= read -r -d '' file; do
-            files+=("$file")
-          done < <(find artifacts -type f -print0)
 
           # Check if release already exists
           if gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" >/dev/null 2>&1; then
