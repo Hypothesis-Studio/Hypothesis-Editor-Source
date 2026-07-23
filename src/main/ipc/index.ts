@@ -1,8 +1,6 @@
 /**
  * IPC Registration - Central hub for all IPC handlers.
  */
-import { ipcMain } from 'electron';
-import { IPC_CHANNELS } from '../../shared/types';
 import { registerFileIPC } from './file.ipc';
 import { registerTerminalIPC } from './terminal.ipc';
 import { registerGitIPC } from './git.ipc';

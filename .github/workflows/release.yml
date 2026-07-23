@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   RELEASE_REPO: Hypothesis-Studio/Hypothesis-Editor
 
 jobs:
@@ -103,6 +103,9 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Copy CHANGELOG.md to artifacts
+        run: cp CHANGELOG.md artifacts/
 
       - name: List release assets
         run: find artifacts -type f | sort

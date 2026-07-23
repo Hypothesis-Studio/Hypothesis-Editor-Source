@@ -1,7 +1,7 @@
 /**
  * Application Menu - Main process application menu.
  */
-import { Menu, BrowserWindow, app, dialog, shell } from 'electron';
+import { Menu, BrowserWindow, shell } from 'electron';
 import type { MenuItemConstructorOptions } from 'electron';
 
 export function createApplicationMenu(): Menu {

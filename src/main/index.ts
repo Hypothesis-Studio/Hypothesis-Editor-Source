@@ -3,7 +3,6 @@
  * Electron main process bootstrap with Clean Architecture.
  */
 import { app, BrowserWindow } from 'electron';
-import path from 'path';
 import { APP_NAME } from '../shared/utils/appMeta';
 import { WindowManager } from './windows/WindowManager';
 import { registerIPC } from './ipc';

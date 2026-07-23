@@ -11,7 +11,6 @@ import type { ThemeService } from '../services/ThemeService';
 import type { FileService } from '../services/FileService';
 import type { GitService } from '../services/GitService';
 import { logger } from '../utils/logger';
-import * as path from 'path';
 import * as fs from 'fs/promises';
 
 export function registerExtensionIPC(
@@ -34,7 +33,7 @@ export function registerExtensionIPC(
   });
 
   // ── Commands ──────────────────────────────────────────────────
-  ipcMain.handle('ext:commands:register', (_e, commandId: string) => {
+  ipcMain.handle('ext:commands:register', (_e, _commandId: string) => {
     // Registration is done via plugin context; this is for renderer-side tracking
     return true;
   });
@@ -217,12 +216,12 @@ export function registerExtensionIPC(
     };
   });
 
-  ipcMain.handle('ext:fs:watch', (_e, filePath: string) => {
+  ipcMain.handle('ext:fs:watch', (_e, _filePath: string) => {
     // File watching is delegated to renderer's file watcher
     return true;
   });
 
-  ipcMain.handle('ext:fs:unwatch', (_e, filePath: string) => {
+  ipcMain.handle('ext:fs:unwatch', (_e, _filePath: string) => {
     return true;
   });
 
