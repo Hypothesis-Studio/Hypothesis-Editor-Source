@@ -266,9 +266,10 @@ const App: React.FC = () => {
           return;
         }
         if (info.hasUpdate) {
+          const pubDate = info.publishedAt ? new Date(info.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
           const btnIndex = await useDialogStore.getState().showDialog({
             title: 'Update Available',
-            message: `A new version of ${APP_NAME} is available!\n\nCurrent: v${info.currentVersion}\nLatest: v${info.latestVersion}\n\nWould you like to download the update?`,
+            message: `A new version of ${APP_NAME} is available!\n\nCurrent: v${info.currentVersion}\nLatest: v${info.latestVersion}${pubDate ? '\nPublished: ' + pubDate : ''}\n\nCompared against GitHub Releases tag (v${info.latestVersion}).\n\nWould you like to download the update?`,
             type: 'confirm',
             buttons: [
               { label: 'Later', variant: 'secondary' },
