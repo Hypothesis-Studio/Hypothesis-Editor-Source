@@ -133,11 +133,11 @@ jobs:
               done <<< "$EXISTING"
             fi
 
-            # Update release notes
+            # Update release notes (gh release edit doesn't have --generate-notes)
+            # Use --notes to point to the changelog in the source repo
             gh release edit "${TAG}" \
               --repo "${{ env.RELEASE_REPO }}" \
-              --generate-notes
-            echo "Release notes updated"
+              --notes "Release ${TAG} — see [CHANGELOG](https://github.com/Hypothesis-Studio/Hypothesis-Editor-Source/blob/main/CHANGELOG.md) for details."
 
             # Upload fresh assets
             echo "Uploading ${#files[@]} assets..."
