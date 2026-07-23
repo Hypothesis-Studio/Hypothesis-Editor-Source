@@ -122,17 +122,27 @@ jobs:
           if gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists on ${{ env.RELEASE_REPO }}"
 
+            # Delete ALL existing assets first to prevent duplicates
+            echo "Deleting existing assets to prevent duplicates..."
+            EXISTING=$(gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" --json assets --jq '.assets[].name' 2>/dev/null || echo "")
+            if [ -n "$EXISTING" ]; then
+              while IFS= read -r asset; do
+                [ -z "$asset" ] && continue
+                echo "  Removing: $asset"
+                gh release delete-asset "${TAG}" "$asset" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
+              done <<< "$EXISTING"
+            fi
+
             # Update release notes
             gh release edit "${TAG}" \
               --repo "${{ env.RELEASE_REPO }}" \
               --generate-notes
             echo "Release notes updated"
 
-            # Upload assets (clobber overwrites existing)
+            # Upload fresh assets
             echo "Uploading ${#files[@]} assets..."
             gh release upload "${TAG}" \
               --repo "${{ env.RELEASE_REPO }}" \
-              --clobber \
               "${files[@]}"
           else
             echo "Creating release ${TAG} on ${{ env.RELEASE_REPO }}"
