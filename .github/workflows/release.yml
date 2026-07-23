@@ -97,6 +97,8 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.RELEASE_PAT }}
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -104,6 +106,21 @@ jobs:
 
       - name: List release assets
         run: find artifacts -type f | sort
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          # Extract the section for this version from CHANGELOG.md
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="Release ${TAG}"
+          fi
+          # Write to file to preserve formatting
+          echo "$NOTES" > /tmp/release-notes.md
+          echo "Extracted notes for ${VERSION}:"
+          cat /tmp/release-notes.md
 
       - name: Create or update release and upload assets
         run: |
@@ -140,10 +157,10 @@ jobs:
               done <<< "$EXISTING"
             fi
 
-            # Update release notes
+            # Update release notes with inline changelog
             gh release edit "${TAG}" \
               --repo "${{ env.RELEASE_REPO }}" \
-              --notes "Release ${TAG} - see [CHANGELOG](https://github.com/Hypothesis-Studio/Hypothesis-Editor-Source/blob/main/CHANGELOG.md) for details."
+              --notes-file /tmp/release-notes.md
 
             # Upload fresh assets
             echo "Uploading ${#files[@]} assets..."
@@ -155,7 +172,7 @@ jobs:
             gh release create "${TAG}" \
               --repo "${{ env.RELEASE_REPO }}" \
               --title "Hypothesis ${TAG}" \
-              --generate-notes \
+              --notes-file /tmp/release-notes.md \
               "${files[@]}"
           fi
 
