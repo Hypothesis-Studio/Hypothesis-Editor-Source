@@ -323,7 +323,6 @@ const App: React.FC = () => {
       else if (ctrl && shift && e.key === 'Delete') { e.preventDefault(); togglePanel(); setActivePanel('problems'); }
       else if (e.key === 'F11') { e.preventDefault(); window.api.window.maximize(); }
       else if (ctrl && shift && e.key === 'Z') { e.preventDefault(); useAppStore.getState().toggleZenMode(); }
-      else if (ctrl && !shift && e.key === 'z') { /* already handled above */ }
       else if (ctrl && !shift && e.key === 'g') { e.preventDefault(); useEditorStore.getState().triggerGoToLine(); }
       else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); useEditorStore.getState().triggerGoBack(); }
       else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); useEditorStore.getState().triggerGoForward(); }

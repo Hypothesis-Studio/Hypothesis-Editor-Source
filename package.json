@@ -1,6 +1,6 @@
 {
   "name": "hypothesis",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Every Great Solution Begins with a Hypothesis.",
   "author": "Hypothesis Team",
   "license": "MIT",
@@ -20,7 +20,7 @@
     "package:win": "electron-builder --win --config electron-builder.json",
     "package:mac": "electron-builder --mac --config electron-builder.json",
     "package:linux": "electron-builder --linux --config electron-builder.json",
-    "lint": "eslint src --ext .ts,.tsx",
+    "lint": "eslint src",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
     "test": "vitest run",

@@ -122,6 +122,8 @@ export const KeyboardShortcutsPage: React.FC<PageProps> = ({ onClose }) => {
               <Row keys="Ctrl+Shift+E" desc="Explorer" />
               <Row keys="Ctrl+Shift+F" desc="Search" />
               <Row keys="Ctrl+Shift+G" desc="Source Control" />
+              <Row keys="Ctrl+Shift+A" desc="AI Agent" />
+              <Row keys="Ctrl+Shift+X" desc="Extensions" />
               <Row keys="Ctrl+Shift+Z" desc="Zen Mode" />
               <Row keys="Alt+Z" desc="Toggle Word Wrap" />
             </Section>
@@ -138,6 +140,20 @@ export const KeyboardShortcutsPage: React.FC<PageProps> = ({ onClose }) => {
               <Row keys="Ctrl+Shift+]" desc="Unfold" />
               <Row keys="Ctrl+K Ctrl+0" desc="Fold All" />
               <Row keys="Ctrl+K Ctrl+J" desc="Unfold All" />
+            </Section>
+
+            <Section title="AI Agent">
+              <Row keys="Ctrl+Shift+A" desc="Open AI Agent" />
+              <Row keys="/clear" desc="Clear chat" />
+              <Row keys="/reset" desc="Full reset (chat + memory)" />
+              <Row keys="/context" desc="Reset context" />
+              <Row keys="/new" desc="New session" />
+              <Row keys="/help" desc="Show all commands" />
+              <Row keys="/model" desc="Show current model" />
+              <Row keys="/tools" desc="List available tools" />
+              <Row keys="/status" desc="System health" />
+              <Row keys="/export" desc="Export chat as JSON" />
+              <Row keys="/settings" desc="Open agent settings" />
             </Section>
           </div>
         </div>

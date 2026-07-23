@@ -7,9 +7,11 @@ import { create } from 'zustand';
 import { useEditorStore } from '../../stores/editorStore';
 import type { EditorTab } from '../../../shared/types';
 
+let _testTabCounter = 0;
 function createTestTab(overrides?: Partial<EditorTab>): EditorTab {
+  _testTabCounter++;
   return {
-    id: `tab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `tab-test-${_testTabCounter}`,
     filePath: '/test/file.ts',
     fileName: 'file.ts',
     language: 'typescript',
@@ -69,8 +71,8 @@ describe('EditorStore', () => {
     });
 
     it('should allow multiple untitled tabs', () => {
-      const tab1 = createTestTab({ filePath: null, fileName: 'Untitled-1' });
-      const tab2 = createTestTab({ filePath: null, fileName: 'Untitled-2' });
+      const tab1 = createTestTab({ filePath: null, fileName: 'Untitled-1', isPreview: false });
+      const tab2 = createTestTab({ filePath: null, fileName: 'Untitled-2', isPreview: false });
 
       useEditorStore.getState().openTab(tab1);
       useEditorStore.getState().openTab(tab2);
@@ -92,8 +94,8 @@ describe('EditorStore', () => {
     });
 
     it('should set next tab as active when closing active tab', () => {
-      const tab1 = createTestTab({ filePath: '/test/1.ts' });
-      const tab2 = createTestTab({ filePath: '/test/2.ts' });
+      const tab1 = createTestTab({ filePath: '/test/1.ts', isPreview: false });
+      const tab2 = createTestTab({ filePath: '/test/2.ts', isPreview: false });
 
       useEditorStore.getState().openTab(tab1);
       useEditorStore.getState().openTab(tab2);
@@ -163,9 +165,9 @@ describe('EditorStore', () => {
 
   describe('reorderTabs', () => {
     it('should reorder tabs', () => {
-      const tab1 = createTestTab({ filePath: '/test/1.ts' });
-      const tab2 = createTestTab({ filePath: '/test/2.ts' });
-      const tab3 = createTestTab({ filePath: '/test/3.ts' });
+      const tab1 = createTestTab({ filePath: '/test/1.ts', isPreview: false });
+      const tab2 = createTestTab({ filePath: '/test/2.ts', isPreview: false });
+      const tab3 = createTestTab({ filePath: '/test/3.ts', isPreview: false });
 
       useEditorStore.getState().openTab(tab1);
       useEditorStore.getState().openTab(tab2);
@@ -173,9 +175,9 @@ describe('EditorStore', () => {
       useEditorStore.getState().reorderTabs(0, 2);
 
       const tabs = useEditorStore.getState().tabs;
-      expect(tabs[0].id).toBe(tab2.id);
-      expect(tabs[1].id).toBe(tab3.id);
-      expect(tabs[2].id).toBe(tab1.id);
+      expect(tabs[0].filePath).toBe('/test/2.ts');
+      expect(tabs[1].filePath).toBe('/test/3.ts');
+      expect(tabs[2].filePath).toBe('/test/1.ts');
     });
   });
 

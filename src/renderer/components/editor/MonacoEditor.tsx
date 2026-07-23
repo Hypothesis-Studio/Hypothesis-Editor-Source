@@ -58,9 +58,13 @@ const setupMonacoWorkers = () => {
 setupMonacoWorkers();
 
 export const MonacoEditor: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
-  // Skip Monaco for agent virtual tab
+  // Skip Monaco for agent virtual tab - must be before hooks
   if (tab.id === 'agent-tab') return null;
 
+  return <MonacoEditorInner tab={tab} isActive={isActive} />;
+};
+
+const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const { updateTab, setCursorPosition, setTabDirty } = useEditorStore();

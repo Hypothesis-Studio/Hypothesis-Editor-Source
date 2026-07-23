@@ -98,6 +98,7 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                   ['Explorer', 'Browse and manage files'],
                   ['Search', 'Search across files with regex'],
                   ['Source Control', 'Git integration'],
+                  ['AI Agent', 'Autonomous AI coding assistant'],
                   ['Extensions', 'Manage extensions'],
                   ['Terminal', 'Integrated terminal'],
                   ['Problems', 'Diagnostics and errors'],
@@ -131,7 +132,7 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
         </Section>
 
         {/* Terminal */}
-        <Section title="Integrated Terminal" icon="⬡">
+        <Section title="Integrated Terminal">
           <Card>
             <List items={[
               ['Multiple Terminals', 'Create and switch between terminal instances'],
@@ -168,6 +169,7 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                 ['Keybindings', 'Customize keyboard shortcuts'],
                 ['Files', 'Auto-save, encoding, line endings'],
                 ['Terminal', 'Shell path, font, scrollback'],
+                ['AI Agent', 'Providers, models, tools, memory, avatars'],
               ].map(([name, desc], i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, padding: '4px 0' }}>
                   <span style={{ color: 'var(--theme-accent)', fontWeight: 600, minWidth: 80 }}>{name}</span>
@@ -175,6 +177,23 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                 </div>
               ))}
             </div>
+          </Card>
+        </Section>
+
+        {/* AI Agent */}
+        <Section title="AI Agent">
+          <Card>
+            <List items={[
+              ['Open Agent', 'Ctrl+Shift+A or click robot icon in Activity Bar'],
+              ['Ask AI Agent', 'Right-click selected code → Ask AI Agent'],
+              ['Fix With AI', 'Right-click selected code → Fix With AI Agent'],
+              ['Slash Commands', '/clear /reset /context /new /help /model /tools /status /export /settings'],
+              ['Providers', 'OpenRouter, 9Router, OpenAI-compatible, custom gateways'],
+              ['Tools', 'readFile, writeFile, editFile, listFiles, searchFiles, terminalRun, git'],
+              ['Memory', 'Persistent memory across sessions with TF-relevance search'],
+              ['Streaming', 'Real-time streaming responses with collapsible code blocks'],
+              ['Disable', 'Settings → AI Agent → toggle Agent Enabled off'],
+            ]} />
           </Card>
         </Section>
 
@@ -188,6 +207,8 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
               ['Pin Tabs', 'Right-click a tab to pin it open'],
               ['Quick Switch', 'Ctrl+P to fuzzy-search and open files'],
               ['Breadcrumbs', 'Click symbols in breadcrumb bar to navigate'],
+              ['AI Agent', 'Ctrl+Shift+A — AI coding assistant with tool execution'],
+              ['Ask AI', 'Right-click selected code → Ask AI Agent or Fix With AI Agent'],
             ]} />
           </Card>
         </Section>
