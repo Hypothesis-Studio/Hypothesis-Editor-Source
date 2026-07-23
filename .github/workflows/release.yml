@@ -26,14 +26,17 @@ jobs:
       - run: npm run package:win
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+      - name: List Windows build output
+        run: Get-ChildItem release -Recurse | Select-Object Name,Length
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
           if-no-files-found: error
           path: |
-            release/*.exe
-            release/*.zip
-            release/*.blockmap
+            release/Hypothesis Setup*.exe
+            release/Hypothesis Setup*.exe.blockmap
+            release/Hypothesis-*.zip
+            release/Hypothesis-*.zip.blockmap
             release/latest.yml
 
   release-mac:
@@ -50,14 +53,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: List macOS build output
+        run: ls -lh release/
       - uses: actions/upload-artifact@v4
         with:
           name: release-macos
           if-no-files-found: error
           path: |
-            release/*.dmg
-            release/*.zip
-            release/*.blockmap
+            release/Hypothesis-*.dmg
+            release/Hypothesis-*.dmg.blockmap
+            release/Hypothesis-*-mac.zip
+            release/Hypothesis-*-mac.zip.blockmap
             release/latest-mac.yml
 
   release-linux:
@@ -73,15 +79,16 @@ jobs:
       - run: npm run package:linux
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+      - name: List Linux build output
+        run: ls -lh release/
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux
           if-no-files-found: error
           path: |
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
-            release/*.blockmap
+            release/Hypothesis-*.AppImage
+            release/Hypothesis-*.AppImage.blockmap
+            release/hypothesis_*.deb
             release/latest-linux.yml
 
   publish:
@@ -133,11 +140,10 @@ jobs:
               done <<< "$EXISTING"
             fi
 
-            # Update release notes (gh release edit doesn't have --generate-notes)
-            # Use --notes to point to the changelog in the source repo
+            # Update release notes
             gh release edit "${TAG}" \
               --repo "${{ env.RELEASE_REPO }}" \
-              --notes "Release ${TAG} — see [CHANGELOG](https://github.com/Hypothesis-Studio/Hypothesis-Editor-Source/blob/main/CHANGELOG.md) for details."
+              --notes "Release ${TAG} - see [CHANGELOG](https://github.com/Hypothesis-Studio/Hypothesis-Editor-Source/blob/main/CHANGELOG.md) for details."
 
             # Upload fresh assets
             echo "Uploading ${#files[@]} assets..."
