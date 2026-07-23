@@ -25,7 +25,7 @@ jobs:
       - run: npm run build
       - run: npm run package:win
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          GH_TOKEN: *** secrets.RELEASE_PAT }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
@@ -47,7 +47,7 @@ jobs:
       - run: npm run build
       - run: npm run package:mac
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          GH_TOKEN: *** secrets.RELEASE_PAT }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
       - uses: actions/upload-artifact@v4
         with:
@@ -71,7 +71,7 @@ jobs:
       - run: npm run build
       - run: npm run package:linux
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          GH_TOKEN: *** secrets.RELEASE_PAT }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-linux
@@ -86,6 +86,8 @@ jobs:
   publish:
     needs: [release-win, release-mac, release-linux]
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: *** secrets.RELEASE_PAT }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -95,87 +97,62 @@ jobs:
       - name: List release assets
         run: find artifacts -type f | sort
 
-      - name: Create tag on release repo (idempotent)
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+      - name: Create tag on release repo
         run: |
           TAG="${{ github.ref_name }}"
-          # Create tag on release repo. If it already exists, this is a no-op.
-          # We use --force to make it idempotent (re-pushes point to same commit).
-          # The release repo may have no commits matching, so we create an empty commit
-          # or reuse the default branch HEAD as tag target.
           DEFAULT_BRANCH=$(gh api repos/${{ env.RELEASE_REPO }}/default_branch --jq '.')
           HEAD_SHA=$(gh api repos/${{ env.RELEASE_REPO }}/git/refs/heads/${DEFAULT_BRANCH} --jq '.object.sha')
 
-          # Try to create the tag. If it exists, update it (idempotent).
           EXISTING=$(gh api repos/${{ env.RELEASE_REPO }}/git/ref/tags/${TAG} --jq '.object.sha' 2>/dev/null || echo "")
           if [ -z "$EXISTING" ]; then
             gh api repos/${{ env.RELEASE_REPO }}/git/refs \
               --method POST \
               --field ref="refs/tags/${TAG}" \
-              --field sha="${HEAD_SHA}" \
-            && echo "Tag ${TAG} created on release repo"
+              --field sha="${HEAD_SHA}"
+            echo "Tag ${TAG} created on release repo"
           else
-            gh api repos/${{ env.RELEASE_REPO }}/git/refs/tags/${TAG} \
-              --method PATCH \
-              --field sha="${HEAD_SHA}" \
-              --field force=true \
-            && echo "Tag ${TAG} updated on release repo"
+            echo "Tag ${TAG} already exists on release repo (sha: $EXISTING)"
           fi
 
       - name: Create or update release
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           TAG="${{ github.ref_name }}"
-          TITLE="Hypothesis ${TAG}"
 
           # Check if release already exists
-          EXISTING_RELEASE=$(gh api repos/${{ env.RELEASE_REPO }}/releases/tags/${TAG} --jq '.id' 2>/dev/null || echo "")
-
-          if [ -n "$EXISTING_RELEASE" ]; then
-            echo "Release exists (id=$EXISTING_RELEASE), will upload assets to it"
-            RELEASE_ID="$EXISTING_RELEASE"
+          if gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists on ${{ env.RELEASE_REPO }}, will upload assets"
           else
-            echo "Creating new release for ${TAG}"
-            RELEASE_ID=$(gh api repos/${{ env.RELEASE_REPO }}/releases \
-              --method POST \
-              --field tag_name="${TAG}" \
-              --field name="${TITLE}" \
-              --field body="Release ${TAG} — see [CHANGELOG](https://github.com/Hypothesis-Studio/Hypothesis-Editor-Source/blob/main/CHANGELOG.md) for details." \
-              --field draft=false \
-              --field prerelease=false \
-              --jq '.id')
-            echo "Release created (id=$RELEASE_ID)"
+            echo "Creating release ${TAG} on ${{ env.RELEASE_REPO }}"
+            gh release create "${TAG}" \
+              --repo "${{ env.RELEASE_REPO }}" \
+              --title "Hypothesis ${TAG}" \
+              --generate-notes \
+              --latest
           fi
 
-          # Upload all assets
-          # First, delete any existing assets with same name (idempotent re-run)
-          EXISTING_NAMES=$(gh api repos/${{ env.RELEASE_REPO }}/releases/${RELEASE_ID}/assets --jq '.[].name' 2>/dev/null || echo "")
+      - name: Upload all release assets
+        run: |
+          TAG="${{ github.ref_name }}"
+          UPLOAD_ARGS=""
+
+          # Collect all files to upload
           for f in artifacts/*; do
             [ -f "$f" ] || continue
-            BASENAME=$(basename "$f")
-            # Delete if already exists
-            if echo "$EXISTING_NAMES" | grep -qx "$BASENAME"; then
-              ASSET_ID=$(gh api repos/${{ env.RELEASE_REPO }}/releases/${RELEASE_ID}/assets --jq ".[] | select(.name==\"$BASENAME\") | .id")
-              if [ -n "$ASSET_ID" ]; then
-                gh api repos/${{ env.RELEASE_REPO }}/releases/assets/${ASSET_ID} --method DELETE >/dev/null 2>&1
-                echo "Deleted existing asset: $BASENAME"
-              fi
-            fi
-            echo "Uploading: $BASENAME"
-            gh api repos/${{ env.RELEASE_REPO }}/releases/${RELEASE_ID}/assets \
-              --method POST \
-              -H "Content-Type: application/octet-stream" \
-              --field "name=$BASENAME" \
-              --field "label=$BASENAME" \
-              -X POST \
-              "https://uploads.github.com/repos/${{ env.RELEASE_REPO }}/releases/${RELEASE_ID}/assets?name=$(basename "$f")" \
-              < "$f" || {
-                # Fallback: use gh release upload (handles the upload URL internally)
-                echo "Direct upload failed for $BASENAME, trying gh release upload..."
-                GH_REPO=${{ env.RELEASE_REPO }} gh release upload "${TAG}" "$f" --clobber || echo "WARNING: Failed to upload $BASENAME"
-              }
+            UPLOAD_ARGS="$UPLOAD_ARGS $f"
           done
 
-          echo "All assets uploaded to ${{ env.RELEASE_REPO }} release ${TAG}"
+          if [ -z "$UPLOAD_ARGS" ]; then
+            echo "No artifacts found to upload"
+            exit 1
+          fi
+
+          echo "Uploading assets to ${{ env.RELEASE_REPO }} release ${TAG}:"
+          echo "$UPLOAD_ARGS" | tr ' ' '\n' | while read f; do [ -f "$f" ] && basename "$f"; done
+
+          # Upload with --clobber to overwrite existing assets (idempotent)
+          gh release upload "${TAG}" \
+            --repo "${{ env.RELEASE_REPO }}" \
+            --clobber \
+            $UPLOAD_ARGS
+
+          echo "All assets uploaded successfully"
