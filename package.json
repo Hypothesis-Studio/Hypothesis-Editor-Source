@@ -2,7 +2,7 @@
   "name": "hypothesis",
   "version": "0.2.0",
   "description": "Every Great Solution Begins with a Hypothesis.",
-  "author": "Hypothesis Team",
+  "author": "Hypothesis Team <team@hypothesis.dev>",
   "license": "MIT",
   "main": "dist/main/main/index.js",
   "scripts": {
