@@ -1,5 +1,53 @@
 # CHANGELOG
 
+## [0.2.2] - 2026-07-24
+
+### Added
+- **Project Insights feature** — comprehensive project analysis dashboard
+  - Full project scan: file statistics, language breakdown, code complexity, dependencies, security vulnerabilities, git health, and duplicate detection
+  - 9-phase analysis engine in main process (ProjectInsightsService)
+  - Interactive UI with 8 sections: Overview, Languages, Complexity, Dependencies, Security, Git, Health, Duplicates
+  - Reusable chart and card components: MetricCard, HealthRing, SectionHeader, DataTable
+  - ActivityBar icon and View menu entry for quick access
+  - Real-time scan progress events and 5-minute caching
+- **File Preview system** — professional multi-format file preview
+  - HTML: sandboxed iframe rendering
+  - Markdown: themed HTML rendering via `marked`
+  - SVG: inline rendering with zoom/pan and transparency grid
+  - Images (PNG, JPG, GIF, BMP, WebP, AVIF, APNG): zoom, pan, fit-to-view, pixel-level inspection
+  - Audio (MP3, WAV, OGG, FLAC, AAC, WMA): full transport controls, seek, volume, mute
+  - Video (MP4, WebM, MKV, AVI, MOV): fullscreen, seek, volume, overlay controls, auto-hide
+  - PDF: iframe viewer
+  - Code/Text: Monaco editor in read-only mode with syntax highlighting
+  - Auto-reload on file change (chokidar file watcher)
+  - Open in system viewer button
+  - Toolbar with zoom controls, reload, and file info
+- "Open Project Insights" command added to Command Palette
+- **Diff between tabs** — Monaco-powered side-by-side diff viewer
+  - Right-click tab → "Compare With..." to select a target tab for comparison
+  - Tab picker dialog shows all other open tabs with file paths
+  - DiffEditor component with split view, resizable divider, and synced scrolling
+  - Header bar showing both file names with close button
+  - Escape key to exit diff mode
+  - Command Palette: "Compare Active Tab With..." and "Exit Diff Mode" commands
+  - `startDiff()` / `exitDiffMode()` in editor store for clean state management
+- **Resizable side-by-side preview** — drag divider between code and preview panels
+  - Split ratio remembered per session (default 50/50)
+  - Drag range clamped to 15%–85% to prevent panels from collapsing
+  - Resize overlay blocks iframe/content from stealing mouse events during drag
+  - `user-select: none` and `cursor: col-resize` applied globally during resize
+  - Accent-colored hover feedback on resize handle (6px wide)
+
+### Changed
+- Icon color system: icons inside accent-colored buttons now inherit white via CSS `.hypothesis-icon { color: inherit }` — no hardcoded color overrides needed in component code
+- Codi SVG icons use `fill="currentColor"` which follows CSS `color` property automatically
+- Previewable files (HTML, Markdown, SVG, images, audio, video, PDF) open in preview mode by default instead of code editor
+- Drag-and-drop previewable files opens them in preview mode
+
+### Fixed
+- Suppressed Monaco "unusual line terminators" warning dialog (`unusualLineTerminators: 'off'`)
+  - Previously showed modal when opening media files or files with non-standard line endings
+
 ## [0.2.1] - 2026-07-24
 
 ### Added

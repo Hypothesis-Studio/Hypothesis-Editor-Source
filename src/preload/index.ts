@@ -550,6 +550,35 @@ const api = {
     },
   },
 
+  // Insights - Project analysis
+  insights: {
+    scanProject: (projectPath: string) => ipcRenderer.invoke('insights:scan-project', projectPath),
+    getCached: (projectPath: string) => ipcRenderer.invoke('insights:get-cached', projectPath),
+    clearCache: (projectPath?: string) => ipcRenderer.invoke('insights:clear-cache', projectPath),
+    runAudit: (projectPath: string) => ipcRenderer.invoke('insights:run-audit', projectPath),
+    checkOutdated: (projectPath: string) => ipcRenderer.invoke('insights:check-outdated', projectPath),
+    findDuplicates: (projectPath: string) => ipcRenderer.invoke('insights:find-duplicates', projectPath),
+    onProgress: (callback: (progress: unknown) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: unknown) => callback(progress);
+      ipcRenderer.on('insights:scan-progress', handler);
+      return () => { ipcRenderer.removeListener('insights:scan-progress', handler); };
+    },
+  },
+
+  // Preview - File preview for HTML, Markdown, SVG, images, audio, video
+  preview: {
+    loadPreview: (filePath: string) => ipcRenderer.invoke('preview:load', filePath),
+    renderMarkdown: (markdown: string) => ipcRenderer.invoke('preview:render-markdown', markdown),
+    getFileType: (ext: string) => ipcRenderer.invoke('preview:get-file-type', ext),
+    watchFile: (filePath: string) => ipcRenderer.invoke('preview:watch', filePath),
+    unwatchFile: (filePath: string) => ipcRenderer.invoke('preview:unwatch', filePath),
+    onFileChanged: (callback: (data: { filePath: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { filePath: string }) => callback(data);
+      ipcRenderer.on('preview:file-changed', handler);
+      return () => { ipcRenderer.removeListener('preview:file-changed', handler); };
+    },
+  },
+
   // Run - Execute scripts with structured output capture
   run: {
     execute: (options: { command: string; cwd?: string; env?: Record<string, string> }) =>

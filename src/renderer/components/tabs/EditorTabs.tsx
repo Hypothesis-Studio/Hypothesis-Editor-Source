@@ -9,8 +9,9 @@ import type { EditorTab } from '../../../shared/types';
 import { Icon } from '../common/Icon';
 
 export const EditorTabs: React.FC = () => {
-  const { tabs, activeTabId, setActiveTab, closeTab, setTabPinned, reorderTabs } = useEditorStore();
+  const { tabs, activeTabId, setActiveTab, closeTab, setTabPinned, reorderTabs, startDiff } = useEditorStore();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
+  const [diffPickerSource, setDiffPickerSource] = useState<string | null>(null);
   const contextRef = useRef<HTMLDivElement>(null);
 
   const handleCloseTab = useCallback((e: React.MouseEvent, tabId: string) => {
@@ -109,6 +110,11 @@ export const EditorTabs: React.FC = () => {
     }
     setContextMenu(null);
   };
+  const ctxCompareWith = () => {
+    if (!contextMenu) return;
+    setDiffPickerSource(contextMenu.tabId);
+    setContextMenu(null);
+  };
 
   // ── Icon theme ──────────────────────────────────────────────
   const iconTheme = (useSettingsStore((s) => s.settings['workbench.iconTheme'] as string) || 'material') as IconTheme;
@@ -180,7 +186,45 @@ export const EditorTabs: React.FC = () => {
           <div className={`context-menu-item ${!ctxTab?.filePath ? 'opacity-40 cursor-default' : ''}`} onClick={ctxTab?.filePath ? ctxCopyPath : undefined}>Copy Path</div>
           <div className="context-menu-item" onClick={ctxCopyFileName}>Copy File Name</div>
           <div className={`context-menu-item ${!ctxTab?.filePath ? 'opacity-40 cursor-default' : ''}`} onClick={ctxTab?.filePath ? ctxRevealInExplorer : undefined}>Reveal in File Explorer</div>
+          <div className="context-menu-separator" />
+          <div className={`context-menu-item ${tabs.length < 2 ? 'opacity-40 cursor-default' : ''}`} onClick={tabs.length >= 2 ? ctxCompareWith : undefined}>Compare With...</div>
         </div>
+      )}
+
+      {/* Diff Picker — select a tab to compare with */}
+      {diffPickerSource && (
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setDiffPickerSource(null)} />
+          <div
+            className="context-menu fixed z-[9999]"
+            style={{
+              left: '50%', top: '30%', transform: 'translateX(-50%)',
+              minWidth: 280, padding: '4px 0',
+            }}
+          >
+            <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--theme-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Compare "{tabs.find(t => t.id === diffPickerSource)?.fileName}" with:
+            </div>
+            <div className="context-menu-separator" />
+            {tabs.filter(t => t.id !== diffPickerSource).map(t => (
+              <div
+                key={t.id}
+                className="context-menu-item"
+                onClick={() => {
+                  startDiff(diffPickerSource, t.id);
+                  setDiffPickerSource(null);
+                }}
+              >
+                {t.fileName}
+                {t.filePath && (
+                  <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)', marginLeft: 8 }}>
+                    {t.filePath}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </>
   );

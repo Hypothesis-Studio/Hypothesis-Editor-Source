@@ -113,6 +113,22 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
     // Quick access
     { label: 'Terminal', keybinding: 'Ctrl+`', action: () => { togglePanel(); setActivePanel('terminal'); } },
     { separator: true, label: '' },
+    { label: 'Project Insights', action: () => {
+      const insightsTabId = 'insights-tab';
+      const existing = useEditorStore.getState().tabs.find(t => t.id === insightsTabId);
+      if (existing) {
+        useEditorStore.getState().setActiveTab(insightsTabId);
+      } else {
+        useEditorStore.getState().openTab({
+          id: insightsTabId, filePath: null, fileName: 'Insights', language: 'insights',
+          content: '', isDirty: false, isPinned: true, isPreview: false, viewState: null,
+          scrollTop: 0, scrollLeft: 0, cursorPosition: { line: 1, column: 1 },
+          encoding: 'UTF-8', lineEnding: 'LF', savedContent: '',
+          createdAt: Date.now(), modifiedAt: Date.now(),
+        });
+      }
+    }},
+    { separator: true, label: '' },
     { label: 'Full Screen', keybinding: 'F11', action: () => window.api.window.maximize() },
   ];
 

@@ -95,7 +95,7 @@ export class WindowManager {
         experimentalFeatures: false,
         safeDialogs: true,
         navigateOnDragDrop: false,
-        autoplayPolicy: 'document-user-activation-required',
+        autoplayPolicy: 'no-user-gesture-required',
       },
     });
 

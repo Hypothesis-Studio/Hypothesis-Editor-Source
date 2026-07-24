@@ -10,6 +10,7 @@ import { Icon } from '../common/Icon';
 interface ActivityBarProps {
   onOpenSettings?: () => void;
   onOpenAgent?: () => void;
+  onOpenInsights?: () => void;
 }
 
 const views = [
@@ -25,7 +26,7 @@ const bottomItems = [
   { id: 'output', label: 'Output', icon: 'output' },
 ];
 
-export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpenAgent }) => {
+export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpenAgent, onOpenInsights }) => {
   const {
     activeSidebarView, setActiveSidebarView,
     togglePanel, panelVisible, activePanel, setActivePanel,
@@ -87,6 +88,17 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpen
             <Icon name="robot" size={20} />
           </button>
         )}
+
+        {/* Project Insights - opens as editor tab */}
+        <button
+          onClick={onOpenInsights}
+          style={{ ...iconBtnStyle(false) }}
+          title="Project Insights"
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--theme-fg)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
+        >
+          <Icon name="dashboard" size={20} />
+        </button>
 
         {bottomItems.map((p) => (
           <button

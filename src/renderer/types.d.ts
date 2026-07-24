@@ -195,5 +195,22 @@ interface Window {
       };
       onLogEntry(callback: (entry: unknown) => void): () => void;
     };
+    insights: {
+      scanProject(projectPath: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      getCached(projectPath: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      clearCache(projectPath?: string): Promise<{ success: boolean; error?: string }>;
+      runAudit(projectPath: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      checkOutdated(projectPath: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      findDuplicates(projectPath: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      onProgress(callback: (progress: { phase: string; progress: number; message: string }) => void): () => void;
+    };
+    preview: {
+      loadPreview(filePath: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
+      renderMarkdown(markdown: string): Promise<{ success: boolean; data?: string; error?: string }>;
+      getFileType(ext: string): Promise<{ success: boolean; data?: { category: string; isPreviewable: boolean }; error?: string }>;
+      watchFile(filePath: string): Promise<{ success: boolean; error?: string }>;
+      unwatchFile(filePath: string): Promise<{ success: boolean; error?: string }>;
+      onFileChanged(callback: (data: { filePath: string }) => void): () => void;
+    };
   };
 }

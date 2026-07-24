@@ -94,6 +94,7 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       language: tab.language,
       theme: 'vs-dark',
       automaticLayout: true,
+      unusualLineTerminators: 'off',
       fontSize,
       fontFamily,
       fontLigatures: true,

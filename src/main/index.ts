@@ -24,6 +24,8 @@ import { TaskService } from './services/agent/TaskService';
 import { SessionPersistence } from './services/agent/SessionPersistence';
 import { AgentLogService } from './services/agent/AgentLogService';
 import { RateLimiter } from './services/agent/RateLimiter';
+import { ProjectInsightsService } from './services/insights/ProjectInsightsService';
+import { PreviewService } from './services/preview/PreviewService';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -100,6 +102,12 @@ if (!gotTheLock) {
     );
     await agentService.initialize();
 
+    // Initialize Project Insights service
+    const insightsService = new ProjectInsightsService();
+
+    // Initialize Preview service
+    const previewService = new PreviewService();
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -142,6 +150,8 @@ if (!gotTheLock) {
       pluginService,
       recentService,
       agentService,
+      insightsService,
+      previewService,
     });
 
     // Create application menu

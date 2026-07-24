@@ -32,11 +32,12 @@ interface CommandPaletteProps {
   onOpenWelcome?: () => void;
   onOpenAbout?: () => void;
   onOpenAgent?: () => void;
+  onOpenInsights?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose, onNewFile, onOpenFile, onOpenFolder, onCloseFolder, onOpenSettings, onSave, onSaveAs,
-  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent,
+  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent, onOpenInsights,
 }) => {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -81,6 +82,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'view.git', label: 'Show Source Control', category: 'View', keybinding: 'Ctrl+Shift+G', action: () => { app.getState().setActiveSidebarView('git'); app.getState().sidebarVisible || app.getState().toggleSidebar(); onClose(); } },
     { id: 'view.extensions', label: 'Show Extensions', category: 'View', keybinding: 'Ctrl+Shift+X', action: () => { app.getState().setActiveSidebarView('extensions'); app.getState().sidebarVisible || app.getState().toggleSidebar(); onClose(); } },
     { id: 'view.agent', label: 'Open AI Agent', category: 'View', keybinding: 'Ctrl+Shift+A', action: () => { onOpenAgent?.(); onClose(); }, hidden: !agentEnabled },
+    { id: 'view.insights', label: 'Open Project Insights', category: 'View', action: () => { onOpenInsights?.(); onClose(); } },
 
     // ── View: Toggles ──────────────────────────────────────────────
     { id: 'view.toggleSidebar', label: 'Toggle Sidebar', category: 'View', keybinding: 'Ctrl+B', action: () => { app.getState().toggleSidebar(); onClose(); } },
@@ -102,7 +104,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'editor.find', label: 'Find', category: 'Edit', keybinding: 'Ctrl+F', action: () => { editor.getState().triggerFind(); onClose(); } },
     { id: 'editor.replace', label: 'Find and Replace', category: 'Edit', keybinding: 'Ctrl+H', action: () => { editor.getState().triggerReplace(); onClose(); } },
     { id: 'editor.comment', label: 'Toggle Line Comment', category: 'Edit', keybinding: 'Ctrl+/', action: () => { editor.getState().triggerComment(); onClose(); } },
-    { id: 'editor.selectAll', label: 'Select All', category: 'Edit', keybinding: 'Ctrl+A', action: () => { editor.getState().triggerSelectAll(); onClose(); } },
+    { id: 'editor.diff', label: 'Compare Active Tab With...', category: 'Edit', action: () => { const at = editor.getState().activeTabId; if (at && editor.getState().tabs.length >= 2) { const other = editor.getState().tabs.find(t => t.id !== at); if (other) editor.getState().startDiff(at, other.id); } onClose(); } },
+    { id: 'editor.exitDiff', label: 'Exit Diff Mode', category: 'Edit', keybinding: 'Escape', action: () => { editor.getState().exitDiffMode(); onClose(); } },
     { id: 'editor.foldAll', label: 'Fold All', category: 'Edit', keybinding: 'Ctrl+K Ctrl+0', action: () => { editor.getState().triggerFoldAll(); onClose(); } },
     { id: 'editor.unfoldAll', label: 'Unfold All', category: 'Edit', keybinding: 'Ctrl+K Ctrl+J', action: () => { editor.getState().triggerUnfoldAll(); onClose(); } },
 

@@ -424,6 +424,35 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hypothesis:open-agent-tab', handler);
   }, [openAgentTab, agentEnabled]);
 
+  // ── Open Project Insights as editor tab ────────────────────────
+  const openInsightsTab = useCallback(() => {
+    const insightsTabId = 'insights-tab';
+    const existing = useEditorStore.getState().tabs.find(t => t.id === insightsTabId);
+    if (existing) {
+      useEditorStore.getState().setActiveTab(insightsTabId);
+    } else {
+      useEditorStore.getState().openTab({
+        id: insightsTabId,
+        filePath: null,
+        fileName: 'Insights',
+        language: 'insights',
+        content: '',
+        isDirty: false,
+        isPinned: true,
+        isPreview: false,
+        viewState: null,
+        scrollTop: 0,
+        scrollLeft: 0,
+        cursorPosition: { line: 1, column: 1 },
+        encoding: 'UTF-8',
+        lineEnding: 'LF',
+        savedContent: '',
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+      });
+    }
+  }, []);
+
   // ── Actions ─────────────────────────────────────────────────────
   const handleNewFile = useCallback(() => {
     openTab({
@@ -609,7 +638,7 @@ const App: React.FC = () => {
         onOpenShortcuts={() => setShowShortcuts(true)}
       />
       <div className="flex flex-1 overflow-hidden">
-        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} />}
+        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} />}
         {sidebarVisible && (
           <Sidebar
             activeView={activeSidebarView}
@@ -645,6 +674,7 @@ const App: React.FC = () => {
           onOpenWelcome={() => { hideCommandPalette(); setShowWelcome(true); }}
           onOpenAbout={() => { hideCommandPalette(); setShowAbout(true); }}
           onOpenAgent={agentEnabled ? () => { hideCommandPalette(); openAgentTab(); } : undefined}
+          onOpenInsights={() => { hideCommandPalette(); openInsightsTab(); }}
         />
       )}
 
@@ -653,6 +683,14 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+const PREVIEW_EXTENSIONS = new Set([
+  'html', 'htm', 'md', 'mdx', 'markdown', 'svg',
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'ico', 'avif', 'apng',
+  'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma',
+  'mp4', 'm4v', 'webm', 'mkv', 'avi', 'mov', 'wmv', 'ogv',
+  'pdf',
+]);
 
 function getLang(ext: string): string {
   const m: Record<string, string> = {

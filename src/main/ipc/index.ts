@@ -22,6 +22,10 @@ import type { RecentService } from '../services/RecentService';
 import type { AgentService } from '../services/agent/AgentService';
 import { registerAgentIPC } from './agent.ipc';
 import { registerSearchIPC } from './search.ipc';
+import { registerInsightsIPC } from './insights.ipc';
+import type { ProjectInsightsService } from '../services/insights/ProjectInsightsService';
+import { registerPreviewIPC } from './preview.ipc';
+import type { PreviewService } from '../services/preview/PreviewService';
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -32,6 +36,8 @@ interface IPCDependencies {
   pluginService: PluginService;
   recentService: RecentService;
   agentService: AgentService;
+  insightsService: ProjectInsightsService;
+  previewService: PreviewService;
 }
 
 export function registerIPC(deps: IPCDependencies): void {
@@ -54,6 +60,8 @@ export function registerIPC(deps: IPCDependencies): void {
   registerAgentIPC(deps.agentService);
   registerRunIPC();
   registerSearchIPC();
+  registerInsightsIPC(deps.insightsService);
+  registerPreviewIPC(deps.previewService);
 }
 
 /** Kill all run processes on app quit */

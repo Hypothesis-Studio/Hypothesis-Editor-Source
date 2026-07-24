@@ -68,13 +68,19 @@ export const Icon: React.FC<IconProps> = ({ name, size = 16, className, style, t
   } else {
     processed = processed.replace(/<svg/, `<svg height="${size}"`);
   }
-  // For codi UI icons: currentColor → CSS variable so it's visible
-  processed = processed.replace(/fill="currentColor"/g, 'fill="var(--theme-fg-muted, #888)"');
-  processed = processed.replace(/stroke="currentColor"/g, 'stroke="var(--theme-fg-muted, #888)"');
+
+  // Codi icons use fill="currentColor" — CSS inheritance via parent color handles
+  // white icons in accent buttons. No need to rewrite fills/strokes here.
+  // If caller passed a custom color via style prop, apply it directly to the SVG.
+  const callerColor = style?.color;
+  if (callerColor) {
+    processed = processed.replace(/fill="currentColor"/g, `fill="${callerColor}"`);
+    processed = processed.replace(/stroke="currentColor"/g, `stroke="${callerColor}"`);
+  }
 
   return (
     <span
-      className={className}
+      className={`hypothesis-icon ${className || ''}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

@@ -12,6 +12,12 @@ interface NavigationEntry {
 }
 
 interface EditorState {
+  // Diff mode
+  diffOriginalTabId: string | null;
+  diffModifiedTabId: string | null;
+  startDiff: (originalTabId: string, modifiedTabId: string) => void;
+  exitDiffMode: () => void;
+
   // Tabs
   tabs: EditorTab[];
   activeTabId: string | null;
@@ -79,6 +85,16 @@ interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
+  // Diff mode
+  diffOriginalTabId: null,
+  diffModifiedTabId: null,
+  startDiff: (originalTabId, modifiedTabId) => {
+    set({ diffOriginalTabId: originalTabId, diffModifiedTabId: modifiedTabId });
+  },
+  exitDiffMode: () => {
+    set({ diffOriginalTabId: null, diffModifiedTabId: null });
+  },
+
   // Tabs
   tabs: [],
   activeTabId: null,

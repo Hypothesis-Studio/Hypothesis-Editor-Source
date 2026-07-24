@@ -83,6 +83,11 @@ const SETTINGS_SCHEMA: SettingItem[] = [
   ], default: 'material', category: 'Workbench' },
   { key: 'workbench.editor.showTabs', label: 'Show Tabs', description: 'Controls whether opened editors should show in tabs.', type: 'boolean', default: true, category: 'Workbench' },
   { key: 'workbench.editor.enablePreview', label: 'Enable Preview', description: 'Use temporary preview tabs when opening files.', type: 'boolean', default: false, category: 'Workbench' },
+  { key: 'editor.preview.autoReload', label: 'Auto Reload Preview', description: 'Automatically reload preview when file changes on disk.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.preview.layout', label: 'Preview Layout', description: 'How the preview is displayed relative to the code editor.', type: 'enum', options: ['tab', 'side-by-side'], selectOptions: [
+    { value: 'tab', label: 'Bergantian (Tab)' },
+    { value: 'side-by-side', label: 'Berdampingan (Side by Side)' },
+  ], default: 'tab', category: 'Editor' },
   { key: 'workbench.tree.indent', label: 'Tree Indent', description: 'Controls tree indentation in pixels.', type: 'number', default: 8, category: 'Workbench' },
 
   // Terminal
