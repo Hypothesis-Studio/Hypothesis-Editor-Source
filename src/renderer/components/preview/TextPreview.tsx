@@ -47,7 +47,7 @@ export const TextPreview: React.FC<TextPreviewProps> = ({ data }) => {
         const ext = getExtension(data.filePath);
         const language = EXT_TO_LANG[ext] || 'plaintext';
 
-        const model = monaco.editor.createModel(data.content, language);
+        const model = monaco.editor.createModel(data.content ?? '', language);
         const editor = monaco.editor.create(containerRef.current, {
           model,
           readOnly: true,

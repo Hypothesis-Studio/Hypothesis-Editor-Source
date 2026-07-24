@@ -44,6 +44,8 @@ export const DiffEditor: React.FC<DiffEditorProps> = ({ originalTab, modifiedTab
 
     const originalModel = monaco.editor.createModel(originalTab.content, getLanguage(originalTab));
     const modifiedModel = monaco.editor.createModel(modifiedTab.content, getLanguage(modifiedTab));
+    originalModel.updateOptions({ tabSize });
+    modifiedModel.updateOptions({ tabSize });
 
     const diffEditor = monaco.editor.createDiffEditor(containerRef.current, {
       automaticLayout: true,
@@ -51,7 +53,6 @@ export const DiffEditor: React.FC<DiffEditorProps> = ({ originalTab, modifiedTab
       fontFamily,
       fontLigatures: true,
       lineHeight,
-      tabSize,
       renderSideBySide: true,
       enableSplitViewResizing: true,
       ignoreTrimWhitespace: false,

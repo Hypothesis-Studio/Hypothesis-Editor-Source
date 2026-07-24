@@ -123,7 +123,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ filePath, onOpenSour
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-bg-secondary)', flexShrink: 0, gap: 8 }}>
         {/* Left: file info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-          <Icon name={getCategoryIcon(category)} size={14} style={{ color: 'var(--theme-accent)', flexShrink: 0 }} />
+          <Icon name={getCategoryIcon(category!)} size={14} style={{ color: 'var(--theme-accent)', flexShrink: 0 }} />
           <span style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {data.fileName}
           </span>

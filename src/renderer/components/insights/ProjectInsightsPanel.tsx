@@ -13,7 +13,7 @@ import { SecuritySection } from './sections/SecuritySection';
 import { GitSection } from './sections/GitSection';
 import { HealthSection } from './sections/HealthSection';
 import { DuplicatesSection } from './sections/DuplicatesSection';
-import type { ProjectInsights, ScanProgress } from '../../shared/types/insights';
+import type { ProjectInsights, ScanProgress } from '../../../shared/types/insights';
 
 interface ProjectInsightsPanelProps {
   rootPath: string | null;
