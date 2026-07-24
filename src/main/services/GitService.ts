@@ -19,16 +19,21 @@ export class GitService {
       });
       return stdout.trim();
     } catch (error: unknown) {
-      const err = error as { stderr?: string; message?: string };
-      logger.error(`Git error: ${err.stderr || err.message}`);
+      const err = error as { stderr?: string; message?: string; code?: number };
+      const msg = err.stderr || err.message || '';
+      if (msg.includes('not a git repository') || err.code === 128) {
+        // Not a git repo — return empty so callers can handle gracefully
+        return '';
+      }
+      logger.error(`Git error: ${msg}`);
       throw error;
     }
   }
 
   async isGitRepo(repoPath: string): Promise<boolean> {
     try {
-      await this.exec(['rev-parse', '--is-inside-work-tree'], repoPath);
-      return true;
+      const result = await this.exec(['rev-parse', '--is-inside-work-tree'], repoPath);
+      return result === 'true';
     } catch {
       return false;
     }
