@@ -91,18 +91,35 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPanelHeight: (height) => set({ panelHeight: height }),
   setActiveTerminalId: (id) => set({ activeTerminalId: id }),
   runCommand: (command) => {
-    const tryWrite = (attempts: number) => {
-      const terminalId = get().activeTerminalId;
-      if (terminalId) {
-        window.api.terminal.write(terminalId, '\x03'); // Ctrl+C
-        setTimeout(() => {
-          window.api.terminal.write(terminalId, command + '\n');
-        }, 150);
-      } else if (attempts < 20) {
-        setTimeout(() => tryWrite(attempts + 1), 200);
-      }
-    };
-    tryWrite(0);
+    // Get workspace root for cwd
+    const rootPath = (window as any).__hypothesis_rootPath || undefined;
+    // Execute via run:execute API for structured output capture
+    const api = (window as any).api;
+    if (api?.run?.execute) {
+      api.run.execute({ command, cwd: rootPath }).then((result: any) => {
+        if (!result?.success) {
+          console.error('Failed to run command:', result?.error);
+          fallbackToTerminal(command);
+        }
+      }).catch(() => {
+        fallbackToTerminal(command);
+      });
+    } else {
+      fallbackToTerminal(command);
+    }
+
+    function fallbackToTerminal(cmd: string) {
+      const tryWrite = (attempts: number) => {
+        const terminalId = get().activeTerminalId;
+        if (terminalId) {
+          window.api.terminal.write(terminalId, '\x03');
+          setTimeout(() => { window.api.terminal.write(terminalId, cmd + '\n'); }, 150);
+        } else if (attempts < 20) {
+          setTimeout(() => tryWrite(attempts + 1), 200);
+        }
+      };
+      tryWrite(0);
+    }
   },
 
   // Command Palette

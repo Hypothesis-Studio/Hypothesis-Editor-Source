@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-screen p-8" style={{ background: 'var(--theme-bg)', color: 'var(--theme-fg)' }}>
-          <div className="text-4xl mb-4">⚠️</div>
+          <div className="text-4xl mb-4">⚠</div>
           <h1 className="text-xl font-bold mb-2">Something went wrong</h1>
           <p className="text-sm mb-6 text-center max-w-md" style={{ color: 'var(--theme-fg-muted)' }}>
             The editor encountered an unexpected error. You can try reloading or resetting the workspace.

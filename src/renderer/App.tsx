@@ -22,6 +22,7 @@ import { useAppStore } from './stores/appStore';
 import { useEditorStore } from './stores/editorStore';
 import { useSessionStore } from './stores/sessionStore';
 import { useWorkspaceStore } from './stores/workspaceStore';
+import { initRunListeners } from './stores/runStore';
 import { pluginManager } from './plugins/PluginManager';
 import { WelcomePage } from './components/pages/WelcomePage';
 import { AboutDialog } from './components/docs/AboutDialog';
@@ -67,6 +68,11 @@ const App: React.FC = () => {
       appStore: useAppStore,
       settingsStore: useSettingsStore,
     });
+  }, []);
+
+  // ── Init global run event listeners (once) ────────────────────
+  useEffect(() => {
+    initRunListeners();
   }, []);
 
   // ── Push editor state to main process for extensions ──────────

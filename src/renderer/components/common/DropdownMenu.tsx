@@ -2,6 +2,7 @@
  * Dropdown Menu Component — Theme-consistent dropdown menus.
  */
 import React, { useEffect, useRef } from 'react';
+import { Icon } from './Icon';
 
 export interface MenuItem {
   label: string;
@@ -105,9 +106,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({ items, x, y, onClose
               {/* Checkmark indicator for checked items */}
               <span className="w-4 flex-shrink-0" style={{ color: 'var(--theme-fg)' }}>
                 {item.checked !== undefined && item.checked && (
-                  <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <Icon name="check" size={14} />
                 )}
               </span>
               <span>{item.label}</span>

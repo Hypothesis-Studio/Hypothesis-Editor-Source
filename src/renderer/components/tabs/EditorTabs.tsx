@@ -6,6 +6,7 @@ import { useEditorStore } from '../../stores/editorStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { renderFileIcon, type IconTheme } from '../../utils/fileIcons';
 import type { EditorTab } from '../../../shared/types';
+import { Icon } from '../common/Icon';
 
 export const EditorTabs: React.FC = () => {
   const { tabs, activeTabId, setActiveTab, closeTab, setTabPinned, reorderTabs } = useEditorStore();
@@ -110,7 +111,7 @@ export const EditorTabs: React.FC = () => {
   };
 
   // ── Icon theme ──────────────────────────────────────────────
-  const iconTheme = (useSettingsStore((s) => s.settings['workbench.iconTheme'] as string) || 'vs-seti') as IconTheme;
+  const iconTheme = (useSettingsStore((s) => s.settings['workbench.iconTheme'] as string) || 'material') as IconTheme;
   const getFileIcon = (tab: EditorTab): React.ReactElement | null => {
     const ext = tab.fileName.split('.').pop()?.toLowerCase() || '';
     return renderFileIcon(ext, iconTheme);
@@ -140,15 +141,13 @@ export const EditorTabs: React.FC = () => {
               {tab.isDirty && <span className="mr-1" style={{ color: 'var(--theme-warning)' }}>●</span>}
               {tab.fileName}
             </span>
-            {tab.isPinned && <span className="text-[10px] mr-1" style={{ color: 'var(--theme-fg-muted)' }}>📌</span>}
+            {tab.isPinned && <span className="text-[10px] mr-1" style={{ color: 'var(--theme-fg-muted)' }}><Icon name="pin" size={10} /></span>}
             <button
               className="close-button ml-1 opacity-0 group-hover:opacity-100"
               onClick={(e) => handleCloseTab(e, tab.id)}
               title="Close"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon name="close" size={12} />
             </button>
           </div>
         ))}

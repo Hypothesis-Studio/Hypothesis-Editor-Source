@@ -7,6 +7,7 @@ import { APP_NAME } from '../../../shared/utils/appMeta';
 import { useAppStore } from '../../stores/appStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { Icon } from '../common/Icon';
 
 interface CommandItem {
   id: string;
@@ -222,7 +223,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               onClick={cmd.action}
             >
               <div className="w-5 h-5 mr-3" style={{ color: 'var(--theme-fg-muted)' }}>
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <Icon name="run" size={20} />
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-sm" style={{ color: 'var(--theme-fg)' }}>{cmd.label}</span>

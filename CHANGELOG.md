@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## [0.2.1] - 2026-07-24
+
+### Added
+- Icon system: IconRegistry + Icon component using SVG icon packs (material, codi)
+- File explorer, tabs, sidebar, git, search, terminal, extensions — all use SVG icons
+- Extension icon theme support via `contributes.iconThemes` in plugin manifest
+- Profile avatar SVG picker for AI agent and user in Settings → AI Agent
+- Default profile avatars (different for user and agent)
+- Search IPC handler (`search:find`, `search:replace`, `search:replace-all`)
+- Copy-paste support (Ctrl+C/V) in Output, Console, and Problems panels
+- Context menu with Copy in terminal output panels
+
+### Changed
+- Default icon theme: material (was vscode-style hardcoded)
+- All emoji and inline SVGs replaced with icon pack SVGs
+- Icon theme setting options: Material, Codi, None
+- Agent avatar uses profile SVG images instead of emoji/text characters
+- File explorer loads directories in parallel (Promise.all for multi-root)
+- Search runs with parallel file reads (concurrency limit 10)
+- Search skips files > 1MB and binary files for speed
+
+### Fixed
+- Icon theme setting now reactive — changing theme updates file explorer immediately
+- Icons load synchronously via `eager` glob import (no flash of missing icons)
+- Fallback chain: theme icon → codi icon → generic file/folder icon
+- Extension icon themes auto-register via IPC on plugin activation
+- Search sidebar now works (search:find IPC handler registered)
+- Search results include preview context (before/match/after)
+- Agent chat avatar shows SVG profile image instead of text letter
+- Output/Console/Problems panels text is selectable and copyable
+
+### Run System
+- Terminal/Console/Output/Problems panels fully synchronized via runStore
+- Run File (Ctrl+F5) captures stdout/stderr to Output and Console panels
+- Problems panel auto-parses errors from stderr (Node.js, Python, compiler patterns)
+- Process exit codes and signals properly displayed
+- Clear buttons in Output and Problems panels
+- Problem entries clickable to switch to Output context
+- `src/main/ipc/run.ipc.ts` — Child process execution with structured output
+- `src/renderer/stores/runStore.ts` — Zustand store for run state
+- `run:started`, `run:stdout`, `run:stderr`, `run:exit`, `run:error` IPC channels
+
 ## [0.2.0] - 2026-07-23
 
 ### Added

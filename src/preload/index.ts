@@ -550,6 +550,40 @@ const api = {
     },
   },
 
+  // Run - Execute scripts with structured output capture
+  run: {
+    execute: (options: { command: string; cwd?: string; env?: Record<string, string> }) =>
+      ipcRenderer.invoke('run:execute', options),
+    kill: (runId: string) => ipcRenderer.invoke('run:kill', runId),
+    killAll: () => ipcRenderer.invoke('run:kill-all'),
+    list: () => ipcRenderer.invoke('run:list'),
+    onStarted: (callback: (data: { runId: string; command: string; pid: number }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { runId: string; command: string; pid: number }) => callback(data);
+      ipcRenderer.on('run:started', handler);
+      return () => ipcRenderer.removeListener('run:started', handler);
+    },
+    onStdout: (callback: (data: { runId: string; data: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { runId: string; data: string }) => callback(data);
+      ipcRenderer.on('run:stdout', handler);
+      return () => ipcRenderer.removeListener('run:stdout', handler);
+    },
+    onStderr: (callback: (data: { runId: string; data: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { runId: string; data: string }) => callback(data);
+      ipcRenderer.on('run:stderr', handler);
+      return () => ipcRenderer.removeListener('run:stderr', handler);
+    },
+    onExit: (callback: (data: { runId: string; exitCode: number | null; signal: string | null }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { runId: string; exitCode: number | null; signal: string | null }) => callback(data);
+      ipcRenderer.on('run:exit', handler);
+      return () => ipcRenderer.removeListener('run:exit', handler);
+    },
+    onError: (callback: (data: { runId: string; error: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { runId: string; error: string }) => callback(data);
+      ipcRenderer.on('run:error', handler);
+      return () => ipcRenderer.removeListener('run:error', handler);
+    },
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),

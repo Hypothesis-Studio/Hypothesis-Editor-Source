@@ -7,6 +7,10 @@ import React, { useState, useEffect } from 'react';
 import { useAgentStore } from '../../stores/agentStore';
 import type { AIProviderConfig, AgentConfig as AgentConfigType, AIProviderType } from '../../../shared/types/agent';
 
+// Load profile avatar SVGs eagerly
+const profileSvgs = import.meta.glob('/src/renderer/assets/icons/profile/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const PROFILE_AVATARS: string[] = Object.values(profileSvgs);
+
 type SettingsSection = 'providers' | 'agents' | 'tools' | 'system';
 
 export const AgentSettingsPanel: React.FC = () => {
@@ -311,8 +315,8 @@ const AgentEditor: React.FC<{
   const [maxRetries, setMaxRetries] = useState(agent.maxRetries);
   const [maxToolCalls, setMaxToolCalls] = useState(agent.maxToolCalls);
   const [toolCallTimeout, setToolCallTimeout] = useState(agent.toolCallTimeout);
-  const [userAvatar, setUserAvatar] = useState(agent.userAvatar || 'U');
-  const [agentAvatar, setAgentAvatar] = useState(agent.agentAvatar || 'A');
+  const [userAvatar, setUserAvatar] = useState(agent.userAvatar || PROFILE_AVATARS[0] || 'U');
+  const [agentAvatar, setAgentAvatar] = useState(agent.agentAvatar || PROFILE_AVATARS[5] || 'A');
 
   const selectedProvider = providers.find(p => p.id === providerId);
 
@@ -362,26 +366,30 @@ const AgentEditor: React.FC<{
         <div style={{ flex: 1 }}>
           <label style={labelStyle}>User Avatar</label>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {['U', '👤', '🧑', '👨', '👩', '🦊', '🐱', '🐶', '🐸', '🤖', '👤', '⚡', '🔥', '💎', '🎯', '🚀'].map((emoji) => (
-              <button key={emoji} onClick={() => setUserAvatar(emoji)} style={{
-                width: 32, height: 32, borderRadius: 6, fontSize: 16,
-                border: userAvatar === emoji ? '2px solid var(--theme-accent)' : '1px solid var(--theme-border)',
-                background: userAvatar === emoji ? 'rgba(99,102,241,0.1)' : 'var(--theme-bg-tertiary)',
+            {PROFILE_AVATARS.map((svg, i) => (
+              <button key={i} onClick={() => setUserAvatar(svg)} style={{
+                width: 36, height: 36, borderRadius: 6, padding: 2,
+                border: userAvatar === svg ? '2px solid var(--theme-accent)' : '1px solid var(--theme-border)',
+                background: userAvatar === svg ? 'rgba(99,102,241,0.1)' : 'var(--theme-bg-tertiary)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{emoji}</button>
+              }}>
+                <span style={{ width: 28, height: 28, display: 'inline-flex' }} dangerouslySetInnerHTML={{ __html: svg.replace(/<svg/, '<svg width="28" height="28"') }} />
+              </button>
             ))}
           </div>
         </div>
         <div style={{ flex: 1 }}>
           <label style={labelStyle}>Agent Avatar</label>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {['A', '🤖', '🧠', '⚡', '🔮', '🌟', '💎', '🎯', '🦾', '🛡️', '🚀', '💻', '🔬', '⚙️', '🎪', '🌀'].map((emoji) => (
-              <button key={emoji} onClick={() => setAgentAvatar(emoji)} style={{
-                width: 32, height: 32, borderRadius: 6, fontSize: 16,
-                border: agentAvatar === emoji ? '2px solid var(--theme-accent)' : '1px solid var(--theme-border)',
-                background: agentAvatar === emoji ? 'rgba(99,102,241,0.1)' : 'var(--theme-bg-tertiary)',
+            {PROFILE_AVATARS.map((svg, i) => (
+              <button key={i} onClick={() => setAgentAvatar(svg)} style={{
+                width: 36, height: 36, borderRadius: 6, padding: 2,
+                border: agentAvatar === svg ? '2px solid var(--theme-accent)' : '1px solid var(--theme-border)',
+                background: agentAvatar === svg ? 'rgba(99,102,241,0.1)' : 'var(--theme-bg-tertiary)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{emoji}</button>
+              }}>
+                <span style={{ width: 28, height: 28, display: 'inline-flex' }} dangerouslySetInnerHTML={{ __html: svg.replace(/<svg/, '<svg width="28" height="28"') }} />
+              </button>
             ))}
           </div>
         </div>

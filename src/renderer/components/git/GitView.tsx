@@ -3,6 +3,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GitStatus, GitBranch } from '../../../shared/types';
+import { Icon } from '../common/Icon';
 import { useEditorStore } from '../../stores/editorStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAppStore } from '../../stores/appStore';
@@ -303,21 +304,21 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
             title="Fetch"
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <Icon name="cloud-download" size={14} />
           </button>
           <button onClick={handleStash} className="p-1 rounded" style={{ color: 'var(--theme-fg-muted)' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--theme-bg-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
             title="Stash"
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+            <Icon name="git-stash" size={14} />
           </button>
           <button onClick={loadStatus} className="p-1 rounded" style={{ color: 'var(--theme-fg-muted)' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--theme-bg-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
             title="Refresh"
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <Icon name="refresh" size={14} />
           </button>
         </div>
       </div>
@@ -377,7 +378,7 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
 
         {!isLoading && repoPath && status && totalChanges === 0 && (
           <div className="p-4 text-center text-xs" style={{ color: 'var(--theme-fg-muted)' }}>
-            <svg className="w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="var(--theme-success)"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            <Icon name="check" size={32} style={{ color: 'var(--theme-success)' }} className="mx-auto mb-2" />
             <p>No changes detected</p>
             {status.ahead > 0 && <p className="mt-1" style={{ color: 'var(--theme-warning)' }}>{status.ahead} commit(s) ahead of {status.upstream || 'origin'}</p>}
             {status.behind > 0 && <p className="mt-1" style={{ color: 'var(--theme-warning)' }}>{status.behind} commit(s) behind {status.upstream || 'origin'}</p>}
@@ -415,7 +416,7 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
                   title="Unstage"
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M20 12H4" /></svg>
+                  <Icon name="dash" size={12} />
                 </button>
               </div>
             ))}
@@ -456,7 +457,7 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
                     title="Discard Changes"
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <Icon name="discard" size={12} />
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); handleStage(file.path); }}
                     className="px-1" style={{ color: 'var(--theme-fg-muted)' }}
@@ -464,7 +465,7 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
                     title="Stage"
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    <Icon name="add" size={12} />
                   </button>
                 </div>
               </div>
@@ -501,7 +502,7 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
                   title="Stage"
                 >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  <Icon name="add" size={12} />
                 </button>
               </div>
             ))}

@@ -4,7 +4,7 @@
  */
 import { create } from 'zustand';
 
-export type ConsoleLevel = 'info' | 'warn' | 'error' | 'success';
+export type ConsoleLevel = 'info' | 'warn' | 'error' | 'success' | 'debug';
 
 export interface ConsoleEntry {
   id: string;

@@ -2,6 +2,7 @@
  * DropdownSelect — Shared themed dropdown select component.
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { Icon } from './Icon';
 
 interface DropdownOption {
   value: string;
@@ -68,9 +69,7 @@ export const DropdownSelect: React.FC<DropdownSelectProps> = ({
         <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {selected?.label || value || placeholder || 'Select...'}
         </span>
-        <svg width={10} height={10} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ flexShrink: 0 }}>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <Icon name="chevron-down" size={10} style={{ flexShrink: 0 }} />
       </button>
       {isOpen && (
         <div style={{

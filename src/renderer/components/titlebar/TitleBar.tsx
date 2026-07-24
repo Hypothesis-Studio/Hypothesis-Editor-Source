@@ -9,6 +9,7 @@ import { DropdownMenu, type MenuItem } from '../common/DropdownMenu';
 import { WindowControls } from '../common/WindowControls';
 import { showAbout } from '../../stores/dialogStore';
 import { useDialogStore } from '../../stores/dialogStore';
+import { Icon } from '../common/Icon';
 
 interface TitleBarProps {
   onNewFile?: () => void;
@@ -153,23 +154,39 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
       const cmd = getRunCommand();
       if (cmd) {
         togglePanel();
-        setActivePanel('terminal');
-        setTimeout(() => runCommand(cmd), 300);
+        setActivePanel('output');
+        setTimeout(() => runCommand(cmd), 100);
       }
     }},
     { separator: true, label: '' },
-    { label: 'Stop', keybinding: 'Shift+F5', action: () => runCommand('\x03') },
+    { label: 'Stop', keybinding: 'Shift+F5', action: async () => {
+      // Kill active run process
+      const runs = await (window as any).api?.run?.list?.();
+      if (runs && runs.length > 0) {
+        await (window as any).api?.run?.kill?.(runs[runs.length - 1].runId);
+      } else {
+        // Fallback: send Ctrl+C to terminal
+        const terminalId = useAppStore.getState().activeTerminalId;
+        if (terminalId) window.api.terminal.write(terminalId, '\x03');
+      }
+    }},
+    { label: 'Stop All', action: async () => {
+      await (window as any).api?.run?.killAll?.();
+    }},
+    { separator: true, label: '' },
     { label: 'Restart', keybinding: 'Ctrl+Shift+F5', action: () => {
       const cmd = getRunCommand();
       if (cmd) {
+        togglePanel();
+        setActivePanel('output');
         runCommand(cmd);
       }
     }},
     { separator: true, label: '' },
     { label: 'Run Build Task', keybinding: 'Ctrl+Shift+B', action: () => {
       togglePanel();
-      setActivePanel('terminal');
-      setTimeout(() => runCommand('npm run build'), 300);
+      setActivePanel('output');
+      setTimeout(() => runCommand('npm run build'), 100);
     }},
   ];
 
@@ -277,7 +294,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
       {/* Search */}
       <div className="no-drag flex items-center gap-2 mr-2">
         <button onClick={toggleCommandPalette} className="flex items-center gap-2 px-3 py-1 w-48 text-xs text-[var(--theme-fg-muted)] bg-[var(--theme-bg-tertiary)] border border-[var(--theme-border-light)] rounded hover:bg-[var(--theme-bg-hover)]">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <Icon name="search" size={12} />
           Search
         </button>
       </div>

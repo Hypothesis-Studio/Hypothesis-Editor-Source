@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { WindowControls } from '../common/WindowControls';
+import { Icon } from '../common/Icon';
 import { useThemeStore } from '../../stores/themeStore';
 import { APP_NAME, APP_VERSION, APP_DESCRIPTION } from '../../../shared/utils/appMeta';
 
@@ -27,7 +28,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ onClose }) => {
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
           >
-            <svg width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <Icon name="chevron-left" size={16} />
             Back to Editor
           </button>
         </div>

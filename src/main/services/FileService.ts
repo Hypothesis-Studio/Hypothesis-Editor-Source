@@ -161,28 +161,95 @@ export class FileService {
     }
   }
 
+  /**
+   * Short-lived directory listing cache to coalesce redundant reads.
+   * Entries are valid for 200ms — after that a fresh readdir will be issued.
+   */
+  private directoryCache: Map<string, { entries: FileEntry[]; timestamp: number; pending?: Promise<FileEntry[]> }> = new Map();
+  private static readonly DIRECTORY_CACHE_TTL_MS = 200;
+  private static readonly MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
+
   async readDirectory(dirPath: string): Promise<FileEntry[]> {
+    const now = Date.now();
+    const cached = this.directoryCache.get(dirPath);
+    if (cached) {
+      if (cached.pending) return cached.pending;
+      if (now - cached.timestamp < FileService.DIRECTORY_CACHE_TTL_MS) {
+        return cached.entries;
+      }
+    }
+
+    const pendingPromise = this.readDirectoryFresh(dirPath);
+    this.directoryCache.set(dirPath, { entries: cached?.entries ?? [], timestamp: now, pending: pendingPromise });
+
+    try {
+      const entries = await pendingPromise;
+      this.directoryCache.set(dirPath, { entries, timestamp: Date.now() });
+      return entries;
+    } catch (error) {
+      this.directoryCache.delete(dirPath);
+      throw error;
+    } finally {
+      // Clear pending so a later call can re-enter the IO path
+      const cur = this.directoryCache.get(dirPath);
+      if (cur) {
+        this.directoryCache.set(dirPath, { entries: cur.entries, timestamp: cur.timestamp });
+      }
+    }
+  }
+
+  private async readDirectoryFresh(dirPath: string): Promise<FileEntry[]> {
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+      // Build entries using Dirent metadata only first (no extra stat for isDir/isFile).
+      // Size is read lazily via stat only for regular files.
       const result: FileEntry[] = [];
+      const statTargets: string[] = [];
+      const statIndex: number[] = [];
 
       for (const entry of entries) {
         const fullPath = path.join(dirPath, entry.name);
-        try {
-          const stat = await fs.stat(fullPath);
-          result.push({
-            name: entry.name,
-            path: fullPath,
-            type: entry.isDirectory() ? 'directory' : entry.isSymbolicLink() ? 'symlink' : 'file',
-            size: stat.size,
-            modifiedAt: stat.mtime,
-            createdAt: stat.birthtime,
-            isHidden: entry.name.startsWith('.'),
-            extension: entry.isFile() ? path.extname(entry.name).slice(1) : '',
-            depth: 0,
-          });
-        } catch {
-          // Skip entries we can't stat
+        const isDir = entry.isDirectory();
+        const isSymlink = entry.isSymbolicLink();
+
+        if (entry.isFile() && !isSymlink) {
+          statTargets.push(fullPath);
+          statIndex.push(result.length);
+        }
+
+        result.push({
+          name: entry.name,
+          path: fullPath,
+          type: isDir ? 'directory' : isSymlink ? 'symlink' : 'file',
+          size: 0,
+          modifiedAt: new Date(0),
+          createdAt: new Date(0),
+          isHidden: entry.name.startsWith('.'),
+          extension: entry.isFile() ? path.extname(entry.name).slice(1) : '',
+          depth: 0,
+        });
+      }
+
+      // Read sizes/mtimes in parallel (single batch) — much faster than per-entry stat
+      if (statTargets.length > 0) {
+        const sizes = await Promise.all(
+          statTargets.map(async (p) => {
+            try {
+              return await fs.stat(p);
+            } catch {
+              return null;
+            }
+          }),
+        );
+        for (let i = 0; i < sizes.length; i++) {
+          const s = sizes[i];
+          if (s) {
+            const idx = statIndex[i];
+            result[idx].size = s.size;
+            result[idx].modifiedAt = s.mtime;
+            result[idx].createdAt = s.birthtime;
+          }
         }
       }
 

@@ -70,7 +70,7 @@ const DEFAULT_SETTINGS: Partial<AppSettings> = {
   'files.watcherExclude': {},
   'files.associations': {},
   'workbench.colorTheme': 'hypothesis-dark',
-  'workbench.iconTheme': 'vs-seti',
+  'workbench.iconTheme': 'material',
   'workbench.sideBar.location': 'left',
   'workbench.panel.defaultLocation': 'bottom',
   'workbench.editor.showTabs': true,

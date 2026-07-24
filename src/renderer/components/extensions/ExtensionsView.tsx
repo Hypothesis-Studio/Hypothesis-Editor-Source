@@ -6,6 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { usePluginStore } from '../../stores/pluginStore';
 import { useAppStore } from '../../stores/appStore';
 import { showConfirm } from '../../stores/dialogStore';
+import { Icon } from '../common/Icon';
 
 interface PluginManifest {
   id: string;
@@ -154,7 +155,7 @@ export const ExtensionsView: React.FC = () => {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
             title="Back to list"
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <Icon name="chevron-left" size={14} />
           </button>
           <span className="text-xs font-semibold" style={{ color: 'var(--theme-fg)' }}>{m.name || m.id}</span>
           <span className="text-[10px] px-1 rounded" style={{ background: 'var(--theme-bg-tertiary)', color: 'var(--theme-fg-muted)' }}>
@@ -253,14 +254,14 @@ export const ExtensionsView: React.FC = () => {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
             title="Install Extension (.hyp)"
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            <Icon name="add" size={14} />
           </button>
           <button onClick={loadPlugins} className="p-1 rounded" style={{ color: 'var(--theme-fg-muted)' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--theme-bg-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
             title="Refresh"
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <Icon name="refresh" size={14} />
           </button>
         </div>
       </div>
@@ -298,16 +299,14 @@ export const ExtensionsView: React.FC = () => {
       <div className="flex-1 overflow-auto">
         {isInstalling && (
           <div className="p-4 text-center text-xs" style={{ color: 'var(--theme-fg-muted)' }}>
-            <svg className="w-5 h-5 mx-auto mb-2 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle className="opacity-25" cx="12" cy="12" r="10" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            <Icon name="loading" size={20} className="mx-auto mb-2 animate-spin" />
             Installing extension...
           </div>
         )}
 
         {!isInstalling && filteredPlugins.length === 0 && (
           <div className="p-8 text-center">
-            <svg className="w-12 h-12 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="var(--theme-fg-dim)" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
+            <Icon name="extensions" size={48} className="mx-auto mb-3" style={{ color: 'var(--theme-fg-dim)' }} />
             <p className="text-xs mb-1" style={{ color: 'var(--theme-fg-muted)' }}>
               {searchQuery ? 'No extensions match your search' : 'No extensions installed'}
             </p>
@@ -372,13 +371,7 @@ export const ExtensionsView: React.FC = () => {
                     className="p-1 rounded" style={{ color: plugin.enabled ? 'var(--theme-success)' : 'var(--theme-fg-muted)' }}
                     title={plugin.enabled ? 'Disable' : 'Enable'}
                   >
-                    <svg width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      {plugin.enabled ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      )}
-                    </svg>
+                    <Icon name={plugin.enabled ? "close" : "check"} size={12} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleExportHyp(m.id); }}
@@ -387,7 +380,7 @@ export const ExtensionsView: React.FC = () => {
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
                     title="Export as .hyp"
                   >
-                    <svg width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <Icon name="download" size={12} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleUninstall(m.id, m.name || m.id); }}
@@ -396,7 +389,7 @@ export const ExtensionsView: React.FC = () => {
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
                     title="Uninstall"
                   >
-                    <svg width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <Icon name="trash" size={12} />
                   </button>
                 </div>
               </div>

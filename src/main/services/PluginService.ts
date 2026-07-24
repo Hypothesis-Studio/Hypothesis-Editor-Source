@@ -430,6 +430,29 @@ export class PluginService {
 
       plugin.loaded = true;
       logger.info(`Plugin activated: ${pluginId} (${plugin.registeredCommands.size} commands)`);
+
+      // Register extension icon themes
+      if (plugin.manifest.contributes?.iconThemes) {
+        for (const themeDef of plugin.manifest.contributes.iconThemes) {
+          const themePath = path.join(plugin.path, themeDef.path);
+          const iconMap: Record<string, string> = {};
+          try {
+            const files = await fs.readdir(themePath);
+            for (const file of files) {
+              if (file.endsWith('.svg')) {
+                const name = file.replace('.svg', '');
+                iconMap[name] = await fs.readFile(path.join(themePath, file), 'utf-8');
+              }
+            }
+            const win = BrowserWindow.getAllWindows()[0];
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('extension:iconTheme:registered', { id: themeDef.id, label: themeDef.label, iconMap });
+            }
+          } catch (e) {
+            logger.warn(`Failed to load icon theme ${themeDef.id}: ${e}`);
+          }
+        }
+      }
     } catch (error) {
       logger.error(`Failed to activate plugin ${pluginId}: ${error}`);
       throw error;

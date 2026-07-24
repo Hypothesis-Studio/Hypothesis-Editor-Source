@@ -7,6 +7,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useAppStore } from '../../stores/appStore';
 import { DropdownSelect } from '../common/DropdownSelect';
 import { AgentSettingsPanel } from './AgentSettingsPanel';
+import { Icon } from '../common/Icon';
 
 interface SettingItem {
   key: string;
@@ -76,13 +77,10 @@ const SETTINGS_SCHEMA: SettingItem[] = [
     { value: 'hypothesis-light', label: 'Hypothesis Light' },
   ], default: 'hypothesis-dark', category: 'Workbench' },
   { key: 'workbench.iconTheme', label: 'Icon Theme', description: 'Specifies the icon theme used in the workbench.', type: 'select', selectOptions: [
-    { value: 'vs-seti', label: 'Seti' },
-    { value: 'vs-minimal', label: 'Minimal' },
     { value: 'material', label: 'Material' },
-    { value: 'catppuccin', label: 'Catppuccin' },
-    { value: 'nord', label: 'Nord' },
+    { value: 'codi', label: 'Codi' },
     { value: 'none', label: 'None' },
-  ], default: 'vs-seti', category: 'Workbench' },
+  ], default: 'material', category: 'Workbench' },
   { key: 'workbench.editor.showTabs', label: 'Show Tabs', description: 'Controls whether opened editors should show in tabs.', type: 'boolean', default: true, category: 'Workbench' },
   { key: 'workbench.editor.enablePreview', label: 'Enable Preview', description: 'Use temporary preview tabs when opening files.', type: 'boolean', default: false, category: 'Workbench' },
   { key: 'workbench.tree.indent', label: 'Tree Indent', description: 'Controls tree indentation in pixels.', type: 'number', default: 8, category: 'Workbench' },
@@ -413,9 +411,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ initialCategory })
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-fg-muted)', padding: 4 }}
                           title="Reset to default"
                         >
-                          <svg width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
+                          <Icon name="refresh" size={12} />
                         </button>
                       </div>
                     </div>

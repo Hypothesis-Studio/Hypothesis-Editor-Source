@@ -55,50 +55,61 @@ export function getLanguageFromExtension(ext: string): string {
 }
 
 /**
- * Get file icon emoji based on extension.
+ * Get file icon SVG name based on extension (for use with Icon component).
+ * Returns the icon name to be used with getIconSync('material', name) or getIconSync('codi', name).
+ */
+export function getFileIconName(filename: string, isDirectory?: boolean, isExpanded?: boolean): string {
+  if (isDirectory) return isExpanded ? 'folder-opened' : 'folder';
+
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  const extMap: Record<string, string> = {
+    ts: 'typescript', tsx: 'react_ts', js: 'javascript', jsx: 'react', mjs: 'javascript', cjs: 'javascript',
+    py: 'python', rb: 'ruby', rs: 'rust', go: 'go', java: 'java',
+    c: 'c', cpp: 'cpp', h: 'h', hpp: 'hpp', cs: 'csharp',
+    swift: 'swift', kt: 'kotlin', php: 'php',
+    html: 'html', htm: 'html', vue: 'vue', svelte: 'svelte',
+    css: 'css', scss: 'sass', less: 'less', sass: 'sass',
+    json: 'json', xml: 'xml', yaml: 'yaml', yml: 'yaml', toml: 'toml',
+    md: 'markdown', mdx: 'mdx',
+    sql: 'database', mysql: 'database', pgsql: 'database',
+    sh: 'shell', bash: 'shell', zsh: 'shell', fish: 'shell',
+    ps1: 'powershell', bat: 'shell', cmd: 'shell',
+    dockerfile: 'docker', containerfile: 'docker',
+    gitignore: 'git', gitattributes: 'git', gitmodules: 'git',
+    txt: 'document', log: 'document', csv: 'document',
+    png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', svg: 'svg', webp: 'image', ico: 'image',
+    mp3: 'audio', wav: 'audio', ogg: 'audio', flac: 'audio',
+    mp4: 'video', avi: 'video', mkv: 'video', webm: 'video',
+    pdf: 'pdf', doc: 'document', docx: 'document', xls: 'document', xlsx: 'document', ppt: 'document', pptx: 'document',
+    zip: 'zip', tar: 'zip', gz: 'zip', rar: 'zip', '7z': 'zip',
+    env: 'env', envrc: 'env',
+    lock: 'lock', sum: 'lock',
+    ini: 'settings', cfg: 'settings', conf: 'settings',
+    graphql: 'graphql', gql: 'graphql',
+    prisma: 'prisma',
+    dart: 'dart',
+    lua: 'lua',
+    r: 'r',
+    scala: 'scala',
+    zig: 'zig',
+    nim: 'nim',
+    jl: 'julia',
+    tf: 'terraform', hcl: 'hcl',
+    proto: 'proto',
+    sol: 'solidity',
+    regex: 'search',
+  };
+  return extMap[ext] || 'document';
+}
+
+/**
+ * @deprecated Use getFileIconName + Icon component instead.
+ * Get file icon emoji based on extension. Kept for backward compatibility.
  */
 export function getFileIcon(filename: string, isDirectory?: boolean, isExpanded?: boolean): string {
   if (isDirectory) return isExpanded ? '📂' : '📁';
-  
   const ext = filename.split('.').pop()?.toLowerCase() || '';
-  const iconMap: Record<string, string> = {
-    ts: '📘', tsx: '⚛️', js: '📒', jsx: '⚛️', mjs: '📒', cjs: '📒',
-    py: '🐍', rb: '💎', rs: '🦀', go: '🔵', java: '☕',
-    c: '🔧', cpp: '🔧', h: '🔧', hpp: '🔧', cs: '🟣',
-    swift: '🔶', kt: '🟠', php: '🐘',
-    html: '🌐', htm: '🌐', vue: '💚', svelte: '🧡',
-    css: '🎨', scss: '🎨', less: '🎨', sass: '🎨',
-    json: '📋', xml: '📰', yaml: '⚙️', yml: '⚙️', toml: '⚙️',
-    md: '📝', mdx: '📝',
-    sql: '🗄️', mysql: '🗄️', pgsql: '🗄️',
-    sh: '🐚', bash: '🐚', zsh: '🐚', fish: '🐚',
-    ps1: '💠', bat: '⬛', cmd: '⬛',
-    dockerfile: '🐳', containerfile: '🐳',
-    gitignore: '🙈', gitattributes: '🙈', gitmodules: '🙈',
-    txt: '📄', log: '📄', csv: '📊',
-    png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', svg: '🖼️', webp: '🖼️', ico: '🖼️',
-    mp3: '🎵', wav: '🎵', ogg: '🎵', flac: '🎵',
-    mp4: '🎬', avi: '🎬', mkv: '🎬', webm: '🎬',
-    pdf: '📕', doc: '📘', docx: '📘', xls: '📗', xlsx: '📗', ppt: '📙', pptx: '📙',
-    zip: '📦', tar: '📦', gz: '📦', rar: '📦', '7z': '📦',
-    env: '🔐', envrc: '🔐',
-    lock: '🔒', sum: '🔒',
-    ini: '⚙️', cfg: '⚙️', conf: '⚙️',
-    graphql: '◈', gql: '◈',
-    prisma: '◆',
-    dart: '🎯',
-    lua: '🌙',
-    r: '📊',
-    scala: '🔴',
-    zig: '⚡',
-    nim: '👑',
-    jl: '🟣',
-    tf: '🏗️', hcl: '🏗️',
-    proto: '📡',
-    sol: '💎',
-    regex: '🔍',
-  };
-  return iconMap[ext] || '📄';
+  return '📄';
 }
 
 /**

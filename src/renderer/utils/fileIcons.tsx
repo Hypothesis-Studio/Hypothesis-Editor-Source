@@ -1,215 +1,246 @@
 /**
- * File Icon Theme System
- * Provides SVG-based file icons matching VS Code's Seti/Minimal themes.
- * Returns React elements for consistent rendering.
+ * File Icon System — Uses IconRegistry to load icons from theme packs.
+ * Includes auto-reload mechanism and robust fallbacks.
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { getIconSync, preloadTheme } from '../services/IconRegistry';
 
-type IconDef = { color: string; path: string };
+export type IconTheme = 'material' | 'codi' | 'none' | string;
 
-// ── Seti-style file icons (simplified SVG paths) ─────────────────
-const ICONS: Record<string, IconDef> = {
-  // Languages
-  typescript:    { color: '#3178c6', path: 'M3 3h18v18H3V3zm16.5 13.5v-3c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v3c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5zm-6 0v-6h-1.5v6H13.5zm-4.5 0v-3.75L10.5 15l1.13-.75L10.5 13.5l1.12-.75L10.5 12l-1.5 1V15.5H9z' },
-  javascript:    { color: '#f1e05a', path: 'M3 3h18v18H3V3zm14.5 14.5c0 1.38-1.12 2.5-2.5 2.5-1 0-1.8-.58-2.2-1.42l1.32-.76c.22.48.7.82 1.28.82.78 0 1.4-.65 1.4-1.45h-2.8v-1.5h4.3v.31zm-4.5-3.25c0-.69.56-1.25 1.25-1.25s1.25.56 1.25 1.25v.5c0 .69-.56 1.25-1.25 1.25S13 14.94 13 14.25v-.5z' },
-  python:        { color: '#3572a5', path: 'M14.25 1h-7.5C5.79 1 5 1.79 5 2.75v4.5C5 8.21 5.79 9 6.75 9h1.5v2.5H5.5v1h3V15h3v-2.5h-3v-1h3.75c.97 0 1.75-.78 1.75-1.75v-7C16 1.79 15.21 1 14.25 1zm-1.5 1c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm-5 1c.28 0 .5.22.5.5S8.03 4 7.75 4s-.5-.22-.5-.5.22-.5.5-.5z' },
-  rust:          { color: '#dea584', path: 'M3 3h18v18H3V3zm13.5 9c0-3.04-2.46-5.5-5.5-5.5S5.5 8.96 5.5 12s2.46 5.5 5.5 5.5 5.5-2.46 5.5-5.5zm-2 0c0 1.93-1.57 3.5-3.5 3.5S8 13.93 8 12s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5z' },
-  go:            { color: '#00acd7', path: 'M3 3h18v18H3V3zm13.5 10.5c0 .83-.67 1.5-1.5 1.5H9v1.5h6v1.5H9c-.83 0-1.5-.67-1.5-1.5V9h9v4.5zm-6-3h3v1.5h-3V10.5z' },
-  java:          { color: '#b07219', path: 'M3 3h18v18H3V3zm8 14c-1.1 0-2-.45-2-1s.9-1 2-1 2 .45 2 1-.9 1-2 1zm4-1c0 .55-.9 1-2 1s-2-.45-2-1 .9-1 2-1 2 .45 2 1z' },
-  html:          { color: '#e34c26', path: 'M3 3h18v18H3V3zm3 3v12h12V6H6zm2 2h8v8H8V8z' },
-  css:           { color: '#563d7c', path: 'M3 3h18v18H3V3zm3 3v12h12V6H6zm2 2h8v2H8V8zm0 3h8v2H8v-2z' },
-  scss:          { color: '#c6538c', path: 'M3 3h18v18H3V3zm3 3v12h12V6H6zm2 2h8v2H8V8zm0 3h8v2H8v-2z' },
-  json:          { color: '#cbcb41', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 2h6v2H9V7zm0 3h6v2H9v-2zm0 3h6v2H9v-2z' },
-  xml:           { color: '#e34c26', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 3l3 4-3 4h2l3-4-3-4H9z' },
-  yaml:          { color: '#cb171e', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 2h6v1.5H9V7zm0 3h6v1.5H9V10zm0 3h4v1.5H9V13z' },
-  markdown:      { color: '#083fa1', path: 'M3 3h18v18H3V3zm2 2v14h14V5H5zm2 3h2.5l1.5 2 1.5-2H15v6h-2V10l-1.5 2L10 10v5H7V8zm8 0h2v6h-2V8z' },
-  shell:         { color: '#89e051', path: 'M3 3h18v18H3V3zm2 2v14h14V5H5zm3 4l3 3-3 3 1.5 1.5L13 11l-3.5-3.5L8 9zm5 7h5v1.5H13V16z' },
-  powershell:    { color: '#012456', path: 'M3 3h18v18H3V3zm2 2v14h14V5H5zm3 4l3 3-3 3 1.5 1.5L13 11l-3.5-3.5L8 9zm5 7h5v1.5H13V16z' },
-  bat:           { color: '#c1f12e', path: 'M3 3h18v18H3V3zm2 2v14h14V5H5zm3 4l3 3-3 3 1.5 1.5L13 11l-3.5-3.5L8 9z' },
+// ── Theme loading state with subscribers ────────────────────────
+const loadedThemes = new Set<string>();
+const themeListeners: Map<string, Set<() => void>> = new Map();
 
-  // Files
-  image:         { color: '#a074c4', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 2l3 4 2-2.5L16 13H8l-1-1.5 2-2.5z' },
-  pdf:           { color: '#d35400', path: 'M5 3h10l4 4v14H5V3zm9 0v4h4M8 10h8M8 13h8M8 16h4' },
-  zip:           { color: '#6d8086', path: 'M7 2h10v20H7V2zm2 2v4h2V4h2v4h2V4h2v4h-1l1 2h-1v2h1l-1 2h1v4h-2v-4h-2v4h-2v-4H9v4H7v-4h1l-1-2h1v-2H7l1-2h1V4H7z' },
-  gitignore:     { color: '#f05133', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 2h6v2H9V7zm0 3h6v2H9v-2zm0 3h4v2H9v-2z' },
-  env:           { color: '#ecd53f', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 2h6v2H9V7zm0 3h6v2H9v-2zm0 3h6v2H9v-2z' },
-  dockerfile:    { color: '#2496ed', path: 'M3 3h18v18H3V3zm2 2v14h14V5H5zm3 3h8v2H8V8zm0 3h8v2H8v-2zm3 3h5v2H11v-2z' },
-  sql:           { color: '#e38c00', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 2h6v1.5H9V7zm0 3h6v1.5H9V10zm0 3h6v1.5H9V13zm0 3h6v1.5H9V16z' },
-  ruby:          { color: '#cc342d', path: 'M12 2L3 9l9 13 9-13L12 2zm0 3.5L17.5 11 12 20.5 6.5 11 12 5.5z' },
-  lock:          { color: '#6d8086', path: 'M12 2C9.24 2 7 4.24 7 7v3H5v12h14V10h-2V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v3H9V7c0-1.66 1.34-3 3-3zm0 10c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z' },
-  txt:           { color: '#6d8086', path: 'M5 3h14v18H5V3zm2 2v14h10V5H7zm2 2h6v1H9V7zm0 3h6v1H9v-1zm0 3h6v1H9v-1zm0 3h4v1H9v-1z' },
-
-  // Folders
-  folder:        { color: '#dcb67a', path: 'M2 6c0-1.1.9-2 2-2h5l2 2h9c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6z' },
-  folderOpen:    { color: '#dcb67a', path: 'M2 6c0-1.1.9-2 2-2h5l2 2h9c1.1 0 2 .9 2 2v1H4c-1.1 0-2 .9-2 2v7c0 1.1-.9 2-2 2V6zm0 7h18v5c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-5z' },
-  folderNone:    { color: '#6d8086', path: 'M2 6c0-1.1.9-2 2-2h5l2 2h9c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6z' },
-};
-
-// ── Extension → icon key mapping ─────────────────────────────────
-const EXT_MAP: Record<string, keyof typeof ICONS> = {
-  // TypeScript/JavaScript
-  ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
-  // Python
-  py: 'python', pyw: 'python',
-  // Rust
-  rs: 'rust',
-  // Go
-  go: 'go',
-  // Java
-  java: 'java', class: 'java', jar: 'java',
-  // Web
-  html: 'html', htm: 'html',
-  css: 'css', scss: 'scss', less: 'css', sass: 'scss',
-  // Data
-  json: 'json', jsonc: 'json', json5: 'json',
-  xml: 'xml', svg: 'xml',
-  yaml: 'yaml', yml: 'yaml', toml: 'yaml',
-  // Docs
-  md: 'markdown', mdx: 'markdown',
-  // Shell
-  sh: 'shell', bash: 'shell', zsh: 'shell', fish: 'shell',
-  ps1: 'powershell', psm1: 'powershell', psd1: 'powershell',
-  bat: 'bat', cmd: 'bat',
-  // Images
-  png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', ico: 'image', bmp: 'image',
-  // PDF
-  pdf: 'pdf',
-  // Archive
-  zip: 'zip', tar: 'zip', gz: 'zip', '7z': 'zip', rar: 'zip',
-  // Git
-  gitignore: 'gitignore', gitattributes: 'gitignore', gitmodules: 'gitignore',
-  // Env
-  env: 'env',
-  // Docker
-  dockerfile: 'dockerfile',
-  // SQL
-  sql: 'sql', sqlite: 'sql',
-  // Ruby
-  rb: 'ruby', erb: 'ruby',
-  // Lock
-  lock: 'lock',
-  // Text
-  txt: 'txt', log: 'txt', csv: 'txt',
-  // Config
-  conf: 'txt', cfg: 'txt', ini: 'txt', config: 'txt',
-};
-
-// ── Theme color palettes ───────────────────────────────────────
-const PALETTES: Record<string, Record<string, string>> = {
-  'vs-seti': {}, // uses ICONS default colors
-  'vs-minimal': {}, // resolved at render time to theme fg-muted
-  'material': {
-    typescript: '#2196f3',
-    javascript: '#ffeb3b',
-    python: '#2196f3',
-    rust: '#ff7043',
-    go: '#00bcd4',
-    java: '#ff9800',
-    html: '#e91e63',
-    css: '#9c27b0',
-    scss: '#e91e63',
-    json: '#4caf50',
-    xml: '#e91e63',
-    yaml: '#f44336',
-    markdown: '#2196f3',
-    shell: '#8bc34a',
-    powershell: '#2196f3',
-    bat: '#8bc34a',
-    image: '#9c27b0',
-    pdf: '#ff5722',
-    zip: '#607d8b',
-    gitignore: '#ff5722',
-    env: '#ffc107',
-    dockerfile: '#2196f3',
-    sql: '#ff9800',
-    ruby: '#e91e63',
-    lock: '#607d8b',
-    txt: '#9e9e9e',
-    folder: '#ffc107',
-    folderOpen: '#ffc107',
-    folderNone: '#9e9e9e',
-  },
-  'catppuccin': {
-    typescript: '#89b4fa',
-    javascript: '#f9e2af',
-    python: '#89b4fa',
-    rust: '#fab387',
-    go: '#94e2d5',
-    java: '#fab387',
-    html: '#f38ba8',
-    css: '#cba6f7',
-    scss: '#f38ba8',
-    json: '#a6e3a1',
-    xml: '#f38ba8',
-    yaml: '#f38ba8',
-    markdown: '#89b4fa',
-    shell: '#a6e3a1',
-    powershell: '#89b4fa',
-    bat: '#a6e3a1',
-    image: '#f5c2e7',
-    pdf: '#fab387',
-    zip: '#6c7086',
-    gitignore: '#f38ba8',
-    env: '#f9e2af',
-    dockerfile: '#89b4fa',
-    sql: '#fab387',
-    ruby: '#f38ba8',
-    lock: '#6c7086',
-    txt: '#a6adc8',
-    folder: '#f9e2af',
-    folderOpen: '#f9e2af',
-    folderNone: '#a6adc8',
-  },
-  'nord': {
-    typescript: '#88c0d0',
-    javascript: '#ebcb8b',
-    python: '#88c0d0',
-    rust: '#d08770',
-    go: '#8fbcbb',
-    java: '#d08770',
-    html: '#bf616a',
-    css: '#b48ead',
-    scss: '#bf616a',
-    json: '#a3be8c',
-    xml: '#bf616a',
-    yaml: '#bf616a',
-    markdown: '#88c0d0',
-    shell: '#a3be8c',
-    powershell: '#88c0d0',
-    bat: '#a3be8c',
-    image: '#b48ead',
-    pdf: '#d08770',
-    zip: '#4c566a',
-    gitignore: '#bf616a',
-    env: '#ebcb8b',
-    dockerfile: '#88c0d0',
-    sql: '#d08770',
-    ruby: '#bf616a',
-    lock: '#4c566a',
-    txt: '#d8dee9',
-    folder: '#ebcb8b',
-    folderOpen: '#ebcb8b',
-    folderNone: '#d8dee9',
-  },
-};
-export type IconTheme = 'vs-seti' | 'vs-minimal' | 'none' | 'material' | 'catppuccin' | 'nord';
-
-function resolveColor(iconKey: string, theme: IconTheme, defaultColor: string): string {
-  if (theme === 'none') return 'transparent';
-  if (theme === 'vs-minimal') return 'var(--theme-fg-muted)';
-  const palette = PALETTES[theme];
-  if (palette && palette[iconKey]) return palette[iconKey];
-  return defaultColor;
+function notifyThemeLoaded(themeId: string) {
+  loadedThemes.add(themeId);
+  const listeners = themeListeners.get(themeId);
+  if (listeners) {
+    listeners.forEach(fn => fn());
+    listeners.clear();
+  }
 }
 
-function getIconDefForExt(ext: string): { key: string; def: IconDef } | null {
-  const key = EXT_MAP[ext];
-  if (key && ICONS[key]) return { key, def: ICONS[key] };
-  return { key: 'txt', def: ICONS['txt'] };
+function onThemeLoaded(themeId: string, cb: () => void) {
+  if (loadedThemes.has(themeId)) return cb();
+  if (!themeListeners.has(themeId)) themeListeners.set(themeId, new Set());
+  themeListeners.get(themeId)!.add(cb);
+}
+
+// Kick off loading immediately on module import
+preloadTheme('material').then(() => notifyThemeLoaded('material'));
+preloadTheme('codi').then(() => notifyThemeLoaded('codi'));
+
+// ── Extension → icon name mapping ──────────────────────────────
+const EXT_MAP: Record<string, string> = {
+  ts: 'typescript', tsx: 'react_ts', js: 'javascript', jsx: 'react', mjs: 'javascript', cjs: 'javascript',
+  py: 'python', pyw: 'python',
+  rs: 'rust',
+  go: 'go',
+  java: 'java', class: 'javaclass', jar: 'jar',
+  c: 'c', h: 'h', cpp: 'cpp', hpp: 'hpp', cc: 'cpp', cxx: 'cpp',
+  cs: 'csharp',
+  swift: 'swift',
+  kt: 'kotlin', kts: 'kotlin',
+  php: 'php',
+  rb: 'ruby', erb: 'ruby',
+  html: 'html', htm: 'html',
+  css: 'css', scss: 'sass', less: 'less', sass: 'sass',
+  json: 'json', jsonc: 'json', json5: 'json',
+  xml: 'xml', svg: 'svg',
+  yaml: 'yaml', yml: 'yaml', toml: 'toml',
+  md: 'markdown', mdx: 'mdx',
+  sh: 'shell', bash: 'shell', zsh: 'shell', fish: 'shell',
+  ps1: 'powershell', psm1: 'powershell', psd1: 'powershell',
+  bat: 'shell', cmd: 'shell',
+  png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', ico: 'image', bmp: 'image', avif: 'image',
+  pdf: 'pdf',
+  zip: 'zip', tar: 'zip', gz: 'zip', '7z': 'zip', rar: 'zip',
+  gitignore: 'git', gitattributes: 'git', gitmodules: 'git',
+  env: 'env',
+  dockerfile: 'docker', dockerignore: 'docker',
+  sql: 'database', sqlite: 'database',
+  lock: 'lock',
+  txt: 'document', log: 'document', csv: 'document',
+  conf: 'settings', cfg: 'settings', ini: 'settings', config: 'settings',
+  tsconfig: 'tsconfig',
+  webpack: 'webpack', vite: 'vite', rollup: 'rollup', esbuild: 'esbuild',
+  eslint: 'eslint', prettier: 'prettier',
+  test: 'test-ts', spec: 'test-ts',
+  makefile: 'makefile', cmake: 'cmake',
+  ttf: 'font', otf: 'font', woff: 'font', woff2: 'font',
+  mp4: 'video', mkv: 'video', avi: 'video', mov: 'video',
+  mp3: 'audio', wav: 'audio', flac: 'audio', ogg: 'audio',
+  vue: 'vue', svelte: 'svelte',
+  graphql: 'graphql', gql: 'graphql',
+  prisma: 'prisma',
+  dart: 'dart',
+  lua: 'lua',
+  r: 'r',
+  scala: 'scala',
+  zig: 'zig',
+  nim: 'nim',
+  jl: 'julia',
+  tf: 'terraform', hcl: 'hcl',
+  proto: 'proto',
+  sol: 'solidity',
+};
+
+// ── Special filename → icon mapping ────────────────────────────
+const FILENAME_MAP: Record<string, string> = {
+  'package.json': 'nodejs', 'package-lock.json': 'npm',
+  'yarn.lock': 'yarn', 'pnpm-lock.yaml': 'pnpm', 'bun.lockb': 'bun',
+  'tsconfig.json': 'tsconfig', 'jsconfig.json': 'jsconfig',
+  '.eslintrc': 'eslint', '.eslintrc.js': 'eslint', '.eslintrc.json': 'eslint',
+  '.prettierrc': 'prettier', '.prettierrc.js': 'prettier', '.prettierrc.json': 'prettier',
+  'Dockerfile': 'docker', 'docker-compose.yml': 'docker', 'docker-compose.yaml': 'docker',
+  '.gitignore': 'git', '.gitattributes': 'git',
+  '.env': 'env', '.env.local': 'env', '.env.development': 'env', '.env.production': 'env',
+  'Makefile': 'makefile', 'CMakeLists.txt': 'cmake',
+  'Cargo.toml': 'rust', 'go.mod': 'go-mod', 'Gemfile': 'gemfile',
+  'readme.md': 'readme', 'README.md': 'readme',
+  'LICENSE': 'license', 'LICENSE.md': 'license', 'CHANGELOG.md': 'changelog',
+};
+
+// ── Folder name → icon mapping ─────────────────────────────────
+const FOLDER_MAP: Record<string, string> = {
+  src: 'folder-src', lib: 'folder-lib', dist: 'folder-dist', build: 'folder-dist',
+  node_modules: 'folder-node', '.git': 'folder-git',
+  components: 'folder-components', pages: 'folder-pages', views: 'folder-views',
+  hooks: 'folder-hooks', utils: 'folder-utils', helpers: 'folder-utils',
+  services: 'folder-services', api: 'folder-api', routes: 'folder-routes',
+  models: 'folder-class', types: 'folder-interface',
+  config: 'folder-config', settings: 'folder-config',
+  public: 'folder-public', static: 'folder-public', assets: 'folder-images',
+  images: 'folder-images', img: 'folder-images', icons: 'folder-images',
+  fonts: 'folder-font', css: 'folder-css', styles: 'folder-css',
+  test: 'folder-test', tests: 'folder-test', '__tests__': 'folder-test', spec: 'folder-test',
+  docs: 'folder-docs', doc: 'folder-docs',
+  scripts: 'folder-scripts', bin: 'folder-scripts',
+  server: 'folder-server', client: 'folder-client',
+  database: 'folder-database', db: 'folder-database',
+  middleware: 'folder-middleware', controllers: 'folder-controller',
+  storage: 'folder-storage', temp: 'folder-temp', tmp: 'folder-temp',
+  logs: 'folder-log', log: 'folder-log',
+  plugins: 'folder-plugin', extensions: 'folder-plugin',
+  themes: 'folder-theme', templates: 'folder-template',
+  i18n: 'folder-i18n', locales: 'folder-i18n', lang: 'folder-i18n',
+  '.github': 'folder-github', '.vscode': 'folder-vscode',
+};
+
+/**
+ * Resolve icon name with fallback chain:
+ * requested → codi fallback → generic fallback
+ */
+function resolveIcon(themeId: string, iconName: string, genericFallback: string): string | null {
+  // Try requested theme
+  let svg = getIconSync(themeId, iconName);
+  if (svg) return svg;
+
+  // Try codi fallback (unless already codi)
+  if (themeId !== 'codi') {
+    svg = getIconSync('codi', iconName);
+    if (svg) return svg;
+  }
+
+  // Try generic fallback in requested theme
+  if (iconName !== genericFallback) {
+    svg = getIconSync(themeId, genericFallback);
+    if (svg) return svg;
+
+    // Try generic fallback in codi
+    if (themeId !== 'codi') {
+      svg = getIconSync('codi', genericFallback);
+      if (svg) return svg;
+    }
+  }
+
+  return null;
 }
 
 /**
- * Render file icon as an SVG React element.
+ * Render an SVG string into a React span element.
+ */
+function renderSvg(svg: string, size: number): React.ReactElement {
+  let processed = svg;
+
+  // Set width
+  if (/width="/.test(processed)) {
+    processed = processed.replace(/width="[^"]*"/, `width="${size}"`);
+  } else {
+    processed = processed.replace(/<svg/, `<svg width="${size}"`);
+  }
+  // Set height
+  if (/height="/.test(processed)) {
+    processed = processed.replace(/height="[^"]*"/, `height="${size}"`);
+  } else {
+    processed = processed.replace(/<svg/, `<svg height="${size}"`);
+  }
+
+  // Preserve original SVG colors — material icons use per-filetype colors
+  // Only codi icons use currentColor which inherits from parent CSS
+
+  return React.createElement('span', {
+    style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: size, height: size, flexShrink: 0, color: 'inherit' },
+    dangerouslySetInnerHTML: { __html: processed },
+  });
+}
+
+// ── Internal component: auto-reloads when theme loads ──────────
+const FileIconInner: React.FC<{ iconName: string; fallback: string; theme: string; size: number }> = ({ iconName, fallback, theme, size }) => {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const found = resolveIcon(theme, iconName, fallback);
+    if (!found) {
+      // Icon not found — listen for theme load then re-render
+      const cb = () => setTick(t => t + 1);
+      onThemeLoaded(theme, cb);
+      // Also try codi if it's not the current theme
+      if (theme !== 'codi') onThemeLoaded('codi', cb);
+    }
+  }, [theme, iconName, fallback]);
+
+  const svg = resolveIcon(theme, iconName, fallback);
+  if (!svg) return null;
+  return renderSvg(svg, size);
+};
+
+const FolderIconInner: React.FC<{ iconName: string; theme: string; size: number }> = ({ iconName, theme, size }) => {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const found = resolveIcon(theme, iconName, 'folder');
+    if (!found) {
+      const cb = () => setTick(t => t + 1);
+      onThemeLoaded(theme, cb);
+      if (theme !== 'codi') onThemeLoaded('codi', cb);
+    }
+  }, [theme, iconName]);
+
+  const svg = resolveIcon(theme, iconName, 'folder');
+  if (!svg) return null;
+  return renderSvg(svg, size);
+};
+
+/**
+ * Get icon name for a file by extension and filename.
+ */
+export function getFileIconName(fileName: string, extension: string): string {
+  const lower = fileName.toLowerCase();
+  if (FILENAME_MAP[lower]) return FILENAME_MAP[lower];
+  const ext = extension.toLowerCase().replace(/^\./, '');
+  return EXT_MAP[ext] || 'document';
+}
+
+/**
+ * Get icon name for a folder by its name.
+ */
+export function getFolderIconName(folderName: string, _isExpanded: boolean): string {
+  return FOLDER_MAP[folderName.toLowerCase()] || 'folder';
+}
+
+/**
+ * Render file icon — returns a React component that auto-reloads when themes load.
  */
 export function renderFileIcon(
   ext: string,
@@ -217,18 +248,12 @@ export function renderFileIcon(
   size: number = 14,
 ): React.ReactElement | null {
   if (theme === 'none') return null;
-  const result = getIconDefForExt(ext);
-  if (!result) return null;
-  const color = resolveColor(result.key, theme, result.def.color);
-  return React.createElement('svg', {
-    width: size, height: size, viewBox: '0 0 20 20', fill: 'none',
-    style: { flexShrink: 0 },
-    children: React.createElement('path', { d: result.def.path, fill: color, fillRule: 'evenodd', clipRule: 'evenodd' }),
-  });
+  const iconName = EXT_MAP[ext.toLowerCase()] || 'document';
+  return React.createElement(FileIconInner, { iconName, fallback: 'file', theme, size });
 }
 
 /**
- * Render folder icon as an SVG React element.
+ * Render folder icon — returns a React component that auto-reloads when themes load.
  */
 export function renderFolderIcon(
   isExpanded: boolean,
@@ -236,12 +261,6 @@ export function renderFolderIcon(
   size: number = 14,
 ): React.ReactElement | null {
   if (theme === 'none') return null;
-  const iconKey = isExpanded ? 'folderOpen' : 'folder';
-  const def = ICONS[iconKey];
-  const color = resolveColor(iconKey, theme, def.color);
-  return React.createElement('svg', {
-    width: size, height: size, viewBox: '0 0 20 20', fill: 'none',
-    style: { flexShrink: 0 },
-    children: React.createElement('path', { d: def.path, fill: color, fillRule: 'evenodd', clipRule: 'evenodd' }),
-  });
+  const iconName = isExpanded ? 'folder-opened' : 'folder';
+  return React.createElement(FolderIconInner, { iconName, theme, size });
 }

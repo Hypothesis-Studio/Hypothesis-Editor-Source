@@ -34,7 +34,7 @@ export class AppStore {
           isVisible: false,
         },
         theme: 'hypothesis-dark',
-        iconTheme: 'vs-seti',
+        iconTheme: 'material',
         language: 'en',
         snippets: [],
         pluginStates: {},

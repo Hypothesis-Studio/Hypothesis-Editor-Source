@@ -22,6 +22,7 @@ import { useAppStore } from '../../stores/appStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { renderFileIcon, renderFolderIcon, type IconTheme } from '../../utils/fileIcons';
 import { showAlert, showConfirm } from '../../stores/dialogStore';
+import { Icon } from '../common/Icon';
 
 interface FileExplorerProps {
   rootPath?: string | null;
@@ -454,7 +455,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
 
   // ── Settings ───────────────────────────────────────────────────
   const treeIndent = useSettingsStore((s) => (s.settings['workbench.tree.indent'] as number) ?? 8);
-  const iconTheme = (useSettingsStore((s) => s.settings['workbench.iconTheme'] as string) || 'vs-seti') as IconTheme;
+  const iconTheme = (useSettingsStore((s) => s.settings['workbench.iconTheme'] as string) || 'material') as IconTheme;
 
   // ── Icon ────────────────────────────────────────────────────────
   const getIcon = (entry: FileEntry): React.ReactElement | null => {
@@ -553,7 +554,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
         >
           {entry.type === 'directory' ? (
             <span className={`mr-1 w-3 text-center text-[10px]`} style={{ color: isExpanded ? 'var(--theme-fg)' : 'var(--theme-fg-muted)' }}>
-              {isExpanded ? '▼' : '▶'}
+              {isExpanded ? <Icon name="chevron-down" size={10} /> : <Icon name="chevron-right" size={10} />}
             </span>
           ) : <span className="mr-1 w-3" />}
           <span className="mr-1.5 text-sm leading-none flex-shrink-0">{getIcon(entry)}</span>
@@ -565,14 +566,14 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
           )}
           {/* Clipboard indicator */}
           {clipboard?.path === entry.path && (
-            <span className="ml-auto mr-1 text-[10px]" style={{ color: 'var(--theme-fg-muted)' }}>{clipboard.action === 'cut' ? '✂' : '📋'}</span>
+            <span className="ml-auto mr-1 text-[10px]" style={{ color: 'var(--theme-fg-muted)' }}><Icon name="clippy" size={10} /></span>
           )}
         </div>
         {entry.type === 'directory' && isExpanded && (
           <div>
             {creating && creating.parentPath === entry.path && (
               <div className="flex items-center h-[22px] text-xs" style={{ paddingLeft: `${(depth + 1) * treeIndent + 8}px` }}>
-                <span className="mr-1 w-3" /><span className="mr-1.5 text-sm">{creating.type === 'file' ? '📄' : '📁'}</span>
+                <span className="mr-1 w-3" /><span className="mr-1.5 text-sm"><Icon name={creating.type === 'file' ? 'new-file' : 'new-folder'} size={14} /></span>
                 <input ref={createInputRef} type="text" value={createValue} onChange={e => setCreateValue(e.target.value)} onBlur={confirmCreate} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') confirmCreate(); if (e.key === 'Escape') cancelCreate(); }}
                   className="flex-1 text-xs px-1 py-0 outline-none min-w-0 rounded-sm" style={{ background: 'var(--theme-bg-tertiary)', color: 'var(--theme-fg)', border: '1px solid var(--theme-accent)' }} placeholder={creating.type === 'file' ? 'filename.ts' : 'folder-name'} />
               </div>
@@ -612,7 +613,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
           {/* Expand arrow (only in multi-root) */}
           {!isSingle && (
             <span className="mr-1 w-3 text-center text-[10px]" style={{ color: 'var(--theme-fg-muted)' }}>
-              {expanded.has(rp) ? '▼' : '▶'}
+              {expanded.has(rp) ? <Icon name="chevron-down" size={10} /> : <Icon name="chevron-right" size={10} />}
             </span>
           )}
           <span className="mr-1.5" style={{ display: 'inline-flex', alignItems: 'center' }}>{renderFolderIcon(true, iconTheme, 14)}</span>
@@ -624,16 +625,16 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
           <div className="flex-1" />
           <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 mr-1 transition-opacity">
             <button onClick={e => { e.stopPropagation(); startCreate('file', rp); }} className="p-0.5 rounded" style={{ color: 'var(--theme-fg-muted)' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }} title="New File">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              <Icon name="add" size={12} />
             </button>
             <button onClick={e => { e.stopPropagation(); startCreate('folder', rp); }} className="p-0.5 rounded" style={{ color: 'var(--theme-fg-muted)' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }} title="New Folder">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+              <Icon name="new-folder" size={12} />
             </button>
             <button onClick={e => { e.stopPropagation(); refreshRoot(rp); }} className="p-0.5 rounded" style={{ color: 'var(--theme-fg-muted)' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }} title="Refresh">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              <Icon name="refresh" size={12} />
             </button>
             <button onClick={e => { e.stopPropagation(); (window as any).api?.fileWatcher?.stop?.(rp); removeFolder(rp); setRootFiles(prev => { const n = new Map(prev); n.delete(rp); return n; }); const newExpanded = new Set(expanded); for (const key of newExpanded) { if (key === rp || key.startsWith(rp + '/') || key.startsWith(rp + '\\')) newExpanded.delete(key); } setExpandedSync(newExpanded); if (selected && (selected === rp || selected.startsWith(rp + '/') || selected.startsWith(rp + '\\'))) setSelected(null); }} className="p-0.5 rounded" style={{ color: 'var(--theme-fg-muted)' }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-error)'; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }} title="Remove">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              <Icon name="close" size={12} />
             </button>
           </div>
         </div>
@@ -641,7 +642,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
         {/* Inline create at root */}
         {creating && creating.parentPath === rp && (
           <div className="flex items-center h-[22px] text-xs" style={{ paddingLeft: '20px' }}>
-            <span className="mr-1 w-3" /><span className="mr-1.5 text-sm">{creating.type === 'file' ? '📄' : '📁'}</span>
+            <span className="mr-1 w-3" /><span className="mr-1.5 text-sm"><Icon name={creating.type === 'file' ? 'new-file' : 'new-folder'} size={14} /></span>
             <input ref={createInputRef} type="text" value={createValue} onChange={e => setCreateValue(e.target.value)} onBlur={confirmCreate} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') confirmCreate(); if (e.key === 'Escape') cancelCreate(); }}
               className="flex-1 text-xs px-1 py-0 outline-none min-w-0 rounded-sm" style={{ background: 'var(--theme-bg-tertiary)', color: 'var(--theme-fg)', border: '1px solid var(--theme-accent)' }} placeholder={creating.type === 'file' ? 'filename.ts' : 'folder-name'} />
           </div>
@@ -682,9 +683,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = rootPaths.length > 0 ? 'var(--theme-fg-muted)' : ''; }}
             title="Collapse All"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Icon name="list-tree" size={14} />
           </button>
           <button
             onClick={loadAllRoots}
@@ -694,9 +693,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = rootPaths.length > 0 ? 'var(--theme-fg-muted)' : ''; }}
             title="Reload"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <Icon name="refresh" size={14} />
           </button>
           <button
             onClick={onCloseFolder}
@@ -706,9 +703,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; (e.currentTarget as HTMLElement).style.color = rootPaths.length > 0 ? 'var(--theme-fg-muted)' : ''; }}
             title="Clear All"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
+            <Icon name="trash" size={14} />
           </button>
         </div>
       </div>
@@ -716,7 +711,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
       {/* ── Clipboard indicator (auto-hide 3s) ── */}
       {clipboard && clipboardVisible && (
         <div className="flex items-center gap-2 px-3 py-1 text-[10px] animate-fade-in" style={{ color: 'var(--theme-fg-muted)', background: 'var(--theme-bg-secondary)', borderBottom: '1px solid var(--theme-border)' }}>
-          <span>{clipboard.action === 'cut' ? '✂️' : '📋'}</span>
+          <span><Icon name="clippy" size={10} /></span>
           <span className="truncate">{clipboard.path.split(/[/\\]/).pop()}</span>
           <span className="ml-auto" style={{ color: 'var(--theme-fg-dim)' }}>Ctrl+V to paste</span>
         </div>

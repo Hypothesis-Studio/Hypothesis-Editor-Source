@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { APP_NAME, APP_DESCRIPTION } from '../../../shared/utils/appMeta';
+import { Icon } from './Icon';
 
 interface DialogProps {
   title: string;
@@ -44,9 +45,7 @@ export const CustomDialog: React.FC<DialogProps> = ({ title, message, type = 'in
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--theme-fg)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <Icon name="close" size={14} />
           </button>
         </div>
 

@@ -8,6 +8,7 @@ import '@xterm/xterm/css/xterm.css';
 import type { TerminalInstance } from '../../../shared/types';
 import { useAppStore } from '../../stores/appStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { Icon } from '../common/Icon';
 
 interface TerminalEntry {
   instance: TerminalInstance;
@@ -334,18 +335,14 @@ export const TerminalPanel: React.FC = () => {
             }}
             onClick={() => switchTerminal(term.id)}
           >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            <Icon name="terminal" size={12} />
             <span>{term.name}</span>
             <button
               onClick={(e) => { e.stopPropagation(); closeTerminal(term.id); }}
               className="ml-1 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity"
               title="Close"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon name="close" size={12} />
             </button>
           </div>
         ))}
@@ -358,9 +355,7 @@ export const TerminalPanel: React.FC = () => {
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; e.currentTarget.style.background = 'none'; }}
           title="New Terminal"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <Icon name="add" size={16} />
         </button>
 
         <div className="flex-1" />
@@ -372,9 +367,7 @@ export const TerminalPanel: React.FC = () => {
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
           title="Clear Terminal"
         >
-          <svg width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
+          <Icon name="trash" size={16} />
         </button>
 
         <button
@@ -393,9 +386,7 @@ export const TerminalPanel: React.FC = () => {
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
           title="Kill All Terminals"
         >
-          <svg width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <Icon name="close" size={16} style={{ color: 'var(--theme-error)' }} />
         </button>
       </div>
 

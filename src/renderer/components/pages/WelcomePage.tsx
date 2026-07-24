@@ -5,6 +5,7 @@ import React from 'react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { APP_NAME, APP_VERSION, APP_DESCRIPTION } from '../../../shared/utils/appMeta';
+import { Icon } from '../common/Icon';
 
 const iconLight = new URL('../../assets/icons/icon-light.png', import.meta.url).href;
 const iconDark = new URL('../../assets/icons/icon-dark.png', import.meta.url).href;
@@ -76,21 +77,15 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onOpenFolder }) => {
 
       <div className="flex flex-col gap-3 w-full max-w-xs mb-8">
         <button onClick={handleNewFile} className="btn btn-primary justify-center py-3">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <Icon name="new-file" size={20} />
           New File
         </button>
         <button onClick={handleOpenFile} className="btn btn-secondary justify-center py-3">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
-          </svg>
+          <Icon name="file" size={20} />
           Open File
         </button>
         <button onClick={handleOpenFolder} className="btn btn-secondary justify-center py-3">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
+          <Icon name="folder" size={20} />
           Open Folder
         </button>
       </div>

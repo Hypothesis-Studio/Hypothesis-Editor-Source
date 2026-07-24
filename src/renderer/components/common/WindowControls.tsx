@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { Icon } from './Icon';
 
 export const WindowControls: React.FC = () => {
   const { isMaximized } = useAppStore();
@@ -17,9 +18,7 @@ export const WindowControls: React.FC = () => {
         onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
         title="Minimize"
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeWidth={2} d="M20 12H4" />
-        </svg>
+        <Icon name="chrome-minimize" size={16} />
       </button>
       <button
         onClick={() => window.api.window.maximize()}
@@ -30,14 +29,9 @@ export const WindowControls: React.FC = () => {
         title={isMaximized ? 'Restore' : 'Maximize'}
       >
         {isMaximized ? (
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <rect x="8" y="8" width="12" height="12" rx="1" strokeWidth={2} />
-            <path d="M4 16V6a1 1 0 011-1h10" strokeWidth={2} />
-          </svg>
+          <Icon name="chrome-restore" size={16} />
         ) : (
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <rect x="4" y="4" width="16" height="16" rx="1" strokeWidth={2} />
-          </svg>
+          <Icon name="chrome-maximize" size={16} />
         )}
       </button>
       <button
@@ -48,9 +42,7 @@ export const WindowControls: React.FC = () => {
         onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--theme-fg)'; }}
         title="Close"
       >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <Icon name="chrome-close" size={16} />
       </button>
     </div>
   );

@@ -7,6 +7,7 @@ import { APP_NAME } from '../shared/utils/appMeta';
 import { WindowManager } from './windows/WindowManager';
 import { registerIPC } from './ipc';
 import { killAllTerminals } from './ipc/terminal.ipc';
+import { killAllRunProcesses } from './ipc/run.ipc';
 import { logger } from './utils/logger';
 import { AppStore } from './services/AppStore';
 import { ThemeService } from './services/ThemeService';
@@ -182,6 +183,7 @@ if (!gotTheLock) {
   app.on('before-quit', async () => {
     logger.info(`${APP_NAME} shutting down...`);
     killAllTerminals();
+    killAllRunProcesses();
     if (appStore) {
       await appStore.save();
     }

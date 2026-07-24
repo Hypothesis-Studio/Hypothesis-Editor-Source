@@ -10,6 +10,7 @@ import { registerWindowIPC } from './window.ipc';
 import { registerPluginIPC } from './plugin.ipc';
 import { registerUpdateIPC } from './update.ipc';
 import { registerExtensionIPC } from './extension.ipc';
+import { registerRunIPC, killAllRunProcesses } from './run.ipc';
 import './format.ipc';
 import type { AppStore } from '../services/AppStore';
 import type { SettingsService } from '../services/SettingsService';
@@ -20,6 +21,7 @@ import type { PluginService } from '../services/PluginService';
 import type { RecentService } from '../services/RecentService';
 import type { AgentService } from '../services/agent/AgentService';
 import { registerAgentIPC } from './agent.ipc';
+import { registerSearchIPC } from './search.ipc';
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -50,4 +52,9 @@ export function registerIPC(deps: IPCDependencies): void {
     deps.gitService,
   );
   registerAgentIPC(deps.agentService);
+  registerRunIPC();
+  registerSearchIPC();
 }
+
+/** Kill all run processes on app quit */
+export { killAllRunProcesses } from './run.ipc';

@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { useEditorStore } from '../../stores/editorStore';
+import { Icon } from '../common/Icon';
 
 interface StatusBarProps {
   rootPath?: string | null;
@@ -46,16 +47,16 @@ export const StatusBar: React.FC<StatusBarProps> = ({ rootPath, onOpenSettings }
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
         >
-          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <Icon name="source-control" size={14} />
           <span>main</span>
         </button>
         <button style={itemStyle} title="Errors and Warnings"
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
         >
-          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          <Icon name="warning" size={14} />
           <span>0</span>
-          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ marginLeft: 4 }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <Icon name="error" size={14} style={{ marginLeft: 4 }} />
           <span>0</span>
         </button>
       </div>
@@ -110,9 +111,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ rootPath, onOpenSettings }
             onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
           >
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
+            <Icon name="link-external" size={14} />
             <span style={{ color: '#4ade80' }}>Live {liveServerUrl.replace('http://', '')}</span>
           </button>
         )}
@@ -123,13 +122,13 @@ export const StatusBar: React.FC<StatusBarProps> = ({ rootPath, onOpenSettings }
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
         >
-          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          <Icon name="terminal" size={14} />
         </button>
         <button style={itemStyle} title="Settings" onClick={onOpenSettings}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
         >
-          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+          <Icon name="settings-gear" size={14} />
         </button>
       </div>
     </div>

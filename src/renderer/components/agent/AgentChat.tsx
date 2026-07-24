@@ -8,6 +8,12 @@ import { useEditorStore } from '../../stores/editorStore';
 import type { ChatMessage, StreamEvent, AgentTask } from '../../../shared/types/agent';
 import { executeSlashCommand, filterSlashCommands, type SlashCommand } from './SlashCommands';
 
+// Default profile avatars
+const profileSvgs = import.meta.glob('/src/renderer/assets/icons/profile/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const PROFILE_AVATARS: string[] = Object.values(profileSvgs);
+const DEFAULT_USER_AVATAR = PROFILE_AVATARS[0] || '';
+const DEFAULT_AGENT_AVATAR = PROFILE_AVATARS[5] || '';
+
 interface AgentChatProps {
   onOpenSettings?: () => void;
 }
@@ -353,8 +359,8 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
               width: 28, height: 28, borderRadius: '50%',
               background: 'var(--theme-accent)', display: 'flex',
               alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, fontSize: 14, color: '#fff',
-            }}>{agentConfigs.find(a => a.id === activeAgentId)?.agentAvatar || 'A'}</div>
+              flexShrink: 0, overflow: 'hidden',
+            }}><span style={{ width: 28, height: 28, display: 'inline-flex' }} dangerouslySetInnerHTML={{ __html: (agentConfigs.find(a => a.id === activeAgentId)?.agentAvatar || DEFAULT_AGENT_AVATAR).replace(/<svg/, '<svg width="28" height="28"') }} /></div>
             <div style={{
               background: 'var(--theme-bg-secondary)',
               borderRadius: '0 8px 8px 8px', padding: '8px 12px',
@@ -548,10 +554,9 @@ const MessageBubble: React.FC<{ message: ChatMessage; agentAvatar?: string; user
         width: 28, height: 28, borderRadius: '50%',
         background: isUser ? 'var(--theme-bg-active)' : isError ? 'var(--theme-error)' : 'var(--theme-accent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0, fontSize: 14, fontWeight: 600,
-        color: isUser ? 'var(--theme-fg)' : '#fff',
+        flexShrink: 0, overflow: 'hidden',
       }}>
-        {isUser ? (userAvatar || 'U') : (agentAvatar || 'A')}
+        <span style={{ width: 28, height: 28, display: 'inline-flex' }} dangerouslySetInnerHTML={{ __html: ((() => { const av = isUser ? userAvatar : agentAvatar; return (av && av.startsWith('<svg')) ? av : (isUser ? DEFAULT_USER_AVATAR : DEFAULT_AGENT_AVATAR); })()).replace(/<svg/, '<svg width="28" height="28"') }} />
       </div>
 
       {/* Content */}
@@ -883,7 +888,7 @@ const AutonomousProgressPanel: React.FC<{ tasks: AgentTask[] }> = ({ tasks }) =>
         <div key={task.id} style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 14, lineHeight: 1 }}>
-              {task.status === 'completed' ? '✅' : task.status === 'failed' ? '❌' : task.status === 'executing' ? '⟳' : task.status === 'verifying' ? '🔍' : task.status === 'fixing' ? '🔧' : '○'}
+              {task.status === 'completed' ? '✓' : task.status === 'failed' ? '✗' : task.status === 'executing' ? '⟳' : task.status === 'verifying' ? '⊘' : task.status === 'fixing' ? '⚡' : '○'}
             </span>
             <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--theme-fg)' }}>{task.title}</span>
             <span style={{ fontSize: 9, color: 'var(--theme-fg-muted)', marginLeft: 'auto' }}>
@@ -907,7 +912,7 @@ const AutonomousProgressPanel: React.FC<{ tasks: AgentTask[] }> = ({ tasks }) =>
                       : 'var(--theme-fg-muted)',
                     fontWeight: 600, minWidth: 14,
                   }}>
-                    {step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : step.status === 'executing' ? '⟳' : step.status === 'fixing' ? '🔧' : '○'}
+                    {step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : step.status === 'executing' ? '⟳' : step.status === 'fixing' ? '⚡' : '○'}
                   </span>
                   <span style={{
                     color: step.status === 'executing' ? 'var(--theme-fg)' : 'var(--theme-fg-muted)',
