@@ -1,6 +1,7 @@
 /**
  * Global type declarations for Hypothesis Editor renderer.
  */
+/// <reference types="vite/client" />
 
 interface Window {
   api: {

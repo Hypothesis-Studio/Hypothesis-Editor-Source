@@ -4,8 +4,8 @@
  */
 
 // ── Load all SVGs from both packs at build time ─────────────────
-const materialSvgs = import.meta.glob('/src/renderer/assets/icons/pack/material/*.svg', { query: '?raw', import: 'default', eager: true });
-const codiSvgs = import.meta.glob('/src/renderer/assets/icons/pack/codi/*.svg', { query: '?raw', import: 'default', eager: true });
+const materialSvgs = import.meta.glob('/src/renderer/assets/icons/pack/material/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const codiSvgs = import.meta.glob('/src/renderer/assets/icons/pack/codi/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 type IconMap = Record<string, string>;
 
@@ -24,20 +24,19 @@ const extensionThemes: Map<string, { id: string; label: string; iconMap: IconMap
 
 // Resolve a glob map into { iconName: svgContent }
 // With eager: true, values are already strings (not loader functions)
-async function loadGlobMap(glob: Record<string, string | (() => Promise<string>)>, prefix: string): Promise<IconMap> {
+async function loadGlobMap(glob: Record<string, string>, prefix: string): Promise<IconMap> {
   const icons: IconMap = {};
   for (const [filePath, value] of Object.entries(glob)) {
     const match = filePath.match(/\/([^/]+)\.svg$/);
     if (match) {
-      const svg = typeof value === 'string' ? value : await value();
-      icons[match[1]] = svg;
+      icons[match[1]] = value;
     }
   }
   return icons;
 }
 
 // Built-in theme loaders
-const builtinLoaders: Record<string, { label: string; glob: Record<string, string | (() => Promise<string>)> }> = {
+const builtinLoaders: Record<string, { label: string; glob: Record<string, string> }> = {
   material: { label: 'Material', glob: materialSvgs },
   codi: { label: 'Codi', glob: codiSvgs },
 };
