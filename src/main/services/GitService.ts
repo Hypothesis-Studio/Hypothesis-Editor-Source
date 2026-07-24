@@ -5,7 +5,7 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { logger } from '../utils/logger';
-import type { GitStatus, GitBranch, GitCommit, GitDiff } from '../../shared/types';
+import type { GitStatus, GitBranch, GitCommit } from '../../shared/types';
 
 const execFileAsync = promisify(execFile);
 

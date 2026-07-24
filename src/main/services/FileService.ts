@@ -62,7 +62,7 @@ export class FileService {
    * Stop all file watchers.
    */
   stopAllWatchers(): void {
-    for (const [_dirPath, watcher] of this.watchers) {
+    for (const [, watcher] of this.watchers) {
       watcher.close();
     }
     this.watchers.clear();

@@ -10,7 +10,7 @@ import { registerWindowIPC } from './window.ipc';
 import { registerPluginIPC } from './plugin.ipc';
 import { registerUpdateIPC } from './update.ipc';
 import { registerExtensionIPC } from './extension.ipc';
-import { registerRunIPC, killAllRunProcesses } from './run.ipc';
+import { registerRunIPC } from './run.ipc';
 import './format.ipc';
 import type { AppStore } from '../services/AppStore';
 import type { SettingsService } from '../services/SettingsService';

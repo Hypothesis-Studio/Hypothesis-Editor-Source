@@ -4,7 +4,6 @@
 import { ipcMain } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { BrowserWindow } from 'electron';
 
 interface SearchOptions {
   query: string;
@@ -155,7 +154,7 @@ export function registerSearchIPC(): void {
   });
 
   ipcMain.handle('search:replace-all', async (_event, options: ReplaceAllOptions): Promise<number> => {
-    const { query, replace, isRegex, isCaseSensitive, isWholeWord } = options;
+    const { query, replace, isRegex, isCaseSensitive } = options;
 
     const rootPath = getWorkspaceRoot(options);
     if (!rootPath) return 0;

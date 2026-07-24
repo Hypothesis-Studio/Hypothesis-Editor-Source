@@ -81,7 +81,7 @@ export class PluginService {
           registeredCommands: new Map(),
         });
         restored++;
-      } catch (e) {
+      } catch (_e) {
         try {
           const dirExists = await fs.stat(pluginPath).then(s => s.isDirectory()).catch(() => false);
           if (dirExists) {
@@ -566,7 +566,7 @@ export class PluginService {
             active: true,
             reveal: () => sendToRenderer('extension:webview:reveal', { viewType }),
             dispose: () => sendToRenderer('extension:webview:dispose', { viewType }),
-            onDidDispose: (handler: () => void) => {
+            onDidDispose: (_handler: () => void) => {
               // Simplified - in real impl, listen for dispose event
               return { dispose: () => {} };
             },
@@ -634,43 +634,43 @@ export class PluginService {
           sendToRenderer('extension:language:registerProvider', { type: 'completion', selector, triggers, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerHoverProvider: (selector: string, provider: any) => {
+        registerHoverProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'hover', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerDefinitionProvider: (selector: string, provider: any) => {
+        registerDefinitionProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'definition', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerDocumentFormattingEditProvider: (selector: string, provider: any) => {
+        registerDocumentFormattingEditProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'formatting', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerDocumentSymbolProvider: (selector: string, provider: any) => {
+        registerDocumentSymbolProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'symbols', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerCodeActionProvider: (selector: string, provider: any) => {
+        registerCodeActionProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'codeAction', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerCodeLensProvider: (selector: string, provider: any) => {
+        registerCodeLensProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'codeLens', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerReferenceProvider: (selector: string, provider: any) => {
+        registerReferenceProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'reference', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerRenameProvider: (selector: string, provider: any) => {
+        registerRenameProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'rename', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerSignatureHelpProvider: (selector: string, provider: any, ...triggers: string[]) => {
+        registerSignatureHelpProvider: (selector: string, _provider: any, ...triggers: string[]) => {
           sendToRenderer('extension:language:registerProvider', { type: 'signatureHelp', selector, triggers, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
-        registerFoldingRangeProvider: (selector: string, provider: any) => {
+        registerFoldingRangeProvider: (selector: string, _provider: any) => {
           sendToRenderer('extension:language:registerProvider', { type: 'folding', selector, pluginId: plugin.manifest.id });
           return { dispose: () => {} };
         },
