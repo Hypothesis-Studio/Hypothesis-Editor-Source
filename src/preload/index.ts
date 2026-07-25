@@ -694,6 +694,44 @@ const api = {
     },
   },
 
+  // Database Explorer
+  db: {
+    connection: {
+      list: () => ipcRenderer.invoke('db:connection-list'),
+      get: (id: string) => ipcRenderer.invoke('db:connection-get', id),
+      create: (config: unknown) => ipcRenderer.invoke('db:connection-create', config),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('db:connection-update', id, updates),
+      delete: (id: string) => ipcRenderer.invoke('db:connection-delete', id),
+      test: (config: unknown) => ipcRenderer.invoke('db:test-connection', config),
+      connect: (id: string) => ipcRenderer.invoke('db:connect', id),
+      disconnect: (id: string) => ipcRenderer.invoke('db:disconnect', id),
+      onStatus: (callback: (data: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+        ipcRenderer.on('db:connection-status', handler);
+        return () => ipcRenderer.removeListener('db:connection-status', handler);
+      },
+    },
+    schema: {
+      get: (connectionId: string) => ipcRenderer.invoke('db:schema-get', connectionId),
+    },
+    query: {
+      execute: (req: unknown) => ipcRenderer.invoke('db:query-execute', req),
+    },
+    table: {
+      data: (req: unknown) => ipcRenderer.invoke('db:table-data', req),
+    },
+    history: {
+      list: () => ipcRenderer.invoke('db:history-list'),
+      clear: () => ipcRenderer.invoke('db:history-clear'),
+    },
+    savedQuery: {
+      list: () => ipcRenderer.invoke('db:saved-query-list'),
+      create: (data: unknown) => ipcRenderer.invoke('db:saved-query-create', data),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('db:saved-query-update', id, updates),
+      delete: (id: string) => ipcRenderer.invoke('db:saved-query-delete', id),
+    },
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),

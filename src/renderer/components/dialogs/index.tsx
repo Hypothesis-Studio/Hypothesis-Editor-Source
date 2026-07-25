@@ -106,16 +106,23 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       <div className="px-4 py-3 flex justify-end gap-2" style={{ borderTop: '1px solid var(--theme-border-light)' }}>
         <button
           onClick={onClose}
-          className="btn btn-secondary text-xs"
+          style={{
+            padding: '6px 16px', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontWeight: 500,
+            background: 'transparent', color: 'var(--theme-fg-muted)',
+            border: '1px solid var(--theme-border)',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
         >
           {cancelLabel}
         </button>
         <button
           onClick={handleConfirm}
-          className={`btn text-xs ${
-            variant === 'danger' ? '' : 'btn-primary'
-          }`}
-          style={variant === 'danger' ? { background: 'var(--theme-error)', color: '#ffffff', border: 'none' } : {}}
+          style={{
+            padding: '6px 16px', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontWeight: 500,
+            background: variant === 'danger' ? '#e53e3e' : 'var(--theme-accent)',
+            color: '#ffffff', border: 'none',
+          }}
           onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
         >

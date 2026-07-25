@@ -28,6 +28,9 @@ import { registerPreviewIPC } from './preview.ipc';
 import type { PreviewService } from '../services/preview/PreviewService';
 import { registerRestClientIPC } from './rest-client.ipc';
 import type { RestClientService } from '../services/rest-client/RestClientService';
+import { registerDatabaseIPC } from './database.ipc';
+import { DatabaseService } from '../services/database/DatabaseService';
+export { DatabaseService };
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -41,6 +44,7 @@ interface IPCDependencies {
   insightsService: ProjectInsightsService;
   previewService: PreviewService;
   restClientService: RestClientService;
+  databaseService: DatabaseService;
 }
 
 export function registerIPC(deps: IPCDependencies): void {
@@ -66,6 +70,7 @@ export function registerIPC(deps: IPCDependencies): void {
   registerInsightsIPC(deps.insightsService);
   registerPreviewIPC(deps.previewService);
   registerRestClientIPC(deps.restClientService);
+  registerDatabaseIPC(deps.databaseService, () => require('electron').BrowserWindow.getAllWindows()[0] ?? null);
 }
 
 /** Kill all run processes on app quit */

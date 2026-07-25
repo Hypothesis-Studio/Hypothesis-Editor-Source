@@ -18,6 +18,11 @@ interface ModalShellProps {
 export const ModalShell: React.FC<ModalShellProps> = ({
   title, icon, width = 560, maxHeight = '80vh', onClose, children, footer,
 }) => {
+  // Close only when clicking the backdrop directly
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   return (
     <div
       style={{
@@ -25,7 +30,8 @@ export const ModalShell: React.FC<ModalShellProps> = ({
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
       }}
-      onClick={onClose}
+      onClick={handleBackdropClick}
+      onMouseDown={handleBackdropClick}
     >
       <div
         onClick={e => e.stopPropagation()}
@@ -83,8 +89,8 @@ export const ModalShell: React.FC<ModalShellProps> = ({
 // ── Shared style helpers ─────────────────────────────────────────────
 export const modalStyles = {
   label: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--theme-fg-muted)', marginBottom: 4 } as React.CSSProperties,
-  input: { width: '100%', padding: '6px 8px', background: 'var(--theme-bg-input, var(--theme-bg))', border: '1px solid var(--theme-border)', borderRadius: 4, color: 'var(--theme-fg)', fontSize: 12, outline: 'none', boxSizing: 'border-box' } as React.CSSProperties,
-  textarea: { width: '100%', padding: '8px 10px', background: 'var(--theme-bg-input, var(--theme-bg))', border: '1px solid var(--theme-border)', borderRadius: 4, color: 'var(--theme-fg)', fontSize: 12, fontFamily: 'monospace', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' } as React.CSSProperties,
+  input: { width: '100%', padding: '6px 8px', background: 'var(--theme-bg-input, var(--theme-bg))', border: '1px solid var(--theme-border)', borderRadius: 4, color: 'var(--theme-fg)', fontSize: 12, outline: 'none', boxSizing: 'border-box', userSelect: 'text', WebkitUserSelect: 'text', pointerEvents: 'auto' } as React.CSSProperties,
+  textarea: { width: '100%', padding: '8px 10px', background: 'var(--theme-bg-input, var(--theme-bg))', border: '1px solid var(--theme-border)', borderRadius: 4, color: 'var(--theme-fg)', fontSize: 12, fontFamily: 'monospace', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box', userSelect: 'text', WebkitUserSelect: 'text', pointerEvents: 'auto' } as React.CSSProperties,
   btnPrimary: { padding: '7px 20px', border: 'none', borderRadius: 5, background: 'var(--theme-accent)', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 } as React.CSSProperties,
   btnSecondary: { padding: '7px 16px', border: '1px solid var(--theme-border)', borderRadius: 5, background: 'transparent', color: 'var(--theme-fg-muted)', cursor: 'pointer', fontSize: 12 } as React.CSSProperties,
   btnGhost: { display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', border: '1px solid var(--theme-border)', borderRadius: 4, background: 'transparent', color: 'var(--theme-fg-muted)', cursor: 'pointer', fontSize: 11 } as React.CSSProperties,

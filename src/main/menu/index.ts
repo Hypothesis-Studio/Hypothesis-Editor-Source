@@ -104,6 +104,7 @@ export function createApplicationMenu(): Menu {
           { type: 'separator' } as MenuItemConstructorOptions,
         ] : []),
         { label: 'REST Client', accelerator: 'CmdOrCtrl+Shift+R', click: () => send('menu:open-rest-client') },
+        { label: 'Database Explorer', accelerator: 'CmdOrCtrl+Shift+D', click: () => send('menu:open-database') },
         { type: 'separator' },
         // Zoom
         { role: 'resetZoom' },

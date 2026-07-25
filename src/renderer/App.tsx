@@ -249,6 +249,7 @@ const App: React.FC = () => {
       on('menu:toggle-zen-mode', () => useAppStore.getState().toggleZenMode()),
       on('menu:toggle-agent', () => openAgentTab()),
       on('menu:open-rest-client', () => openRestClientTab()),
+      on('menu:open-database', () => openDatabaseTab()),
       on('menu:about', () => setShowAbout(true)),
       // Edit menu actions
       on('menu:undo', () => useEditorStore.getState().triggerUndo()),
@@ -329,6 +330,7 @@ const App: React.FC = () => {
       else if (ctrl && shift && e.key === 'X') { e.preventDefault(); setActiveSidebarView('extensions'); }
       else if (ctrl && shift && e.key === 'A') { e.preventDefault(); openAgentTab(); }
       else if (ctrl && shift && e.key === 'R') { e.preventDefault(); openRestClientTab(); }
+      else if (ctrl && shift && e.key === 'D') { e.preventDefault(); openDatabaseTab(); }
       else if (ctrl && shift && e.key === 'Delete') { e.preventDefault(); togglePanel(); setActivePanel('problems'); }
       else if (e.key === 'F11') { e.preventDefault(); window.api.window.maximize(); }
       else if (ctrl && shift && e.key === 'Z') { e.preventDefault(); useAppStore.getState().toggleZenMode(); }
@@ -467,6 +469,34 @@ const App: React.FC = () => {
         filePath: null,
         fileName: 'REST Client',
         language: 'rest-client',
+        content: '',
+        isDirty: false,
+        isPinned: true,
+        isPreview: false,
+        viewState: null,
+        scrollTop: 0,
+        scrollLeft: 0,
+        cursorPosition: { line: 1, column: 1 },
+        encoding: 'UTF-8',
+        lineEnding: 'LF',
+        savedContent: '',
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+      });
+    }
+  }, []);
+
+  const openDatabaseTab = useCallback(() => {
+    const dbTabId = 'database-tab';
+    const existing = useEditorStore.getState().tabs.find(t => t.id === dbTabId);
+    if (existing) {
+      useEditorStore.getState().setActiveTab(dbTabId);
+    } else {
+      useEditorStore.getState().openTab({
+        id: dbTabId,
+        filePath: null,
+        fileName: 'Database Explorer',
+        language: 'database',
         content: '',
         isDirty: false,
         isPinned: true,
@@ -669,7 +699,7 @@ const App: React.FC = () => {
         onOpenShortcuts={() => setShowShortcuts(true)}
       />
       <div className="flex flex-1 overflow-hidden">
-        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} onOpenRestClient={openRestClientTab} />}
+        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} onOpenRestClient={openRestClientTab} onOpenDatabase={openDatabaseTab} />}
         {sidebarVisible && (
           <Sidebar
             activeView={activeSidebarView}
@@ -707,6 +737,7 @@ const App: React.FC = () => {
           onOpenAgent={agentEnabled ? () => { hideCommandPalette(); openAgentTab(); } : undefined}
           onOpenInsights={() => { hideCommandPalette(); openInsightsTab(); }}
           onOpenRestClient={() => { hideCommandPalette(); openRestClientTab(); }}
+          onOpenDatabase={() => { hideCommandPalette(); openDatabaseTab(); }}
         />
       )}
 

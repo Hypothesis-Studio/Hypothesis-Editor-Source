@@ -36,7 +36,7 @@ export const useDialogStore = create<DialogState>((set, get) => ({
         opts.type === 'confirm'
           ? [
               { label: 'Cancel', variant: 'secondary' as const },
-              { label: 'OK', variant: 'primary' as const },
+              { label: 'OK', variant: 'danger' as const },
             ]
           : [{ label: 'OK', variant: 'primary' as const }]
       );

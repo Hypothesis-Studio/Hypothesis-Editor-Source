@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## [0.2.4] - 2026-07-25
+
+### Added
+- **Database Explorer** — full production-grade database client
+  - SQLite, PostgreSQL, MySQL/MariaDB support
+  - Connection manager with test connection, edit, delete
+  - Schema browser: tables, views, columns, indexes, foreign keys, row count
+  - Table Data viewer: pagination, row numbering, alternating rows, NULL highlighting
+  - Query Editor: multi-tab, syntax-aware, Ctrl+Enter to run, colored result badges
+  - Query History: grouped by day (Today/Yesterday), OK/Error badges, click to re-open
+  - Resizable sidebar with hover/drag highlight
+  - Open via `Ctrl+Shift+D` or Activity Bar database icon
+  - View menu entry and Command Palette: "Open Database Explorer"
+
+### Fixed
+- **Database Explorer** — SQLite `sql.js` WASM async initialization (was calling sync on Promise)
+- **Database Explorer** — MySQL table data using backtick quoting instead of double-quote
+- **Database Explorer** — Schema not loading due to missing `await` on all `db.prepare()` calls
+- **Database Explorer** — Table Data always showing 0 rows due to sync/async mismatch
+- **Database Explorer** — History not refreshing after query execution
+- **Database Explorer** — `totalRows`/`columns`/`rows` undefined crash in TableDataViewer
+- **Database Explorer** — WASM file path resolved via `app.getAppPath()` for build robustness
+- **UI** — ModalShell backdrop click now uses `target === currentTarget` check to prevent closing when clicking inside inputs
+- **UI** — Modal inputs now have `userSelect: text` and `pointerEvents: auto` to fix typing issues
+- **UI** — Confirm/delete dialogs now use red `#e53e3e` button consistently (explorer + database)
+- **UI** — `ConfirmDialog` and `GlobalDialog` buttons use full inline style to prevent CSS class override
+
 ## [0.2.3] - 2026-07-25
 
 ### Added

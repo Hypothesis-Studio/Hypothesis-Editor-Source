@@ -27,6 +27,7 @@ import { RateLimiter } from './services/agent/RateLimiter';
 import { ProjectInsightsService } from './services/insights/ProjectInsightsService';
 import { PreviewService } from './services/preview/PreviewService';
 import { RestClientService } from './services/rest-client/RestClientService';
+import { DatabaseService } from './services/database/DatabaseService';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -68,6 +69,7 @@ if (!gotTheLock) {
 } else {
   let windowManager: WindowManager;
   let appStore: AppStore;
+  let databaseService: DatabaseService | undefined;
 
   app.whenReady().then(async () => {
     logger.info(`${APP_NAME} starting...`, {
@@ -126,6 +128,9 @@ if (!gotTheLock) {
     // Initialize REST Client service
     const restClientService = new RestClientService(appStore);
 
+    // Initialize Database Explorer service
+    databaseService = new DatabaseService(app.getPath('userData'));
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -171,6 +176,7 @@ if (!gotTheLock) {
       insightsService,
       previewService,
       restClientService,
+      databaseService,
     });
 
     // Create application menu
@@ -213,6 +219,7 @@ if (!gotTheLock) {
     logger.info(`${APP_NAME} shutting down...`);
     killAllTerminals();
     killAllRunProcesses();
+    await databaseService?.dispose();
     if (appStore) {
       await appStore.save();
     }

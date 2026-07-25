@@ -11,6 +11,7 @@ import { WelcomePage } from '../pages/WelcomePage';
 import { AgentPanel } from '../agent/AgentPanel';
 import { ProjectInsightsPanel } from '../insights/ProjectInsightsPanel';
 import { RestClientPanel } from '../rest-client/RestClientPanel';
+import { DatabasePanel } from '../database/DatabasePanel';
 import { PreviewPanel } from '../preview/PreviewPanel';
 import { useAppStore } from '../../stores/appStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -95,6 +96,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSett
   const isAgentTab = activeTab?.id === 'agent-tab';
   const isInsightsTab = activeTab?.id === 'insights-tab';
   const isRestClientTab = activeTab?.id === 'rest-client-tab';
+  const isDatabaseTab = activeTab?.id === 'database-tab';
   const canPreview = activeTab ? isPreviewable(activeTab.filePath) : false;
   const currentViewMode = activeTab ? getViewMode(activeTab.id) : 'code';
 
@@ -106,7 +108,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSett
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--theme-bg)' }}>
       {showTabs && <EditorTabs />}
-      {activeTab && breadcrumbsVisible && !isAgentTab && !isInsightsTab && <Breadcrumb tab={activeTab} />}
+      {activeTab && breadcrumbsVisible && !isAgentTab && !isInsightsTab && !isDatabaseTab && <Breadcrumb tab={activeTab} />}
 
       {/* Code | Preview toggle bar */}
       {canPreview && activeTab && previewLayout === 'tab' && (
@@ -161,6 +163,8 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSett
           <ProjectInsightsPanel rootPath={(window as any).__hypothesis_rootPath || null} />
         ) : isRestClientTab ? (
           <RestClientPanel />
+        ) : isDatabaseTab ? (
+          <DatabasePanel />
         ) : canPreview && activeTab ? (
           previewLayout === 'side-by-side' ? (
             <div style={{ display: 'flex', height: '100%', position: 'relative' }}>

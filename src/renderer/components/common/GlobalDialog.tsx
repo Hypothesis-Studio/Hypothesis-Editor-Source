@@ -74,8 +74,8 @@ export const GlobalDialog: React.FC = () => {
           {buttons.map((btn, i) => {
             const styles: Record<string, React.CSSProperties> = {
               primary: { background: 'var(--theme-accent)', color: '#ffffff', border: 'none' },
-              secondary: { background: 'var(--theme-bg-tertiary)', color: 'var(--theme-fg)', border: '1px solid var(--theme-border-light)' },
-              danger: { background: 'var(--theme-error)', color: '#ffffff', border: 'none' },
+              secondary: { background: 'transparent', color: 'var(--theme-fg-muted)', border: '1px solid var(--theme-border)' },
+              danger: { background: '#e53e3e', color: '#ffffff', border: 'none' },
             };
             const style = styles[btn.variant || 'primary'];
             return (
