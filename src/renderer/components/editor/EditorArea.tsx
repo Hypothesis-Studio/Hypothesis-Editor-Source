@@ -156,7 +156,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSett
         </div>
       )}
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {isDiffMode ? (
           <DiffEditor originalTab={diffOriginalTab!} modifiedTab={diffModifiedTab!} />
         ) : isAgentTab ? (
