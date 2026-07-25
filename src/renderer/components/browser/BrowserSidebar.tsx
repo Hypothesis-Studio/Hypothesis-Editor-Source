@@ -155,7 +155,7 @@ const HistoryView: React.FC<{ onNavigate: (url: string) => void }> = ({ onNaviga
                   style={{ ...S.itemAction, opacity: hover === h.id ? 1 : 0 }}
                   onClick={e => { e.stopPropagation(); deleteHistory(h.id); }}
                   title="Remove"
-                >×</button>
+                ><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               </div>
             ))}
           </div>
@@ -196,7 +196,7 @@ const BookmarksView: React.FC<{ onNavigate: (url: string) => void }> = ({ onNavi
         <div style={S.itemTitle}>{b.title || b.url}</div>
         <div style={S.itemUrl}>{b.url}</div>
       </div>
-      <button style={{ ...S.itemAction, opacity: hover === b.id ? 1 : 0 }} onClick={e => { e.stopPropagation(); deleteBookmark(b.id); }} title="Remove">×</button>
+      <button style={{ ...S.itemAction, opacity: hover === b.id ? 1 : 0 }} onClick={e => { e.stopPropagation(); deleteBookmark(b.id); }} title="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
   );
 
@@ -208,9 +208,15 @@ const BookmarksView: React.FC<{ onNavigate: (url: string) => void }> = ({ onNavi
         {!search && bookmarkFolders.map(folder => (
           <div key={folder.id}>
             <div style={S.folderRow} onClick={() => toggleFolder(folder.id)}>
-              <span>{expandedFolders.has(folder.id) ? '📂' : '📁'}</span>
+              {expandedFolders.has(folder.id)
+                ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              }
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</span>
-              <span style={{ fontSize: 10 }}>{expandedFolders.has(folder.id) ? '▾' : '▸'}</span>
+              {expandedFolders.has(folder.id)
+                ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              }
             </div>
             {expandedFolders.has(folder.id) && (
               <div style={{ paddingLeft: 12 }}>
@@ -221,7 +227,10 @@ const BookmarksView: React.FC<{ onNavigate: (url: string) => void }> = ({ onNavi
         ))}
         {/* Root bookmarks */}
         {rootBookmarks.length === 0 && bookmarkFolders.length === 0 && (
-          <div style={S.empty}><span style={{ fontSize: 28 }}>⭐</span><span style={{ fontSize: 12 }}>No bookmarks yet</span></div>
+          <div style={S.empty}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            <span style={{ fontSize: 12 }}>No bookmarks yet</span>
+          </div>
         )}
         {rootBookmarks.map(renderBookmark)}
       </div>
@@ -280,7 +289,12 @@ const DownloadsView: React.FC = () => {
 
   return (
     <div style={S.list}>
-      {downloads.length === 0 && <div style={S.empty}><span style={{ fontSize: 28 }}>⬇</span><span style={{ fontSize: 12 }}>No downloads</span></div>}
+      {downloads.length === 0 && (
+        <div style={S.empty}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span style={{ fontSize: 12 }}>No downloads</span>
+        </div>
+      )}
       {active.length > 0 && <><div style={S.groupLabel}>Active</div>{active.map(renderDl)}</>}
       {done.length > 0 && <><div style={S.groupLabel}>Completed</div>{done.map(renderDl)}</>}
       {done.length > 0 && <button style={S.clearBtn} onClick={clearDownloads}>Clear Completed</button>}
@@ -304,7 +318,7 @@ const BrowserSidebar: React.FC<Props> = ({ webviewRefs }) => {
         <>
           <div style={S.header}>
             <span style={S.headerTitle}>{sidebarView ? titles[sidebarView] : ''}</span>
-            <button style={S.closeBtn} onClick={() => setSidebarView(null)} title="Close">×</button>
+            <button style={S.closeBtn} onClick={() => setSidebarView(null)} title="Close"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           {sidebarView === 'history' && <HistoryView onNavigate={handleNavigate} />}
           {sidebarView === 'bookmarks' && <BookmarksView onNavigate={handleNavigate} />}

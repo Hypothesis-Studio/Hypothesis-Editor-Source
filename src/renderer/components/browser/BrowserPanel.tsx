@@ -39,9 +39,14 @@ const S = {
   },
 };
 
+// SVG icons used in crash screen
+const IconCrash = () => <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></svg>;
+
 const BrowserPanel: React.FC = () => {
   const { tabs, activeTabId, createTab, init, navigate, updateTab, addHistory, findBarVisible, findQuery } = useBrowserStore();
   const webviewRefs = useRef<Map<string, Electron.WebviewTag>>(new Map());
+  // Track the URL each webview was initially mounted with — navigation is done imperatively via loadURL
+  const mountedUrls = useRef<Map<string, string>>(new Map());
   const [crashed, setCrashed] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState<number>(0);
   const [showProgress, setShowProgress] = useState(false);
@@ -175,7 +180,7 @@ const BrowserPanel: React.FC = () => {
             <div key={tab.id} style={{ flex: 1, display: tab.id === activeTabId ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
               {crashed === tab.id ? (
                 <div style={S.crashScreen}>
-                  <span style={{ fontSize: 32 }}>💥</span>
+                  <IconCrash />
                   <span style={{ fontSize: 15 }}>This tab crashed</span>
                   <button style={S.crashBtn} onClick={() => handleReload(tab.id)}>Reload</button>
                 </div>
@@ -183,11 +188,24 @@ const BrowserPanel: React.FC = () => {
                 <webview
                   ref={(el) => {
                     if (el) {
-                      webviewRefs.current.set(tab.id, el as unknown as Electron.WebviewTag);
-                      attachWebviewListeners(tab.id, el as unknown as Electron.WebviewTag);
+                      const wv = el as unknown as Electron.WebviewTag;
+                      const initialUrl = mountedUrls.current.get(tab.id);
+                      if (!initialUrl) {
+                        // First mount — record initial URL; webview src handles initial load
+                        mountedUrls.current.set(tab.id, tab.url);
+                        webviewRefs.current.set(tab.id, wv);
+                        attachWebviewListeners(tab.id, wv);
+                      } else if (initialUrl !== tab.url && !tab.url.startsWith('about:')) {
+                        // URL changed by store action — load imperatively, update tracked URL
+                        mountedUrls.current.set(tab.id, tab.url);
+                        webviewRefs.current.set(tab.id, wv);
+                        try { (wv as any).loadURL(tab.url); } catch {}
+                      } else {
+                        webviewRefs.current.set(tab.id, wv);
+                      }
                     }
                   }}
-                  src={tab.url}
+                  src={mountedUrls.current.get(tab.id) ?? tab.url}
                   style={S.webview}
                   allowpopups="true"
                   webpreferences="contextIsolation=yes, javascript=yes"

@@ -77,9 +77,9 @@ const BrowserFindBar: React.FC<Props> = ({ webviewRefs }) => {
       <span style={S.count}>
         {findResults ? `${findResults.activeMatchOrdinal} / ${findResults.matches}` : ''}
       </span>
-      <button style={S.btn} onClick={() => find(findQuery, false)} title="Previous (Shift+Enter)">↑</button>
-      <button style={S.btn} onClick={() => find(findQuery, true)} title="Next (Enter)">↓</button>
-      <button style={S.btn} onClick={close} title="Close (Escape)">×</button>
+      <button style={S.btn} onClick={() => find(findQuery, false)} title="Previous (Shift+Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+      <button style={S.btn} onClick={() => find(findQuery, true)} title="Next (Enter)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+      <button style={S.btn} onClick={close} title="Close (Escape)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
   );
 };
