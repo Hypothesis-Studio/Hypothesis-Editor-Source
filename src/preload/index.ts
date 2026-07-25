@@ -732,6 +732,61 @@ const api = {
     },
   },
 
+  // Browser
+  browser: {
+    tabs: {
+      list: () => ipcRenderer.invoke('browser:tab:list'),
+      create: (url?: string) => ipcRenderer.invoke('browser:tab:create', url),
+      close: (id: string) => ipcRenderer.invoke('browser:tab:close', id),
+      activate: (id: string) => ipcRenderer.invoke('browser:tab:activate', id),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('browser:tab:update', id, updates),
+    },
+    nav: {
+      loadUrl: (tabId: string, url: string) => ipcRenderer.invoke('browser:nav:load-url', tabId, url),
+      goBack: (tabId: string) => ipcRenderer.invoke('browser:nav:go-back', tabId),
+      goForward: (tabId: string) => ipcRenderer.invoke('browser:nav:go-forward', tabId),
+      reload: (tabId: string) => ipcRenderer.invoke('browser:nav:reload', tabId),
+      stop: (tabId: string) => ipcRenderer.invoke('browser:nav:stop', tabId),
+    },
+    history: {
+      list: (limit?: number) => ipcRenderer.invoke('browser:history:list', limit),
+      search: (query: string) => ipcRenderer.invoke('browser:history:search', query),
+      delete: (id: string) => ipcRenderer.invoke('browser:history:delete', id),
+      clear: () => ipcRenderer.invoke('browser:history:clear'),
+      add: (url: string, title: string, favicon: string | null) => ipcRenderer.invoke('browser:history:add', url, title, favicon),
+    },
+    bookmarks: {
+      list: () => ipcRenderer.invoke('browser:bookmark:list'),
+      add: (url: string, title: string, favicon: string | null, folderId: string | null) => ipcRenderer.invoke('browser:bookmark:add', url, title, favicon, folderId),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('browser:bookmark:update', id, updates),
+      delete: (id: string) => ipcRenderer.invoke('browser:bookmark:delete', id),
+      createFolder: (name: string, parentId: string | null) => ipcRenderer.invoke('browser:bookmark:folder:create', name, parentId),
+      deleteFolder: (id: string) => ipcRenderer.invoke('browser:bookmark:folder:delete', id),
+    },
+    downloads: {
+      list: () => ipcRenderer.invoke('browser:download:list'),
+      pause: (id: string) => ipcRenderer.invoke('browser:download:pause', id),
+      resume: (id: string) => ipcRenderer.invoke('browser:download:resume', id),
+      cancel: (id: string) => ipcRenderer.invoke('browser:download:cancel', id),
+      clear: () => ipcRenderer.invoke('browser:download:clear'),
+      show: (id: string) => ipcRenderer.invoke('browser:download:show', id),
+      onProgress: (callback: (dl: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, dl: unknown) => callback(dl);
+        ipcRenderer.on('browser:evt:download-progress', handler);
+        return () => ipcRenderer.removeListener('browser:evt:download-progress', handler);
+      },
+    },
+    search: {
+      suggest: (query: string) => ipcRenderer.invoke('browser:search:suggest', query),
+    },
+    settings: {
+      get: () => ipcRenderer.invoke('browser:settings:get'),
+      set: (updates: unknown) => ipcRenderer.invoke('browser:settings:set', updates),
+    },
+    openExternal: (url: string) => ipcRenderer.invoke('browser:open:external', url),
+    clearData: (options: unknown) => ipcRenderer.invoke('browser:clear:data', options),
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),

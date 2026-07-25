@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## [0.2.5] - 2026-07-25
+
+### Added
+- **Web Browser** — full production-grade embedded browser
+  - Multi-tab browsing dengan tab bar (add, close, pin, favicon, loading spinner)
+  - Address bar dengan lock icon (HTTPS), search suggestions (history + bookmarks + URL detect)
+  - Back, Forward, Reload/Stop, Home navigation buttons
+  - Bookmark manager — add/remove/folders, star button di toolbar
+  - History sidebar — grouped by day (Today/Yesterday/weekday/date), search, delete, clear all
+  - Downloads sidebar — progress bar, speed, pause/resume/cancel, show in folder, clear completed
+  - Find in page (Ctrl+F) dengan previous/next/close
+  - Zoom in/out/reset dengan level indicator
+  - Developer Tools toggle
+  - New Tab page — clock, search bar, quick links, recent visits
+  - Keyboard shortcut: `Ctrl+Shift+B`
+  - ActivityBar: globe/browser icon di Group 2
+  - View menu entry: "Web Browser" `CmdOrCtrl+Shift+B`
+  - Command Palette: "Open Web Browser"
+  - Webview crash recovery screen
+  - Download progress via Electron `will-download` session event
+  - Settings: homepage, search engine, download path, JS/images toggle, proxy
+  - Persistent history, bookmarks, downloads via JSON files di userData
+  - `app.getAppPath()`-safe WASM path resolution (same pattern as DB Explorer)
+
 ## [0.2.4] - 2026-07-25
 
 ### Added

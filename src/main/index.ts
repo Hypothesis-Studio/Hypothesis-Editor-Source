@@ -28,6 +28,7 @@ import { ProjectInsightsService } from './services/insights/ProjectInsightsServi
 import { PreviewService } from './services/preview/PreviewService';
 import { RestClientService } from './services/rest-client/RestClientService';
 import { DatabaseService } from './services/database/DatabaseService';
+import { BrowserService } from './services/browser/BrowserService';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -70,6 +71,7 @@ if (!gotTheLock) {
   let windowManager: WindowManager;
   let appStore: AppStore;
   let databaseService: DatabaseService | undefined;
+  let browserService: BrowserService | undefined;
 
   app.whenReady().then(async () => {
     logger.info(`${APP_NAME} starting...`, {
@@ -131,6 +133,9 @@ if (!gotTheLock) {
     // Initialize Database Explorer service
     databaseService = new DatabaseService(app.getPath('userData'));
 
+    // Initialize Browser service
+    browserService = new BrowserService(() => BrowserWindow.getAllWindows()[0] ?? null);
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -176,7 +181,8 @@ if (!gotTheLock) {
       insightsService,
       previewService,
       restClientService,
-      databaseService,
+      databaseService: databaseService!,
+      browserService: browserService!,
     });
 
     // Create application menu
@@ -220,6 +226,7 @@ if (!gotTheLock) {
     killAllTerminals();
     killAllRunProcesses();
     await databaseService?.dispose();
+    browserService?.dispose();
     if (appStore) {
       await appStore.save();
     }

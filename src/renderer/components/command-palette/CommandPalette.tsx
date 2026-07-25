@@ -35,11 +35,12 @@ interface CommandPaletteProps {
   onOpenInsights?: () => void;
   onOpenRestClient?: () => void;
   onOpenDatabase?: () => void;
+  onOpenBrowser?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose, onNewFile, onOpenFile, onOpenFolder, onCloseFolder, onOpenSettings, onSave, onSaveAs,
-  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent, onOpenInsights, onOpenRestClient, onOpenDatabase,
+  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent, onOpenInsights, onOpenRestClient, onOpenDatabase, onOpenBrowser,
 }) => {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -86,6 +87,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'view.agent', label: 'Open AI Agent', category: 'View', keybinding: 'Ctrl+Shift+A', action: () => { onOpenAgent?.(); onClose(); }, hidden: !agentEnabled },
     { id: 'view.restclient', label: 'Open REST Client', category: 'View', keybinding: 'Ctrl+Shift+R', action: () => { onOpenRestClient?.(); onClose(); } },
     { id: 'view.database', label: 'Open Database Explorer', category: 'View', keybinding: 'Ctrl+Shift+D', action: () => { onOpenDatabase?.(); onClose(); } },
+    { id: 'view.browser', label: 'Open Web Browser', category: 'View', keybinding: 'Ctrl+Shift+B', action: () => { onOpenBrowser?.(); onClose(); } },
     { id: 'view.insights', label: 'Open Project Insights', category: 'View', action: () => { onOpenInsights?.(); onClose(); } },
 
     // ── View: Toggles ──────────────────────────────────────────────

@@ -31,6 +31,9 @@ import type { RestClientService } from '../services/rest-client/RestClientServic
 import { registerDatabaseIPC } from './database.ipc';
 import { DatabaseService } from '../services/database/DatabaseService';
 export { DatabaseService };
+import { registerBrowserIPC } from './browser.ipc';
+import { BrowserService } from '../services/browser/BrowserService';
+export { BrowserService };
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -45,6 +48,7 @@ interface IPCDependencies {
   previewService: PreviewService;
   restClientService: RestClientService;
   databaseService: DatabaseService;
+  browserService: BrowserService;
 }
 
 export function registerIPC(deps: IPCDependencies): void {
@@ -71,6 +75,7 @@ export function registerIPC(deps: IPCDependencies): void {
   registerPreviewIPC(deps.previewService);
   registerRestClientIPC(deps.restClientService);
   registerDatabaseIPC(deps.databaseService, () => require('electron').BrowserWindow.getAllWindows()[0] ?? null);
+  registerBrowserIPC(deps.browserService, () => require('electron').BrowserWindow.getAllWindows()[0] ?? null);
 }
 
 /** Kill all run processes on app quit */

@@ -105,6 +105,7 @@ export function createApplicationMenu(): Menu {
         ] : []),
         { label: 'REST Client', accelerator: 'CmdOrCtrl+Shift+R', click: () => send('menu:open-rest-client') },
         { label: 'Database Explorer', accelerator: 'CmdOrCtrl+Shift+D', click: () => send('menu:open-database') },
+        { label: 'Web Browser', accelerator: 'CmdOrCtrl+Shift+B', click: () => send('menu:open-browser') },
         { type: 'separator' },
         // Zoom
         { role: 'resetZoom' },

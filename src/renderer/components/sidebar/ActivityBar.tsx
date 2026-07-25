@@ -16,6 +16,7 @@ interface ActivityBarProps {
   onOpenInsights?: () => void;
   onOpenRestClient?: () => void;
   onOpenDatabase?: () => void;
+  onOpenBrowser?: () => void;
 }
 
 // ── Single icon button ─────────────────────────────────────────────
@@ -58,6 +59,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   onOpenInsights,
   onOpenRestClient,
   onOpenDatabase,
+  onOpenBrowser,
 }) => {
   const { activeSidebarView, setActiveSidebarView, panelVisible, activePanel } = useAppStore();
   const agentEnabled = useSettingsStore(s => s.settings['agent.enabled'] !== false);
@@ -96,6 +98,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
         )}
         <Item icon="plug"      label="REST Client"       onClick={onOpenRestClient} />
         <Item icon="database"  label="Database Explorer" onClick={onOpenDatabase} />
+        <Item icon="browser"   label="Web Browser"       onClick={onOpenBrowser} />
         <Item icon="dashboard" label="Project Insights"  onClick={onOpenInsights} />
       </div>
 
