@@ -217,7 +217,7 @@ const BrowserPanel: React.FC = () => {
                       }
                       return initialSrcs.current.get(tab.id)!;
                     })()}
-                    style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                    style={{ width: '100%', height: bodyHeight, border: 'none', display: 'block', flexShrink: 0 }}
                     allowpopups="true"
                     webpreferences="contextIsolation=yes, javascript=yes"
                   />
