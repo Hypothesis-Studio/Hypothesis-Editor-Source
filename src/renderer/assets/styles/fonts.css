@@ -6,42 +6,42 @@
 /* JetBrains Mono */
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  src: url('/fonts/JetBrainsMono-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Italic.woff2') format('woff2');
+  src: url('/fonts/JetBrainsMono-Italic.woff2') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Medium.woff2') format('woff2');
+  src: url('/fonts/JetBrainsMono-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+  src: url('/fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('./fonts/JetBrainsMono-Light.woff2') format('woff2');
+  src: url('/fonts/JetBrainsMono-Light.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -50,35 +50,35 @@
 /* Fira Code */
 @font-face {
   font-family: 'Fira Code';
-  src: url('./fonts/FiraCode-Regular.woff2') format('woff2');
+  src: url('/fonts/FiraCode-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Fira Code';
-  src: url('./fonts/FiraCode-Bold.woff2') format('woff2');
+  src: url('/fonts/FiraCode-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Fira Code';
-  src: url('./fonts/FiraCode-Medium.woff2') format('woff2');
+  src: url('/fonts/FiraCode-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Fira Code';
-  src: url('./fonts/FiraCode-Light.woff2') format('woff2');
+  src: url('/fonts/FiraCode-Light.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Fira Code';
-  src: url('./fonts/FiraCode-SemiBold.woff2') format('woff2');
+  src: url('/fonts/FiraCode-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -87,35 +87,35 @@
 /* Cascadia Code */
 @font-face {
   font-family: 'Cascadia Code';
-  src: url('./fonts/CascadiaCode-Regular.woff2') format('woff2');
+  src: url('/fonts/CascadiaCode-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Cascadia Code';
-  src: url('./fonts/CascadiaCode-Bold.woff2') format('woff2');
+  src: url('/fonts/CascadiaCode-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Cascadia Code';
-  src: url('./fonts/CascadiaCode-SemiBold.woff2') format('woff2');
+  src: url('/fonts/CascadiaCode-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Cascadia Code';
-  src: url('./fonts/CascadiaCode-Italic.woff2') format('woff2');
+  src: url('/fonts/CascadiaCode-Italic.woff2') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
 }
 @font-face {
   font-family: 'Cascadia Code';
-  src: url('./fonts/CascadiaCode-Light.woff2') format('woff2');
+  src: url('/fonts/CascadiaCode-Light.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -124,42 +124,42 @@
 /* Geist Mono (Vercel) */
 @font-face {
   font-family: 'Geist Mono';
-  src: url('./fonts/GeistMono-Regular.woff2') format('woff2');
+  src: url('/fonts/GeistMono-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Geist Mono';
-  src: url('./fonts/GeistMono-Bold.woff2') format('woff2');
+  src: url('/fonts/GeistMono-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Geist Mono';
-  src: url('./fonts/GeistMono-Medium.woff2') format('woff2');
+  src: url('/fonts/GeistMono-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Geist Mono';
-  src: url('./fonts/GeistMono-Light.woff2') format('woff2');
+  src: url('/fonts/GeistMono-Light.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Geist Mono';
-  src: url('./fonts/GeistMono-SemiBold.woff2') format('woff2');
+  src: url('/fonts/GeistMono-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Geist Mono';
-  src: url('./fonts/GeistMono-Italic.woff2') format('woff2');
+  src: url('/fonts/GeistMono-Italic.woff2') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -168,42 +168,42 @@
 /* Monaspace Argon (GitHub) */
 @font-face {
   font-family: 'Monaspace Argon';
-  src: url('./fonts/MonaspaceArgon-Regular.woff2') format('woff2');
+  src: url('/fonts/MonaspaceArgon-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Monaspace Argon';
-  src: url('./fonts/MonaspaceArgon-Bold.woff2') format('woff2');
+  src: url('/fonts/MonaspaceArgon-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Monaspace Argon';
-  src: url('./fonts/MonaspaceArgon-Medium.woff2') format('woff2');
+  src: url('/fonts/MonaspaceArgon-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Monaspace Argon';
-  src: url('./fonts/MonaspaceArgon-Light.woff2') format('woff2');
+  src: url('/fonts/MonaspaceArgon-Light.woff2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Monaspace Argon';
-  src: url('./fonts/MonaspaceArgon-SemiBold.woff2') format('woff2');
+  src: url('/fonts/MonaspaceArgon-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Monaspace Argon';
-  src: url('./fonts/MonaspaceArgon-Italic.woff2') format('woff2');
+  src: url('/fonts/MonaspaceArgon-Italic.woff2') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;

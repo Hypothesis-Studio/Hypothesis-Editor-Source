@@ -33,11 +33,12 @@ interface CommandPaletteProps {
   onOpenAbout?: () => void;
   onOpenAgent?: () => void;
   onOpenInsights?: () => void;
+  onOpenRestClient?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose, onNewFile, onOpenFile, onOpenFolder, onCloseFolder, onOpenSettings, onSave, onSaveAs,
-  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent, onOpenInsights,
+  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent, onOpenInsights, onOpenRestClient,
 }) => {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -82,6 +83,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'view.git', label: 'Show Source Control', category: 'View', keybinding: 'Ctrl+Shift+G', action: () => { app.getState().setActiveSidebarView('git'); app.getState().sidebarVisible || app.getState().toggleSidebar(); onClose(); } },
     { id: 'view.extensions', label: 'Show Extensions', category: 'View', keybinding: 'Ctrl+Shift+X', action: () => { app.getState().setActiveSidebarView('extensions'); app.getState().sidebarVisible || app.getState().toggleSidebar(); onClose(); } },
     { id: 'view.agent', label: 'Open AI Agent', category: 'View', keybinding: 'Ctrl+Shift+A', action: () => { onOpenAgent?.(); onClose(); }, hidden: !agentEnabled },
+    { id: 'view.restclient', label: 'Open REST Client', category: 'View', keybinding: 'Ctrl+Shift+R', action: () => { onOpenRestClient?.(); onClose(); } },
     { id: 'view.insights', label: 'Open Project Insights', category: 'View', action: () => { onOpenInsights?.(); onClose(); } },
 
     // ── View: Toggles ──────────────────────────────────────────────

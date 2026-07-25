@@ -1,5 +1,59 @@
 # CHANGELOG
 
+## [0.2.3] - 2026-07-25
+
+### Added
+- **REST Client** — full production-grade API testing client (like Postman/Insomnia)
+  - Collections and folder organization with drag-and-drop ordering
+  - Request builder: URL bar, Params, Headers, Body (raw/form-data/urlencoded/binary), Auth, Scripts tabs
+  - Auth types: Bearer, Basic, API Key, OAuth2, Digest, AWS SigV4
+  - Pre-request and test scripts (sandboxed JS engine)
+  - Response viewer: Body (pretty/raw), Headers, Cookies, Timeline, Tests, TLS Info
+  - JSON syntax highlighting in response body
+  - Environments with variable sets and `{{variable}}` interpolation
+  - Collection Runner with per-request progress and assertion results
+  - Import: Postman v2/v2.1, OpenAPI 3, Swagger 2, Insomnia, HAR, cURL
+  - Export: REST Client native, Postman v2.1, OpenAPI 3, cURL, HAR
+  - Request history with status, duration, re-open, and Clear button
+  - cURL generator (right-click request → Generate cURL → copies to clipboard)
+  - Inline rename on collection/request (replaces broken `prompt()` in Electron)
+  - Themed confirmation dialogs for delete (uses app `showConfirm` from dialogStore)
+  - Open via `Ctrl+Shift+R` or Activity Bar send icon
+  - View menu entry and Command Palette: "Open REST Client"
+- **ModalShell** — shared modal wrapper component (`src/renderer/components/common/ModalShell.tsx`)
+  - Standardized overlay: backdrop blur, z-index 99999, 8px border-radius, themed border and box-shadow
+  - `modalStyles` export with shared button/input/label styles for all dialogs
+  - Used by CurlImportDialog, ImportDialog, ExportDialog, EnvironmentManager
+- **DocumentationPage** redesign
+  - Left navigation sidebar with smooth anchor scroll
+  - New sections: REST Client, Project Insights, File Preview, Extensions
+  - Updated: AI Agent (full tool list, slash commands, providers), Settings, Sidebar, Tips & Tricks
+- **KeyboardShortcutsPage** update
+  - New sections: REST Client shortcuts, Multi-Cursor expanded
+  - Slash commands rendered with muted style to distinguish from keyboard shortcuts
+  - `kbd` keys styled with border-bottom for physical keycap look
+  - Multi-key sequences rendered as separate badge pairs
+
+### Changed
+- REST Client keyboard shortcut changed from `Ctrl+Shift+F` to `Ctrl+Shift+R` (Ctrl+Shift+F is Search)
+  - Updated in: Electron menu accelerator, App.tsx handler, CommandPalette, KeyboardShortcutsPage, ActivityBar tooltip
+- All REST Client dialogs refactored to use `ModalShell` for consistent app-wide modal styling
+- Context menu in REST Client sidebar: `zIndex` raised to 9998/9999, position clamped to viewport, danger items have separator and red-tinted hover, icon opacity 0.85
+- Delete actions in REST Client context menu now use `showConfirm()` instead of native `confirm()` — matches FileExplorer behavior and respects app theme
+- `EnvironmentManager`: Add button icon changed from invalid `plus` to `add`
+- `CurlImportDialog`: icon updated to `terminal`
+- `ImportDialog`: icon updated to `upload`, auto-detects format from file extension
+- `ExportDialog`: icon updated to `download`
+
+### Fixed
+- **Error #310** in `ResponseViewer.tsx` — `prettyBody` useMemo was called after conditional early returns (Rules of Hooks violation); moved above all early returns
+- **Font `ERR_FILE_NOT_FOUND`** — all 28 font files (JetBrainsMono, FiraCode, CascadiaCode, GeistMono, MonaspaceArgon variants) copied to `public/fonts/`; `@font-face` paths in `fonts.css` updated from relative `./fonts/` to absolute `/fonts/` so Vite serves them from the public root
+- **REST Client Send button** restyled to match AI Agent send button: square 36×36px, `var(--theme-accent)` background, inline SVG arrow/cancel icons, no text label
+- **Editor Add button** cleanup: removed dashed border, icon changed from `plus` to `add`, proper hover effect added
+- **Rename via context menu** no longer uses `prompt()` (broken in Electron renderer); replaced with inline `<input>` rendered in place of the name span, commit on Enter/blur, cancel on Escape
+- **Generate cURL** in context menu wrapped in try/catch with proper error logging
+- **REST Client toolbar icons**: Import cURL → `terminal`, Import → `upload`, Export → `download` (all match valid codi SVG filenames)
+
 ## [0.2.2] - 2026-07-24
 
 ### Added

@@ -26,6 +26,7 @@ import { AgentLogService } from './services/agent/AgentLogService';
 import { RateLimiter } from './services/agent/RateLimiter';
 import { ProjectInsightsService } from './services/insights/ProjectInsightsService';
 import { PreviewService } from './services/preview/PreviewService';
+import { RestClientService } from './services/rest-client/RestClientService';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -33,6 +34,20 @@ import { createApplicationMenu } from './menu';
 // which is needed for proper plugin loading. Electron's default sandbox is sufficient.
 
 app.on('web-contents-created', (_event, contents) => {
+  // Block devtools shortcuts in production builds
+  if (app.isPackaged) {
+    contents.on('before-input-event', (_evt, input) => {
+      const isDevToolsShortcut =
+        (input.control && input.shift && input.key.toLowerCase() === 'i') || // Ctrl+Shift+I
+        (input.control && input.shift && input.key.toLowerCase() === 'j') || // Ctrl+Shift+J
+        input.key === 'F12';                                                  // F12
+      if (isDevToolsShortcut) {
+        _evt.preventDefault();
+        contents.closeDevTools();
+      }
+    });
+  }
+
   contents.on('will-attach-webview', (event, webPreferences) => {
     delete webPreferences.preload;
     webPreferences.nodeIntegration = false;
@@ -108,6 +123,9 @@ if (!gotTheLock) {
     // Initialize Preview service
     const previewService = new PreviewService();
 
+    // Initialize REST Client service
+    const restClientService = new RestClientService(appStore);
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -152,6 +170,7 @@ if (!gotTheLock) {
       agentService,
       insightsService,
       previewService,
+      restClientService,
     });
 
     // Create application menu

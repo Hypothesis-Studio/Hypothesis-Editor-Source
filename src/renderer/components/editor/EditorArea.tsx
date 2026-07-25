@@ -10,6 +10,7 @@ import { Breadcrumb } from './Breadcrumb';
 import { WelcomePage } from '../pages/WelcomePage';
 import { AgentPanel } from '../agent/AgentPanel';
 import { ProjectInsightsPanel } from '../insights/ProjectInsightsPanel';
+import { RestClientPanel } from '../rest-client/RestClientPanel';
 import { PreviewPanel } from '../preview/PreviewPanel';
 import { useAppStore } from '../../stores/appStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -93,6 +94,7 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSett
 
   const isAgentTab = activeTab?.id === 'agent-tab';
   const isInsightsTab = activeTab?.id === 'insights-tab';
+  const isRestClientTab = activeTab?.id === 'rest-client-tab';
   const canPreview = activeTab ? isPreviewable(activeTab.filePath) : false;
   const currentViewMode = activeTab ? getViewMode(activeTab.id) : 'code';
 
@@ -157,6 +159,8 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSett
           <AgentPanel onOpenSettings={onOpenSettings} />
         ) : isInsightsTab ? (
           <ProjectInsightsPanel rootPath={(window as any).__hypothesis_rootPath || null} />
+        ) : isRestClientTab ? (
+          <RestClientPanel />
         ) : canPreview && activeTab ? (
           previewLayout === 'side-by-side' ? (
             <div style={{ display: 'flex', height: '100%', position: 'relative' }}>

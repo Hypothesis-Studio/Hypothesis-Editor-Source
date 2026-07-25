@@ -11,6 +11,7 @@ interface ActivityBarProps {
   onOpenSettings?: () => void;
   onOpenAgent?: () => void;
   onOpenInsights?: () => void;
+  onOpenRestClient?: () => void;
 }
 
 const views = [
@@ -26,7 +27,7 @@ const bottomItems = [
   { id: 'output', label: 'Output', icon: 'output' },
 ];
 
-export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpenAgent, onOpenInsights }) => {
+export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpenAgent, onOpenInsights, onOpenRestClient }) => {
   const {
     activeSidebarView, setActiveSidebarView,
     togglePanel, panelVisible, activePanel, setActivePanel,
@@ -81,7 +82,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpen
           <button
             onClick={onOpenAgent}
             style={{ ...iconBtnStyle(false) }}
-            title="AI Agent (Ctrl+Shift+A)"
+            title="AI Agent"
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--theme-fg)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
           >
@@ -98,6 +99,17 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({ onOpenSettings, onOpen
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
         >
           <Icon name="dashboard" size={20} />
+        </button>
+
+        {/* REST Client */}
+        <button
+          onClick={onOpenRestClient}
+          style={{ ...iconBtnStyle(false) }}
+          title="REST Client"
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--theme-fg)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
+        >
+          <Icon name="plug" size={20} />
         </button>
 
         {bottomItems.map((p) => (

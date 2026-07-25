@@ -248,6 +248,7 @@ const App: React.FC = () => {
       on('menu:toggle-fullscreen', () => { /* F11 handled via window api */ }),
       on('menu:toggle-zen-mode', () => useAppStore.getState().toggleZenMode()),
       on('menu:toggle-agent', () => openAgentTab()),
+      on('menu:open-rest-client', () => openRestClientTab()),
       on('menu:about', () => setShowAbout(true)),
       // Edit menu actions
       on('menu:undo', () => useEditorStore.getState().triggerUndo()),
@@ -327,6 +328,7 @@ const App: React.FC = () => {
       else if (ctrl && shift && e.key === 'G') { e.preventDefault(); setActiveSidebarView('git'); }
       else if (ctrl && shift && e.key === 'X') { e.preventDefault(); setActiveSidebarView('extensions'); }
       else if (ctrl && shift && e.key === 'A') { e.preventDefault(); openAgentTab(); }
+      else if (ctrl && shift && e.key === 'R') { e.preventDefault(); openRestClientTab(); }
       else if (ctrl && shift && e.key === 'Delete') { e.preventDefault(); togglePanel(); setActivePanel('problems'); }
       else if (e.key === 'F11') { e.preventDefault(); window.api.window.maximize(); }
       else if (ctrl && shift && e.key === 'Z') { e.preventDefault(); useAppStore.getState().toggleZenMode(); }
@@ -436,6 +438,35 @@ const App: React.FC = () => {
         filePath: null,
         fileName: 'Insights',
         language: 'insights',
+        content: '',
+        isDirty: false,
+        isPinned: true,
+        isPreview: false,
+        viewState: null,
+        scrollTop: 0,
+        scrollLeft: 0,
+        cursorPosition: { line: 1, column: 1 },
+        encoding: 'UTF-8',
+        lineEnding: 'LF',
+        savedContent: '',
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+      });
+    }
+  }, []);
+
+  // ── Open REST Client as editor tab ──────────────────────────────
+  const openRestClientTab = useCallback(() => {
+    const restClientTabId = 'rest-client-tab';
+    const existing = useEditorStore.getState().tabs.find(t => t.id === restClientTabId);
+    if (existing) {
+      useEditorStore.getState().setActiveTab(restClientTabId);
+    } else {
+      useEditorStore.getState().openTab({
+        id: restClientTabId,
+        filePath: null,
+        fileName: 'REST Client',
+        language: 'rest-client',
         content: '',
         isDirty: false,
         isPinned: true,
@@ -638,7 +669,7 @@ const App: React.FC = () => {
         onOpenShortcuts={() => setShowShortcuts(true)}
       />
       <div className="flex flex-1 overflow-hidden">
-        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} />}
+        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} onOpenRestClient={openRestClientTab} />}
         {sidebarVisible && (
           <Sidebar
             activeView={activeSidebarView}
@@ -675,6 +706,7 @@ const App: React.FC = () => {
           onOpenAbout={() => { hideCommandPalette(); setShowAbout(true); }}
           onOpenAgent={agentEnabled ? () => { hideCommandPalette(); openAgentTab(); } : undefined}
           onOpenInsights={() => { hideCommandPalette(); openInsightsTab(); }}
+          onOpenRestClient={() => { hideCommandPalette(); openRestClientTab(); }}
         />
       )}
 

@@ -26,6 +26,8 @@ import { registerInsightsIPC } from './insights.ipc';
 import type { ProjectInsightsService } from '../services/insights/ProjectInsightsService';
 import { registerPreviewIPC } from './preview.ipc';
 import type { PreviewService } from '../services/preview/PreviewService';
+import { registerRestClientIPC } from './rest-client.ipc';
+import type { RestClientService } from '../services/rest-client/RestClientService';
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -38,6 +40,7 @@ interface IPCDependencies {
   agentService: AgentService;
   insightsService: ProjectInsightsService;
   previewService: PreviewService;
+  restClientService: RestClientService;
 }
 
 export function registerIPC(deps: IPCDependencies): void {
@@ -62,6 +65,7 @@ export function registerIPC(deps: IPCDependencies): void {
   registerSearchIPC();
   registerInsightsIPC(deps.insightsService);
   registerPreviewIPC(deps.previewService);
+  registerRestClientIPC(deps.restClientService);
 }
 
 /** Kill all run processes on app quit */

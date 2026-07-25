@@ -1,7 +1,7 @@
 /**
  * Application Menu - Main process application menu.
  */
-import { Menu, BrowserWindow, shell } from 'electron';
+import { Menu, BrowserWindow, shell, app } from 'electron';
 import type { MenuItemConstructorOptions } from 'electron';
 
 export function createApplicationMenu(): Menu {
@@ -96,10 +96,14 @@ export function createApplicationMenu(): Menu {
           ],
         },
         { type: 'separator' },
-        // Developer
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
+        // Developer tools — only in dev mode
+        ...(!app.isPackaged ? [
+          { role: 'reload' } as MenuItemConstructorOptions,
+          { role: 'forceReload' } as MenuItemConstructorOptions,
+          { role: 'toggleDevTools' } as MenuItemConstructorOptions,
+          { type: 'separator' } as MenuItemConstructorOptions,
+        ] : []),
+        { label: 'REST Client', accelerator: 'CmdOrCtrl+Shift+R', click: () => send('menu:open-rest-client') },
         { type: 'separator' },
         // Zoom
         { role: 'resetZoom' },

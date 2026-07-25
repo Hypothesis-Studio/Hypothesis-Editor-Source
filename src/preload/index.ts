@@ -565,6 +565,87 @@ const api = {
     },
   },
 
+  // REST Client - API Testing
+  restClient: {
+    sendRequest: (requestId: string, collectionId: string) => ipcRenderer.invoke('rest-client:send-request', requestId, collectionId),
+    cancelRequest: (requestId: string) => ipcRenderer.invoke('rest-client:cancel-request', requestId),
+    collection: {
+      list: () => ipcRenderer.invoke('rest-client:collection:list'),
+      get: (id: string) => ipcRenderer.invoke('rest-client:collection:get', id),
+      create: (name: string, description?: string) => ipcRenderer.invoke('rest-client:collection:create', name, description),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('rest-client:collection:update', id, updates),
+      delete: (id: string) => ipcRenderer.invoke('rest-client:collection:delete', id),
+      export: (options: unknown) => ipcRenderer.invoke('rest-client:collection:export', options),
+      import: (content: string, format: string) => ipcRenderer.invoke('rest-client:collection:import', content, format),
+    },
+    request: {
+      create: (collectionId: string, request: unknown) => ipcRenderer.invoke('rest-client:request:create', collectionId, request),
+      update: (collectionId: string, requestId: string, updates: unknown) => ipcRenderer.invoke('rest-client:request:update', collectionId, requestId, updates),
+      delete: (collectionId: string, requestId: string) => ipcRenderer.invoke('rest-client:request:delete', collectionId, requestId),
+      duplicate: (collectionId: string, requestId: string) => ipcRenderer.invoke('rest-client:request:duplicate', collectionId, requestId),
+      move: (fromCollectionId: string, requestId: string, toCollectionId: string, index?: number) => ipcRenderer.invoke('rest-client:request:move', fromCollectionId, requestId, toCollectionId, index),
+    },
+    folder: {
+      create: (collectionId: string, name: string, parentId?: string) => ipcRenderer.invoke('rest-client:folder:create', collectionId, name, parentId),
+      update: (collectionId: string, folderId: string, updates: unknown) => ipcRenderer.invoke('rest-client:folder:update', collectionId, folderId, updates),
+      delete: (collectionId: string, folderId: string) => ipcRenderer.invoke('rest-client:folder:delete', collectionId, folderId),
+    },
+    env: {
+      list: () => ipcRenderer.invoke('rest-client:env:list'),
+      get: (id: string) => ipcRenderer.invoke('rest-client:env:get', id),
+      create: (name: string, variables?: unknown[]) => ipcRenderer.invoke('rest-client:env:create', name, variables),
+      update: (id: string, updates: unknown) => ipcRenderer.invoke('rest-client:env:update', id, updates),
+      delete: (id: string) => ipcRenderer.invoke('rest-client:env:delete', id),
+      activate: (id: string) => ipcRenderer.invoke('rest-client:env:activate', id),
+      deactivate: () => ipcRenderer.invoke('rest-client:env:deactivate'),
+      duplicate: (id: string) => ipcRenderer.invoke('rest-client:env:duplicate', id),
+    },
+    history: {
+      list: () => ipcRenderer.invoke('rest-client:history:list'),
+      clear: () => ipcRenderer.invoke('rest-client:history:clear'),
+      delete: (id: string) => ipcRenderer.invoke('rest-client:history:delete', id),
+      search: (query: string) => ipcRenderer.invoke('rest-client:history:search', query),
+    },
+    var: {
+      set: (key: string, value: string) => ipcRenderer.invoke('rest-client:var:set', key, value),
+      get: (key: string) => ipcRenderer.invoke('rest-client:var:get', key),
+      delete: (key: string) => ipcRenderer.invoke('rest-client:var:delete', key),
+      getAll: () => ipcRenderer.invoke('rest-client:var:get-all'),
+      resolve: (raw: string, collectionId?: string) => ipcRenderer.invoke('rest-client:var:resolve', raw, collectionId),
+    },
+    runner: {
+      start: (collectionId: string, config: unknown) => ipcRenderer.invoke('rest-client:runner:start', collectionId, config),
+      stop: () => ipcRenderer.invoke('rest-client:runner:stop'),
+      status: () => ipcRenderer.invoke('rest-client:runner:status'),
+    },
+    import: {
+      file: (content: string, format: string) => ipcRenderer.invoke('rest-client:import:file', content, format),
+      curl: (curlCommand: string) => ipcRenderer.invoke('rest-client:import:curl', curlCommand),
+    },
+    export: (options: unknown) => ipcRenderer.invoke('rest-client:export', options),
+    template: {
+      list: () => ipcRenderer.invoke('rest-client:template:list'),
+    },
+    generateCurl: (requestId: string, collectionId: string) => ipcRenderer.invoke('rest-client:generate-curl', requestId, collectionId),
+    events: {
+      onResponse: (callback: (data: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+        ipcRenderer.on('rest-client:event:response', handler);
+        return () => { ipcRenderer.removeListener('rest-client:event:response', handler); };
+      },
+      onRunnerProgress: (callback: (data: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+        ipcRenderer.on('rest-client:event:runner-progress', handler);
+        return () => { ipcRenderer.removeListener('rest-client:event:runner-progress', handler); };
+      },
+      onRunnerComplete: (callback: (data: unknown) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
+        ipcRenderer.on('rest-client:event:runner-complete', handler);
+        return () => { ipcRenderer.removeListener('rest-client:event:runner-complete', handler); };
+      },
+    },
+  },
+
   // Preview - File preview for HTML, Markdown, SVG, images, audio, video
   preview: {
     loadPreview: (filePath: string) => ipcRenderer.invoke('preview:load', filePath),
