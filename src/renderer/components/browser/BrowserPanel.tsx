@@ -60,8 +60,8 @@ const BrowserPanel: React.FC = () => {
 
   // webviewRefs: tabId → WebviewTag element (shared with Toolbar/FindBar)
   const webviewRefs = useRef<Map<string, Electron.WebviewTag>>(new Map());
-  // pendingNav: tabId → url queued before webview mounted
-  const pendingNav = useRef<Map<string, string>>(new Map());
+  // initialSrcs: stores the URL used as webview src on first mount — never changes after
+  const initialSrcs = useRef<Map<string, string>>(new Map());
   // Set of tabIds whose listeners are already attached
   const attachedIds = useRef<Set<string>>(new Set());
 
@@ -82,8 +82,8 @@ const BrowserPanel: React.FC = () => {
     if (wv) {
       try { (wv as any).loadURL(url); } catch (e) { console.warn('[Browser] loadURL failed', e); }
     } else {
-      // Webview not mounted yet — queue it
-      pendingNav.current.set(tabId, url);
+      // Webview not mounted yet — store as initial src
+      initialSrcs.current.set(tabId, url);
     }
   }, []);
 
@@ -248,16 +248,16 @@ const BrowserPanel: React.FC = () => {
                     const wv = el as unknown as Electron.WebviewTag;
                     webviewRefs.current.set(tab.id, wv);
                     attachListeners(tab.id, wv);
-                    // Fire any pending navigation queued before mount
-                    const queued = pendingNav.current.get(tab.id);
-                    if (queued) {
-                      pendingNav.current.delete(tab.id);
-                      setTimeout(() => {
-                        try { (wv as any).loadURL(queued); } catch {}
-                      }, 0);
-                    }
                   }}
-                  src={tab.url && !tab.url.startsWith('about:newtab') ? tab.url : DEFAULT_URL}
+                  src={(() => {
+                    // Freeze src on first render — never update it again
+                    // All subsequent navigation is done via wv.loadURL() imperatively
+                    if (!initialSrcs.current.has(tab.id)) {
+                      const url = tab.url && !tab.url.startsWith('about:newtab') ? tab.url : DEFAULT_URL;
+                      initialSrcs.current.set(tab.id, url);
+                    }
+                    return initialSrcs.current.get(tab.id)!;
+                  })()}
                   style={S.webview}
                   allowpopups="true"
                   webpreferences="contextIsolation=yes, javascript=yes"
