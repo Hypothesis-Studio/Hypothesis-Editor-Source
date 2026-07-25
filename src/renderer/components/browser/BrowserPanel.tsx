@@ -126,26 +126,7 @@ const BrowserPanel: React.FC = () => {
     wv.addEventListener('found-in-page', (e: any) => { useBrowserStore.setState({ findResults: e.result }); });
   }, [updateTab, addHistory, setAddressBarValue]);
 
-  // Find in page
-  useEffect(() => {
-    if (!activeTabId) return;
-    const wv = webviewRefs.current.get(activeTabId);
-    if (!wv || !domReadyIds.current.has(activeTabId)) return;
-    if (findBarVisible && findQuery) {
-      if (typeof wv.findInPage === 'function') wv.findInPage(findQuery, { findNext: false, forward: true });
-    } else {
-      if (typeof wv.stopFindInPage === 'function') try { wv.stopFindInPage('clearSelection'); } catch {}
-    }
-  }, [findBarVisible, findQuery, activeTabId]);
-
-  // Close find bar with Escape at panel level
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && findBarVisible) setFindBarVisible(false);
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [findBarVisible, setFindBarVisible]);
+  // Find in page is handled entirely by BrowserFindBar component
 
   const handleReload = (tabId: string) => {
     setCrashed(null);
@@ -220,24 +201,31 @@ const BrowserPanel: React.FC = () => {
                     >Reload</button>
                   </div>
                 ) : (
-                  <webview
-                    key={`wv-${tab.id}`}
-                    ref={(el) => {
-                      if (!el) return;
-                      const wv = el as unknown as Electron.WebviewTag;
-                      webviewRefs.current.set(tab.id, wv);
-                      attachListeners(tab.id, wv);
-                    }}
-                    src={(() => {
-                      if (!initialSrcs.current.has(tab.id)) {
-                        initialSrcs.current.set(tab.id, tab.url || DEFAULT_URL);
-                      }
-                      return initialSrcs.current.get(tab.id)!;
-                    })()}
-                    style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-                    allowpopups="true"
-                    webpreferences="contextIsolation=yes, javascript=yes"
-                  />
+        <webview
+          key={`wv-${tab.id}`}
+          ref={(el) => {
+            if (!el) return;
+            const wv = el as unknown as Electron.WebviewTag;
+            webviewRefs.current.set(tab.id, wv);
+            attachListeners(tab.id, wv);
+          }}
+          src={(() => {
+            if (!initialSrcs.current.has(tab.id)) {
+              initialSrcs.current.set(tab.id, tab.url || DEFAULT_URL);
+            }
+            return initialSrcs.current.get(tab.id)!;
+          })()}
+          autosize="on"
+          style={{ 
+            display: 'inline-flex', 
+            width: '100%', 
+            height: '100%', 
+            border: 'none',
+            flex: '1 1 0%' 
+          }}
+          allowpopups="true"
+          webpreferences="contextIsolation=yes, javascript=yes"
+        />
                 )}
               </div>
             );
