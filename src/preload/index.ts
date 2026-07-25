@@ -740,6 +740,7 @@ const api = {
       close: (id: string) => ipcRenderer.invoke('browser:tab:close', id),
       activate: (id: string) => ipcRenderer.invoke('browser:tab:activate', id),
       update: (id: string, updates: unknown) => ipcRenderer.invoke('browser:tab:update', id, updates),
+      getActiveId: () => ipcRenderer.invoke('browser:tab:get-active-id'),
     },
     nav: {
       loadUrl: (tabId: string, url: string) => ipcRenderer.invoke('browser:nav:load-url', tabId, url),

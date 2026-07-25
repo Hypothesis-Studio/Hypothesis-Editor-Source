@@ -94,13 +94,18 @@ export const useBrowserStore = create<BrowserStore>((set, get) => ({
     const settings = await api.settings.get();
     set({ settings });
 
-    // Create initial tab if none
+    // Restore tabs from last session (persisted in main process)
     const tabs = await api.tabs.list();
     if (tabs.length === 0) {
+      // No saved tabs — create a fresh one
       const tab = await api.tabs.create();
-      set({ tabs: [tab], activeTabId: tab.id });
+      set({ tabs: [tab], activeTabId: tab.id, addressBarValue: tab.url });
     } else {
-      set({ tabs, activeTabId: tabs[tabs.length - 1].id });
+      // Restore saved tabs; activeTabId is the one that was active last session
+      const restoredActiveId = await api.tabs.getActiveId();
+      const activeId = restoredActiveId ?? tabs[tabs.length - 1].id;
+      const activeTab = tabs.find((t: any) => t.id === activeId) ?? tabs[tabs.length - 1];
+      set({ tabs, activeTabId: activeId, addressBarValue: activeTab.url });
     }
 
     // Subscribe to download progress events

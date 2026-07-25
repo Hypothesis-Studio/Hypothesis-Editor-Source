@@ -24,6 +24,7 @@ const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 const BOOKMARKS_FILE = path.join(DATA_DIR, 'bookmarks.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const DOWNLOADS_FILE = path.join(DATA_DIR, 'downloads.json');
+const TABS_FILE = path.join(DATA_DIR, 'tabs.json');
 
 const DEFAULT_SETTINGS: BrowserSettings = {
   homepage: 'https://www.google.com',
@@ -121,11 +122,28 @@ export class BrowserService extends EventEmitter {
     for (const d of saved.filter(x => x.state === 'completed' || x.state === 'cancelled')) {
       this.downloads.set(d.id, d);
     }
+    // Restore tabs from last session
+    const savedTabs = readJson<{ tabs: BrowserTab[]; activeTabId: string | null }>(TABS_FILE, { tabs: [], activeTabId: null });
+    for (const t of savedTabs.tabs) {
+      // Reset transient loading state on restore
+      this.tabs.set(t.id, { ...t, isLoading: false, canGoBack: false, canGoForward: false });
+    }
+    if (savedTabs.activeTabId && this.tabs.has(savedTabs.activeTabId)) {
+      this.activeTabId = savedTabs.activeTabId;
+    } else if (this.tabs.size > 0) {
+      this.activeTabId = Array.from(this.tabs.keys()).at(-1) ?? null;
+    }
   }
 
   private saveHistory(): void { writeJson(HISTORY_FILE, this.history.slice(0, 10000)); }
   private saveBookmarks(): void { writeJson(BOOKMARKS_FILE, { bookmarks: this.bookmarks, folders: this.bookmarkFolders }); }
   private saveSettings(): void { writeJson(SETTINGS_FILE, this.settings); }
+  private saveTabs(): void {
+    writeJson(TABS_FILE, {
+      tabs: Array.from(this.tabs.values()),
+      activeTabId: this.activeTabId,
+    });
+  }
   private saveDownloads(): void {
     writeJson(DOWNLOADS_FILE, Array.from(this.downloads.values()).filter(d => d.state === 'completed' || d.state === 'cancelled').slice(0, 500));
   }
@@ -150,6 +168,7 @@ export class BrowserService extends EventEmitter {
     };
     this.tabs.set(id, tab);
     this.activeTabId = id;
+    this.saveTabs();
     return tab;
   }
 
@@ -159,6 +178,7 @@ export class BrowserService extends EventEmitter {
       const remaining = Array.from(this.tabs.keys());
       this.activeTabId = remaining[remaining.length - 1] ?? null;
     }
+    this.saveTabs();
     return { nextActiveId: this.activeTabId };
   }
 
@@ -166,13 +186,24 @@ export class BrowserService extends EventEmitter {
 
   getTab(id: string): BrowserTab | null { return this.tabs.get(id) ?? null; }
 
-  activateTab(id: string): void { if (this.tabs.has(id)) this.activeTabId = id; }
+  getActiveTabId(): string | null { return this.activeTabId; }
+
+  activateTab(id: string): void {
+    if (this.tabs.has(id)) {
+      this.activeTabId = id;
+      this.saveTabs();
+    }
+  }
 
   updateTab(id: string, updates: Partial<BrowserTab>): BrowserTab | null {
     const tab = this.tabs.get(id);
     if (!tab) return null;
     Object.assign(tab, updates);
     this.tabs.set(id, tab);
+    // Save tabs when url/title/favicon changes (persistent fields)
+    if ('url' in updates || 'title' in updates || 'favicon' in updates || 'isPinned' in updates) {
+      this.saveTabs();
+    }
     return tab;
   }
 

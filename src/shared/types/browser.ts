@@ -128,6 +128,7 @@ export const BROWSER_IPC = {
   TAB_LIST: 'browser:tab:list',
   TAB_ACTIVATE: 'browser:tab:activate',
   TAB_UPDATE: 'browser:tab:update',
+  TAB_GET_ACTIVE_ID: 'browser:tab:get-active-id',
 
   // Navigation
   NAV_LOAD_URL: 'browser:nav:load-url',

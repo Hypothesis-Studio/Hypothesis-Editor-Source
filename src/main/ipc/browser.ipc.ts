@@ -11,6 +11,7 @@ export function registerBrowserIPC(browserService: BrowserService, _getWindow: (
   ipcMain.handle(BROWSER_IPC.TAB_CREATE, (_e, url?: string) => browserService.createTab(url));
   ipcMain.handle(BROWSER_IPC.TAB_CLOSE, (_e, id: string) => browserService.closeTab(id));
   ipcMain.handle(BROWSER_IPC.TAB_LIST, () => browserService.getTabs());
+  ipcMain.handle(BROWSER_IPC.TAB_GET_ACTIVE_ID, () => browserService.getActiveTabId());
   ipcMain.handle(BROWSER_IPC.TAB_ACTIVATE, (_e, id: string) => { browserService.activateTab(id); return true; });
   ipcMain.handle(BROWSER_IPC.TAB_UPDATE, (_e, id: string, updates: any) => browserService.updateTab(id, updates));
 
