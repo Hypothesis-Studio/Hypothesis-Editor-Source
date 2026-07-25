@@ -13,8 +13,55 @@ env:
   RELEASE_REPO: Hypothesis-Studio/Hypothesis-Editor
 
 jobs:
+  # ── Create release first (once) ──────────────────────────────────
+  create-release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+    outputs:
+      release_exists: ${{ steps.create.outputs.release_exists }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract changelog for this version
+        id: notes
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            NOTES="Release ${TAG}"
+          fi
+          echo "$NOTES" > /tmp/release-notes.md
+          echo "Extracted notes for ${VERSION}:"
+          cat /tmp/release-notes.md
+
+      - name: Create or update release (no assets yet)
+        id: create
+        run: |
+          TAG="${{ github.ref_name }}"
+          if gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists — updating notes"
+            gh release edit "${TAG}" \
+              --repo "${{ env.RELEASE_REPO }}" \
+              --notes-file /tmp/release-notes.md
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Creating release ${TAG}"
+            gh release create "${TAG}" \
+              --repo "${{ env.RELEASE_REPO }}" \
+              --title "Hypothesis ${TAG}" \
+              --notes-file /tmp/release-notes.md \
+              --draft
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Windows build → upload directly ──────────────────────────────
   release-win:
+    needs: create-release
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_PAT }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,24 +71,42 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run package:win
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
-      - name: List Windows build output
-        run: Get-ChildItem release -Recurse | Select-Object Name,Length
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-windows
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            release/Hypothesis Setup*.exe
-            release/Hypothesis Setup*.exe.blockmap
-            release/Hypothesis-*.zip
-            release/Hypothesis-*.zip.blockmap
-            release/latest.yml
 
+      - name: List Windows build output
+        run: Get-ChildItem release -Recurse | Select-Object Name, Length
+
+      - name: Delete existing Windows assets (avoid duplicates)
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          for asset in $(gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" --json assets --jq '.assets[].name' 2>/dev/null || true); do
+            case "$asset" in
+              Hypothesis\ Setup*.exe*|Hypothesis-*.zip*|latest.yml)
+                echo "Removing $asset"
+                gh release delete-asset "${TAG}" "$asset" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
+                ;;
+            esac
+          done
+
+      - name: Upload Windows assets
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          files=()
+          for pattern in "release/Hypothesis Setup*.exe" "release/Hypothesis Setup*.exe.blockmap" "release/Hypothesis-*.zip" "release/Hypothesis-*.zip.blockmap" "release/latest.yml"; do
+            for f in $pattern; do
+              [ -f "$f" ] && files+=("$f")
+            done
+          done
+          echo "Uploading ${#files[@]} Windows files..."
+          gh release upload "${TAG}" --repo "${{ env.RELEASE_REPO }}" "${files[@]}"
+
+  # ── macOS build → upload directly ────────────────────────────────
   release-mac:
+    needs: create-release
     runs-on: macos-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_PAT }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,24 +117,39 @@ jobs:
       - run: npm run build
       - run: npm run package:mac
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
       - name: List macOS build output
         run: ls -lh release/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-macos
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            release/Hypothesis-*.dmg
-            release/Hypothesis-*.dmg.blockmap
-            release/Hypothesis-*-mac.zip
-            release/Hypothesis-*-mac.zip.blockmap
-            release/latest-mac.yml
 
+      - name: Delete existing macOS assets (avoid duplicates)
+        run: |
+          TAG="${{ github.ref_name }}"
+          for asset in $(gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" --json assets --jq '.assets[].name' 2>/dev/null || true); do
+            case "$asset" in
+              Hypothesis-*.dmg*|Hypothesis-*-mac.zip*|latest-mac.yml)
+                echo "Removing $asset"
+                gh release delete-asset "${TAG}" "$asset" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
+                ;;
+            esac
+          done
+
+      - name: Upload macOS assets
+        run: |
+          TAG="${{ github.ref_name }}"
+          files=()
+          for f in release/Hypothesis-*.dmg release/Hypothesis-*.dmg.blockmap release/Hypothesis-*-mac.zip release/Hypothesis-*-mac.zip.blockmap release/latest-mac.yml; do
+            [ -f "$f" ] && files+=("$f")
+          done
+          echo "Uploading ${#files[@]} macOS files..."
+          gh release upload "${TAG}" --repo "${{ env.RELEASE_REPO }}" "${files[@]}"
+
+  # ── Linux build → upload directly ────────────────────────────────
   release-linux:
+    needs: create-release
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_PAT }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -79,21 +159,33 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run package:linux
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+
       - name: List Linux build output
         run: ls -lh release/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-linux
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            release/Hypothesis-*.AppImage
-            release/Hypothesis-*.AppImage.blockmap
-            release/hypothesis_*.deb
-            release/latest-linux.yml
 
+      - name: Delete existing Linux assets (avoid duplicates)
+        run: |
+          TAG="${{ github.ref_name }}"
+          for asset in $(gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" --json assets --jq '.assets[].name' 2>/dev/null || true); do
+            case "$asset" in
+              Hypothesis-*.AppImage*|hypothesis_*.deb|latest-linux.yml)
+                echo "Removing $asset"
+                gh release delete-asset "${TAG}" "$asset" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
+                ;;
+            esac
+          done
+
+      - name: Upload Linux assets
+        run: |
+          TAG="${{ github.ref_name }}"
+          files=()
+          for f in release/Hypothesis-*.AppImage release/Hypothesis-*.AppImage.blockmap release/hypothesis_*.deb release/latest-linux.yml; do
+            [ -f "$f" ] && files+=("$f")
+          done
+          echo "Uploading ${#files[@]} Linux files..."
+          gh release upload "${TAG}" --repo "${{ env.RELEASE_REPO }}" "${files[@]}"
+
+  # ── Publish: undraft + add CHANGELOG ─────────────────────────────
   publish:
     needs: [release-win, release-mac, release-linux]
     runs-on: ubuntu-latest
@@ -102,94 +194,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Copy CHANGELOG.md to artifacts
-        run: cp CHANGELOG.md artifacts/
-
-      - name: List release assets
-        run: find artifacts -type f | sort
-
-      - name: Extract changelog for this version
-        id: changelog
+      - name: Upload CHANGELOG.md
         run: |
           TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
-          # Extract the section for this version from CHANGELOG.md
-          NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
-          if [ -z "$NOTES" ]; then
-            NOTES="Release ${TAG}"
-          fi
-          # Write to file to preserve formatting
-          echo "$NOTES" > /tmp/release-notes.md
-          echo "Extracted notes for ${VERSION}:"
-          cat /tmp/release-notes.md
+          # Remove old CHANGELOG asset if exists
+          gh release delete-asset "${TAG}" "CHANGELOG.md" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
+          gh release upload "${TAG}" --repo "${{ env.RELEASE_REPO }}" CHANGELOG.md
 
-      - name: Create or update release and upload assets
+      - name: Publish release (undraft)
         run: |
           TAG="${{ github.ref_name }}"
-
-          # Collect files into array (safe with spaces in filenames)
-          files=()
-          while IFS= read -r -d '' file; do
-            files+=("$file")
-          done < <(find artifacts -type f -print0)
-
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::No artifacts found to upload"
-            exit 1
-          fi
-
-          echo "Found ${#files[@]} assets:"
-          for f in "${files[@]}"; do
-            echo "  $(basename "$f")"
-          done
-
-          # Check if release already exists
-          if gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists on ${{ env.RELEASE_REPO }}"
-
-            # Delete ALL existing assets first to prevent duplicates
-            echo "Deleting existing assets to prevent duplicates..."
-            EXISTING=$(gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" --json assets --jq '.assets[].name' 2>/dev/null || echo "")
-            if [ -n "$EXISTING" ]; then
-              while IFS= read -r asset; do
-                [ -z "$asset" ] && continue
-                echo "  Removing: $asset"
-                gh release delete-asset "${TAG}" "$asset" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
-              done <<< "$EXISTING"
-            fi
-
-            # Update release notes with inline changelog
-            gh release edit "${TAG}" \
-              --repo "${{ env.RELEASE_REPO }}" \
-              --notes-file /tmp/release-notes.md
-
-            # Upload fresh assets
-            echo "Uploading ${#files[@]} assets..."
-            gh release upload "${TAG}" \
-              --repo "${{ env.RELEASE_REPO }}" \
-              "${files[@]}"
-          else
-            echo "Creating release ${TAG} on ${{ env.RELEASE_REPO }}"
-            gh release create "${TAG}" \
-              --repo "${{ env.RELEASE_REPO }}" \
-              --title "Hypothesis ${TAG}" \
-              --notes-file /tmp/release-notes.md \
-              "${files[@]}"
-          fi
-
-          echo "Release ${TAG} published to ${{ env.RELEASE_REPO }} with ${#files[@]} assets"
-
-      - name: Delete artifacts after publish
-        if: always()
-        uses: geekyeggo/delete-artifact@v5
-        with:
-          name: |
-            release-windows
-            release-macos
-            release-linux
-          failOnError: false
+          gh release edit "${TAG}" --repo "${{ env.RELEASE_REPO }}" --draft=false
+          echo "Release ${TAG} published to ${{ env.RELEASE_REPO }}"
