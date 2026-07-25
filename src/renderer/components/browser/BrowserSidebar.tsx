@@ -64,10 +64,21 @@ const S = {
     height: 3, borderRadius: 2, background: 'var(--theme-border)',
     marginBottom: 4, overflow: 'hidden',
   },
-  dlProgressInner: (pct: number, state: string): React.CSSProperties => ({
+  dlProgressInner: (pct: number, state: string, paused: boolean): React.CSSProperties => ({
     height: '100%', borderRadius: 2, width: `${pct}%`,
-    background: state === 'completed' ? 'var(--theme-success, #48bb78)' : state === 'cancelled' || state === 'interrupted' ? '#e53e3e' : 'var(--theme-accent)',
+    background: state === 'completed'
+      ? 'var(--theme-success, #48bb78)'
+      : state === 'cancelled' || state === 'interrupted'
+        ? '#e53e3e'
+        : paused
+          ? 'var(--theme-fg-muted)'
+          : 'var(--theme-accent)',
     transition: 'width 0.3s',
+    backgroundImage: state === 'progressing' && !paused
+      ? 'repeating-linear-gradient(45deg, rgba(255,255,255,0.12) 0, rgba(255,255,255,0.12) 8px, transparent 8px, transparent 16px)'
+      : 'none',
+    backgroundSize: '40px 100%',
+    animation: state === 'progressing' && !paused ? 'dl-stripe 0.7s linear infinite' : 'none',
   }),
   dlMeta: { display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--theme-fg-muted)' },
   dlActions: { display: 'flex', gap: 6, marginTop: 4 },
@@ -264,15 +275,35 @@ const DownloadsView: React.FC = () => {
 
   const renderDl = (dl: BrowserDownload) => {
     const pct = dl.totalBytes > 0 ? Math.round((dl.receivedBytes / dl.totalBytes) * 100) : 0;
+    const isActive = dl.state === 'progressing' && !dl.paused;
     return (
       <div key={dl.id} style={S.dlItem}>
         <div style={S.dlName} title={dl.filename}>{dl.filename}</div>
-        <div style={S.dlProgress}>
-          <div style={S.dlProgressInner(pct, dl.state)} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <div style={{ ...S.dlProgress, flex: 1, marginBottom: 0 }}>
+            <div style={S.dlProgressInner(pct, dl.state, dl.paused)} />
+          </div>
+          {dl.state === 'progressing' && (
+            <span style={{ fontSize: 10, color: 'var(--theme-accent)', fontWeight: 600, minWidth: 30, textAlign: 'right' as const }}>
+              {dl.totalBytes > 0 ? `${pct}%` : '...'}
+            </span>
+          )}
+          {dl.state === 'completed' && (
+            <span style={{ fontSize: 10, color: 'var(--theme-success, #48bb78)', fontWeight: 600, minWidth: 30, textAlign: 'right' as const }}>✓</span>
+          )}
+          {(dl.state === 'cancelled' || dl.state === 'interrupted') && (
+            <span style={{ fontSize: 10, color: '#e53e3e', fontWeight: 600, minWidth: 30, textAlign: 'right' as const }}>✗</span>
+          )}
         </div>
         <div style={S.dlMeta}>
-          <span>{dl.state === 'completed' ? formatBytes(dl.totalBytes) : `${formatBytes(dl.receivedBytes)} / ${dl.totalBytes > 0 ? formatBytes(dl.totalBytes) : '?'}`}</span>
-          <span>{dl.state === 'progressing' && !dl.paused ? formatSpeed(dl.speed) : dl.state}</span>
+          <span>
+            {dl.state === 'completed'
+              ? formatBytes(dl.totalBytes)
+              : `${formatBytes(dl.receivedBytes)} / ${dl.totalBytes > 0 ? formatBytes(dl.totalBytes) : '?'}`}
+          </span>
+          <span style={{ color: isActive ? 'var(--theme-accent)' : 'var(--theme-fg-muted)' }}>
+            {isActive ? formatSpeed(dl.speed) : dl.paused ? 'Paused' : dl.state}
+          </span>
         </div>
         <div style={S.dlActions}>
           {dl.state === 'progressing' && !dl.paused && <button style={S.dlBtn} onClick={() => pauseDownload(dl.id)}>Pause</button>}

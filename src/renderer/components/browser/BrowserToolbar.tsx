@@ -4,6 +4,21 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useBrowserStore } from '../../stores/browserStore';
 
+// Inject keyframes once
+if (typeof document !== 'undefined') {
+  const styleId = 'browser-dl-keyframes';
+  if (!document.getElementById(styleId)) {
+    const el = document.createElement('style');
+    el.id = styleId;
+    el.textContent = [
+      '@keyframes dl-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.5)}}',
+      '@keyframes dl-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}',
+      '@keyframes dl-stripe{0%{background-position:0 0}100%{background-position:40px 0}}',
+    ].join('');
+    document.head.appendChild(el);
+  }
+}
+
 interface Props {
   webviewRefs: React.MutableRefObject<Map<string, Electron.WebviewTag>>;
 }
@@ -99,6 +114,7 @@ const BrowserToolbar: React.FC<Props> = ({ webviewRefs }) => {
     searchSuggestions, getSearchSuggestions, clearSuggestions,
     sidebarView, setSidebarView, setFindBarVisible, findBarVisible,
     isBookmarked, addBookmark, deleteBookmark, updateTab, createTab,
+    downloads,
   } = useBrowserStore();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -315,11 +331,78 @@ const BrowserToolbar: React.FC<Props> = ({ webviewRefs }) => {
         onMouseEnter={e => btnHover(e, true)} onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.color = sidebarView === 'bookmarks' ? 'var(--theme-accent)' : 'var(--theme-fg-muted)'; }}>
         <IcoBookmarks />
       </button>
-      {/* Sidebar: Downloads */}
-      <button style={sidebarBtnStyle('downloads')} onClick={() => setSidebarView(sidebarView === 'downloads' ? null : 'downloads')} title="Downloads"
-        onMouseEnter={e => btnHover(e, true)} onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.color = sidebarView === 'downloads' ? 'var(--theme-accent)' : 'var(--theme-fg-muted)'; }}>
-        <IcoDownload />
-      </button>
+      {/* Sidebar: Downloads — with active-download badge + spinner */}
+      {(() => {
+        const activeDownloads = downloads.filter(d => d.state === 'progressing' && !d.paused);
+        const hasActive = activeDownloads.length > 0;
+        // overall progress across all active downloads
+        const totalReceived = activeDownloads.reduce((s, d) => s + d.receivedBytes, 0);
+        const totalBytes = activeDownloads.reduce((s, d) => s + d.totalBytes, 0);
+        const pct = totalBytes > 0 ? totalReceived / totalBytes : 0;
+        const circumference = 2 * Math.PI * 9; // r=9
+        const dashoffset = circumference * (1 - pct);
+        return (
+          <button
+            style={{ ...sidebarBtnStyle('downloads'), position: 'relative' }}
+            onClick={() => setSidebarView(sidebarView === 'downloads' ? null : 'downloads')}
+            title="Downloads"
+            onMouseEnter={e => btnHover(e, true)}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.color = sidebarView === 'downloads' ? 'var(--theme-accent)' : 'var(--theme-fg-muted)'; }}
+          >
+            <IcoDownload />
+            {hasActive && (
+              <>
+                {/* Spinning progress ring */}
+                <svg
+                  width={28} height={28}
+                  viewBox="0 0 28 28"
+                  style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+                >
+                  {/* Track */}
+                  <circle cx="14" cy="14" r="9" fill="none" stroke="var(--theme-border)" strokeWidth="2" />
+                  {/* Progress arc */}
+                  <circle
+                    cx="14" cy="14" r="9"
+                    fill="none"
+                    stroke="var(--theme-accent)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={totalBytes > 0 ? dashoffset : undefined}
+                    style={totalBytes === 0 ? {
+                      animation: 'dl-spin 1s linear infinite',
+                      transformOrigin: '14px 14px',
+                      strokeDasharray: `${circumference * 0.25} ${circumference * 0.75}`,
+                    } : {
+                      transform: 'rotate(-90deg)',
+                      transformOrigin: '14px 14px',
+                      transition: 'stroke-dashoffset 0.4s',
+                    }}
+                  />
+                </svg>
+                {/* Badge dot */}
+                <span style={{
+                  position: 'absolute', top: 3, right: 3,
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: 'var(--theme-accent)',
+                  animation: 'dl-pulse 1.2s ease-in-out infinite',
+                  pointerEvents: 'none',
+                }} />
+              </>
+            )}
+            {/* Badge count when sidebar closed */}
+            {!hasActive && downloads.filter(d => d.state === 'progressing').length === 0 && downloads.length > 0 && sidebarView !== 'downloads' && (
+              <span style={{
+                position: 'absolute', top: 2, right: 2,
+                minWidth: 13, height: 13, borderRadius: 7,
+                background: 'var(--theme-accent)', color: '#fff',
+                fontSize: 8, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 2px', pointerEvents: 'none', lineHeight: 1,
+              }}>{downloads.length > 9 ? '9+' : downloads.length}</span>
+            )}
+          </button>
+        );
+      })()}
     </div>
   );
 };
