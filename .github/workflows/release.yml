@@ -32,6 +32,7 @@ jobs:
         with:
           name: release-windows
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/Hypothesis Setup*.exe
             release/Hypothesis Setup*.exe.blockmap
@@ -59,6 +60,7 @@ jobs:
         with:
           name: release-macos
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/Hypothesis-*.dmg
             release/Hypothesis-*.dmg.blockmap
@@ -85,6 +87,7 @@ jobs:
         with:
           name: release-linux
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/Hypothesis-*.AppImage
             release/Hypothesis-*.AppImage.blockmap
@@ -180,3 +183,13 @@ jobs:
           fi
 
           echo "Release ${TAG} published to ${{ env.RELEASE_REPO }} with ${#files[@]} assets"
+
+      - name: Delete artifacts after publish
+        if: always()
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            release-windows
+            release-macos
+            release-linux
+          failOnError: false
