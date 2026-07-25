@@ -135,10 +135,10 @@ const BrowserPanel: React.FC = () => {
   useEffect(() => {
     if (!activeTabId) return;
     const wv = webviewRefs.current.get(activeTabId);
-    if (!wv) return;
+    if (!wv || typeof wv.findInPage !== 'function') return;
     if (findBarVisible && findQuery) {
       wv.findInPage(findQuery, { findNext: false, forward: true });
-    } else {
+    } else if (typeof wv.stopFindInPage === 'function') {
       wv.stopFindInPage('clearSelection');
     }
   }, [findBarVisible, findQuery, activeTabId]);

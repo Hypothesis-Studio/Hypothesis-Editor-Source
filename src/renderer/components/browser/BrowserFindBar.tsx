@@ -35,28 +35,36 @@ const BrowserFindBar: React.FC<Props> = ({ webviewRefs }) => {
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const getWv = () => activeTabId ? webviewRefs.current.get(activeTabId) : null;
+  const getWv = () => {
+    const wv = activeTabId ? webviewRefs.current.get(activeTabId) : null;
+    return wv ?? null;
+  };
+
+  const safeStop = () => {
+    const wv = getWv();
+    if (wv && typeof wv.stopFindInPage === 'function') wv.stopFindInPage('clearSelection');
+  };
 
   const find = (query: string, forward = true) => {
     const wv = getWv();
-    if (!wv || !query) return;
+    if (!wv || !query || typeof wv.findInPage !== 'function') return;
     wv.findInPage(query, { findNext: false, forward });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setFindQuery(q);
-    if (q) find(q); else getWv()?.stopFindInPage('clearSelection');
+    if (q) find(q); else safeStop();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') { find(findQuery, !e.shiftKey); }
-    if (e.key === 'Escape') { setFindBarVisible(false); getWv()?.stopFindInPage('clearSelection'); }
+    if (e.key === 'Escape') { setFindBarVisible(false); safeStop(); }
   };
 
   const close = () => {
     setFindBarVisible(false);
-    getWv()?.stopFindInPage('clearSelection');
+    safeStop();
   };
 
   return (
