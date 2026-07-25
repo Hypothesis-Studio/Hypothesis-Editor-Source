@@ -86,10 +86,11 @@ export class WindowManager {
       webPreferences: {
         preload: preloadPath,
         contextIsolation: true,
-        sandbox: true,
+        sandbox: false,
         nodeIntegration: false,
         nodeIntegrationInWorker: false,
         nodeIntegrationInSubFrames: false,
+        webviewTag: true,
         webSecurity: true,
         allowRunningInsecureContent: false,
         experimentalFeatures: false,

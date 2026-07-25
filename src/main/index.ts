@@ -56,7 +56,11 @@ app.on('web-contents-created', (_event, contents) => {
   });
 
   contents.on('will-navigate', (event, url) => {
-    if (!url.startsWith('file://') && !url.startsWith('http://localhost')) {
+    // Only block navigation on the main renderer window, not webview contents
+    // Check if this is the main window renderer (file:// or localhost dev server)
+    const currentUrl = contents.getURL();
+    const isMainRenderer = currentUrl.startsWith('file://') || currentUrl.startsWith('http://localhost');
+    if (isMainRenderer && !url.startsWith('file://') && !url.startsWith('http://localhost')) {
       event.preventDefault();
     }
   });
