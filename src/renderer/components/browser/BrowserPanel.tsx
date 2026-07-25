@@ -62,8 +62,11 @@ const BrowserPanel: React.FC = () => {
   const webviewRefs = useRef<Map<string, Electron.WebviewTag>>(new Map());
   // initialSrcs: stores the URL used as webview src on first mount — never changes after
   const initialSrcs = useRef<Map<string, string>>(new Map());
-  // Set of tabIds whose listeners are already attached
+  // attachedIds: tabIds whose event listeners have been attached
   const attachedIds = useRef<Set<string>>(new Set());
+  // domReadyIds: tabIds whose webview dom-ready has fired — guards method calls
+  const domReadyIds = useRef<Set<string>>(new Set());
+
 
   const [crashed, setCrashed] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -97,6 +100,13 @@ const BrowserPanel: React.FC = () => {
     if (attachedIds.current.has(tabId)) return;
     attachedIds.current.add(tabId);
 
+    // Track dom-ready — no webview methods can be called before this
+    wv.addEventListener('dom-ready', () => {
+      domReadyIds.current.add(tabId);
+    });
+
+    const isReady = () => domReadyIds.current.has(tabId);
+
     wv.addEventListener('did-start-loading', () => {
       updateTab(tabId, { isLoading: true });
       setShowProgress(true);
@@ -109,23 +119,21 @@ const BrowserPanel: React.FC = () => {
       setTimeout(() => { setShowProgress(false); setLoadProgress(0); }, 400);
     });
 
-    // load-commit fires for every sub-resource — only handle main frame
     wv.addEventListener('load-commit', (e: any) => {
       if (!e.isMainFrame) return;
       const url: string = e.url;
-      // Update store state only — do NOT call loadURL here
       updateTab(tabId, {
         url,
-        canGoBack: wv.canGoBack(),
-        canGoForward: wv.canGoForward(),
+        canGoBack: isReady() ? wv.canGoBack() : false,
+        canGoForward: isReady() ? wv.canGoForward() : false,
       });
-      // Sync address bar for active tab
       if (tabId === useBrowserStore.getState().activeTabId) {
         setAddressBarValue(url);
       }
     });
 
     wv.addEventListener('did-navigate', (e: any) => {
+      if (!isReady()) return;
       updateTab(tabId, {
         url: e.url,
         canGoBack: wv.canGoBack(),
@@ -134,7 +142,7 @@ const BrowserPanel: React.FC = () => {
     });
 
     wv.addEventListener('did-navigate-in-page', (e: any) => {
-      if (!e.isMainFrame) return;
+      if (!e.isMainFrame || !isReady()) return;
       updateTab(tabId, { url: e.url, canGoBack: wv.canGoBack(), canGoForward: wv.canGoForward() });
       if (tabId === useBrowserStore.getState().activeTabId) {
         setAddressBarValue(e.url);
@@ -159,7 +167,7 @@ const BrowserPanel: React.FC = () => {
     });
 
     wv.addEventListener('did-fail-load', (e: any) => {
-      if (e.errorCode === -3) return; // navigation aborted — not an error
+      if (e.errorCode === -3) return;
       updateTab(tabId, { isLoading: false, title: 'Failed to load' });
     });
 
@@ -182,14 +190,14 @@ const BrowserPanel: React.FC = () => {
   useEffect(() => {
     if (!activeTabId) return;
     const wv = webviewRefs.current.get(activeTabId);
-    if (!wv) return;
+    if (!wv || !domReadyIds.current.has(activeTabId)) return;
     if (findBarVisible && findQuery) {
       if (typeof wv.findInPage === 'function') {
         wv.findInPage(findQuery, { findNext: false, forward: true });
       }
     } else {
       if (typeof wv.stopFindInPage === 'function') {
-        wv.stopFindInPage('clearSelection');
+        try { wv.stopFindInPage('clearSelection'); } catch {}
       }
     }
   }, [findBarVisible, findQuery, activeTabId]);
