@@ -81,7 +81,7 @@ jobs:
           TAG="${{ github.ref_name }}"
           for asset in $(gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" --json assets --jq '.assets[].name' 2>/dev/null || true); do
             case "$asset" in
-              Hypothesis\ Setup*.exe*|Hypothesis-*.zip*|latest.yml)
+              Hypothesis\ Setup*.exe*|Hypothesis-*-portable.exe*|Hypothesis-*.zip*|latest.yml)
                 echo "Removing $asset"
                 gh release delete-asset "${TAG}" "$asset" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
                 ;;
@@ -93,12 +93,20 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           files=()
-          for pattern in "release/Hypothesis Setup*.exe" "release/Hypothesis Setup*.exe.blockmap" "release/Hypothesis-*.zip" "release/Hypothesis-*.zip.blockmap" "release/latest.yml"; do
-            for f in $pattern; do
-              [ -f "$f" ] && files+=("$f")
-            done
-          done
+          # Use find to safely handle spaces in filenames
+          while IFS= read -r -d '' f; do
+            files+=("$f")
+          done < <(find release -maxdepth 1 -type f \( \
+            -name 'Hypothesis Setup*.exe' -o \
+            -name 'Hypothesis Setup*.exe.blockmap' -o \
+            -name 'Hypothesis-*-portable.exe' -o \
+            -name 'Hypothesis-*-portable.exe.blockmap' -o \
+            -name 'Hypothesis-*.zip' -o \
+            -name 'Hypothesis-*.zip.blockmap' -o \
+            -name 'latest.yml' \
+          \) -print0)
           echo "Uploading ${#files[@]} Windows files..."
+          for f in "${files[@]}"; do echo "  $f"; done
           gh release upload "${TAG}" --repo "${{ env.RELEASE_REPO }}" "${files[@]}"
 
   # ── macOS build → upload directly ────────────────────────────────
@@ -168,7 +176,7 @@ jobs:
           TAG="${{ github.ref_name }}"
           for asset in $(gh release view "${TAG}" --repo "${{ env.RELEASE_REPO }}" --json assets --jq '.assets[].name' 2>/dev/null || true); do
             case "$asset" in
-              Hypothesis-*.AppImage*|hypothesis_*.deb|latest-linux.yml)
+              Hypothesis-*.AppImage*|hypothesis_*.deb*|hypothesis-*.rpm*|latest-linux.yml)
                 echo "Removing $asset"
                 gh release delete-asset "${TAG}" "$asset" --repo "${{ env.RELEASE_REPO }}" --yes 2>/dev/null || true
                 ;;
@@ -179,10 +187,11 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           files=()
-          for f in release/Hypothesis-*.AppImage release/Hypothesis-*.AppImage.blockmap release/hypothesis_*.deb release/latest-linux.yml; do
+          for f in release/Hypothesis-*.AppImage release/Hypothesis-*.AppImage.blockmap release/hypothesis_*.deb release/hypothesis-*.rpm release/latest-linux.yml; do
             [ -f "$f" ] && files+=("$f")
           done
           echo "Uploading ${#files[@]} Linux files..."
+          for f in "${files[@]}"; do echo "  $f"; done
           gh release upload "${TAG}" --repo "${{ env.RELEASE_REPO }}" "${files[@]}"
 
   # ── Publish: undraft + add CHANGELOG ─────────────────────────────
