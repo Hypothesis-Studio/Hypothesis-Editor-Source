@@ -94,11 +94,11 @@ const S = {
 
 const BrowserToolbar: React.FC<Props> = ({ webviewRefs }) => {
   const {
-    tabs, activeTabId, navigate, createTab,
+    tabs, activeTabId,
     addressBarValue, setAddressBarValue, setAddressBarFocused,
     searchSuggestions, getSearchSuggestions, clearSuggestions,
     sidebarView, setSidebarView, setFindBarVisible, findBarVisible,
-    isBookmarked, addBookmark, deleteBookmark, updateTab,
+    isBookmarked, addBookmark, deleteBookmark, updateTab, createTab,
   } = useBrowserStore();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -128,21 +128,25 @@ const BrowserToolbar: React.FC<Props> = ({ webviewRefs }) => {
   const handleSubmit = useCallback((url?: string) => {
     const raw = url ?? addressBarValue;
     if (!activeTabId || !raw.trim()) return;
-    // Resolve URL — if it looks like a URL navigate directly, else search
+    // Resolve URL
     const target = /^https?:\/\/|^file:\/\//.test(raw)
       ? raw
       : raw.includes('.') && !raw.includes(' ')
         ? `https://${raw}`
         : `https://www.google.com/search?q=${encodeURIComponent(raw)}`;
-    // Navigate imperatively via webview
+    // Update store address bar immediately for responsiveness
+    setAddressBarValue(target);
+    // Navigate imperatively — try webviewRefs first, then global fallback
     const wv = webviewRefs.current.get(activeTabId);
     if (wv && typeof (wv as any).loadURL === 'function') {
       try { (wv as any).loadURL(target); } catch {}
+    } else {
+      const globalLoad = (window as any).__browserLoadUrl;
+      if (typeof globalLoad === 'function') globalLoad(activeTabId, target);
     }
-    navigate(activeTabId, target);
     inputRef.current?.blur();
     setShowSugg(false); clearSuggestions();
-  }, [activeTabId, addressBarValue, navigate, webviewRefs]);
+  }, [activeTabId, addressBarValue, setAddressBarValue, webviewRefs]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {

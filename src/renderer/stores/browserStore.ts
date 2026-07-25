@@ -136,11 +136,19 @@ export const useBrowserStore = create<BrowserStore>((set, get) => ({
   },
 
   navigate: async (tabId, url) => {
-    const resolved = await (window as any).api.browser.nav.loadUrl(tabId, url);
+    // Resolve URL — no IPC needed; webview.loadURL() is called imperatively in the renderer
+    const resolved = /^https?:\/\/|^file:\/\/|^about:/.test(url)
+      ? url
+      : url.includes('.') && !url.includes(' ')
+        ? `https://${url}`
+        : `https://www.google.com/search?q=${encodeURIComponent(url)}`;
     set(state => ({
       tabs: state.tabs.map(t => t.id === tabId ? { ...t, url: resolved, isLoading: true, title: 'Loading...' } : t),
       addressBarValue: resolved,
     }));
+    // Drive navigation imperatively via webview ref
+    const globalLoad = (window as any).__browserLoadUrl;
+    if (typeof globalLoad === 'function') globalLoad(tabId, resolved);
     return resolved;
   },
 
