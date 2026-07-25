@@ -22,9 +22,13 @@ const S = {
   webviewWrap: {
     flex: 1, position: 'relative' as const, overflow: 'hidden',
     display: 'flex', flexDirection: 'column' as const,
+    minHeight: 0,
   },
   webview: {
-    flex: 1, width: '100%', border: 'none', display: 'block',
+    position: 'absolute' as const,
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%', height: '100%',
+    border: 'none', display: 'block',
   } as React.CSSProperties,
   loadBar: {
     position: 'absolute' as const, top: 0, left: 0, right: 0, height: 2,
@@ -236,8 +240,13 @@ const BrowserPanel: React.FC = () => {
             <div
               key={tab.id}
               style={{
-                flex: 1, display: tab.id === activeTabId ? 'flex' : 'none',
-                flexDirection: 'column', overflow: 'hidden', position: 'relative',
+                position: 'relative',
+                flex: 1,
+                display: tab.id === activeTabId ? 'flex' : 'none',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                minHeight: 0,
+                height: '100%',
               }}
             >
               {tab.url === '' || tab.url === 'about:newtab' ? (
