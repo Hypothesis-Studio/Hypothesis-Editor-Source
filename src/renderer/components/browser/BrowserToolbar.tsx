@@ -19,8 +19,27 @@ if (typeof document !== 'undefined') {
   }
 }
 
+// Electron.WebviewTag not available in renderer tsconfig — define locally
+type WebviewTag = HTMLElement & {
+  loadURL(url: string): void;
+  canGoBack(): boolean;
+  canGoForward(): boolean;
+  goBack(): void;
+  goForward(): void;
+  reload(): void;
+  stop(): void;
+  findInPage(text: string, opts?: object): void;
+  stopFindInPage(action: string): void;
+  openDevTools(): void;
+  setZoomLevel(level: number): void;
+  getZoomLevel(): number;
+  isLoading(): boolean;
+  addEventListener(event: string, listener: (e: any) => void): void;
+  removeEventListener(event: string, listener: (e: any) => void): void;
+};
+
 interface Props {
-  webviewRefs: React.MutableRefObject<Map<string, Electron.WebviewTag>>;
+  webviewRefs: React.MutableRefObject<Map<string, WebviewTag>>;
 }
 
 // ── Inline SVG icons ──────────────────────────────────────────────

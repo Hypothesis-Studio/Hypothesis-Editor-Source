@@ -4,8 +4,16 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useBrowserStore } from '../../stores/browserStore';
 
+// Electron.WebviewTag not available in renderer tsconfig — define locally
+type WebviewTag = HTMLElement & {
+  findInPage(text: string, opts?: object): void;
+  stopFindInPage(action: string): void;
+  addEventListener(event: string, listener: (e: any) => void): void;
+  removeEventListener(event: string, listener: (e: any) => void): void;
+};
+
 interface Props {
-  webviewRefs: React.MutableRefObject<Map<string, Electron.WebviewTag>>;
+  webviewRefs: React.MutableRefObject<Map<string, WebviewTag>>;
 }
 
 const S = {

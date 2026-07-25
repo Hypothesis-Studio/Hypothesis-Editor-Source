@@ -3,6 +3,29 @@
  * Uses ResizeObserver to measure exact available height for webview area.
  */
 import React, { useEffect, useRef, useCallback, useState } from 'react';
+
+// Electron.WebviewTag is not available in renderer tsconfig — define locally
+type WebviewTag = HTMLElement & {
+  src: string;
+  loadURL(url: string): void;
+  reload(): void;
+  canGoBack(): boolean;
+  canGoForward(): boolean;
+  goBack(): void;
+  goForward(): void;
+  stop(): void;
+  findInPage(text: string, opts?: object): void;
+  stopFindInPage(action: string): void;
+  getURL(): string;
+  getTitle(): string;
+  isLoading(): boolean;
+  openDevTools(): void;
+  closeDevTools(): void;
+  setZoomLevel(level: number): void;
+  getZoomLevel(): number;
+  addEventListener(event: string, listener: (e: any) => void): void;
+  removeEventListener(event: string, listener: (e: any) => void): void;
+};
 import { useBrowserStore } from '../../stores/browserStore';
 import BrowserToolbar from './BrowserToolbar';
 import BrowserTabBar from './BrowserTabBar';
@@ -27,7 +50,7 @@ const BrowserPanel: React.FC = () => {
     setAddressBarValue, setFindBarVisible,
   } = useBrowserStore();
 
-  const webviewRefs = useRef<Map<string, Electron.WebviewTag>>(new Map());
+  const webviewRefs = useRef<Map<string, WebviewTag>>(new Map());
   const initialSrcs = useRef<Map<string, string>>(new Map());
   const attachedIds = useRef<Set<string>>(new Set());
   const domReadyIds = useRef<Set<string>>(new Set());
@@ -71,7 +94,7 @@ const BrowserPanel: React.FC = () => {
 
   useEffect(() => { (window as any).__browserLoadUrl = loadUrl; }, [loadUrl]);
 
-  const attachListeners = useCallback((tabId: string, wv: Electron.WebviewTag) => {
+  const attachListeners = useCallback((tabId: string, wv: WebviewTag) => {
     if (attachedIds.current.has(tabId)) return;
     attachedIds.current.add(tabId);
 
@@ -205,7 +228,7 @@ const BrowserPanel: React.FC = () => {
           key={`wv-${tab.id}`}
           ref={(el) => {
             if (!el) return;
-            const wv = el as unknown as Electron.WebviewTag;
+            const wv = el as unknown as WebviewTag;
             webviewRefs.current.set(tab.id, wv);
             attachListeners(tab.id, wv);
           }}
@@ -215,7 +238,7 @@ const BrowserPanel: React.FC = () => {
             }
             return initialSrcs.current.get(tab.id)!;
           })()}
-          autosize="on"
+          autosize
           style={{ 
             display: 'inline-flex', 
             width: '100%', 
@@ -223,7 +246,7 @@ const BrowserPanel: React.FC = () => {
             border: 'none',
             flex: '1 1 0%' 
           }}
-          allowpopups="true"
+          allowpopups
           webpreferences="contextIsolation=yes, javascript=yes"
         />
                 )}
