@@ -12,6 +12,13 @@ import type {
 } from '../../../shared/types/browser';
 import { BROWSER_IPC } from '../../../shared/types/browser';
 
+/** Strip non-serializable fields (e.g. _item DownloadItem) before sending over IPC */
+function serializeDl(dl: BrowserDownload): BrowserDownload {
+  const { ...plain } = dl as any;
+  delete plain._item;
+  return plain as BrowserDownload;
+}
+
 const DATA_DIR = path.join(app.getPath('userData'), 'browser');
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 const BOOKMARKS_FILE = path.join(DATA_DIR, 'bookmarks.json');
@@ -264,7 +271,7 @@ export class BrowserService extends EventEmitter {
       };
       this.downloads.set(id, dl);
       this.emit('download-update', dl);
-      this.sendToRenderer(BROWSER_IPC.EVT_DOWNLOAD_PROGRESS, dl);
+      this.sendToRenderer(BROWSER_IPC.EVT_DOWNLOAD_PROGRESS, serializeDl(dl));
 
       let lastBytes = 0;
       let lastTime = Date.now();
@@ -281,7 +288,7 @@ export class BrowserService extends EventEmitter {
           paused: item.isPaused(), speed,
         });
         this.downloads.set(id, dl);
-        this.sendToRenderer(BROWSER_IPC.EVT_DOWNLOAD_PROGRESS, dl);
+        this.sendToRenderer(BROWSER_IPC.EVT_DOWNLOAD_PROGRESS, serializeDl(dl));
       });
 
       item.once('done', (_e, state) => {
@@ -291,16 +298,18 @@ export class BrowserService extends EventEmitter {
         });
         this.downloads.set(id, dl);
         this.saveDownloads();
-        this.sendToRenderer(BROWSER_IPC.EVT_DOWNLOAD_PROGRESS, dl);
+        this.sendToRenderer(BROWSER_IPC.EVT_DOWNLOAD_PROGRESS, serializeDl(dl));
       });
 
-      // Store item reference for pause/resume/cancel
+      // Store item reference for pause/resume/cancel (not sent over IPC)
       (dl as any)._item = item;
     });
   }
 
   getDownloads(): BrowserDownload[] {
-    return Array.from(this.downloads.values()).sort((a, b) => b.startedAt - a.startedAt);
+    return Array.from(this.downloads.values())
+      .sort((a, b) => b.startedAt - a.startedAt)
+      .map(serializeDl);
   }
 
   pauseDownload(id: string): void { (this.downloads.get(id) as any)?._item?.pause(); }
