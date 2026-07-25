@@ -739,8 +739,8 @@ const App: React.FC = () => {
             onCloseFolder={handleCloseFolder}
           />
         )}
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+          <div className="flex-1 overflow-hidden" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <EditorArea
               onOpenFolder={(p) => { setRootPath(p); setActiveSidebarView('explorer'); }}
               onOpenSettings={(category) => { setSettingsCategory(category); setShowSettings(true); }}
