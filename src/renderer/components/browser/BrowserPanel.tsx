@@ -1,6 +1,5 @@
 /**
  * Hypothesis Browser - Main Panel
- * Uses position:absolute fill strategy to avoid flex height chain issues.
  */
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useBrowserStore } from '../../stores/browserStore';
@@ -19,8 +18,6 @@ const IconCrash = () => (
 );
 
 const DEFAULT_URL = 'about:blank';
-const TAB_BAR_H = 35;
-const TOOLBAR_H = 38;
 
 const BrowserPanel: React.FC = () => {
   const {
@@ -37,28 +34,10 @@ const BrowserPanel: React.FC = () => {
   const [crashed, setCrashed] = useState<string | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
-  // Track actual rendered dimensions of tab/toolbar area
-  const tabBarRef = useRef<HTMLDivElement>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
-  const [topOffset, setTopOffset] = useState(TAB_BAR_H + TOOLBAR_H);
 
   useEffect(() => { init(); }, []);
 
-  // Measure actual header height after render
-  useEffect(() => {
-    const measure = () => {
-      const tb = tabBarRef.current?.offsetHeight ?? TAB_BAR_H;
-      const tl = toolbarRef.current?.offsetHeight ?? TOOLBAR_H;
-      setTopOffset(tb + tl);
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [tabs.length]);
-
-  useEffect(() => {
-    (window as any).__browserWebviewRefs = webviewRefs;
-  }, []);
+  useEffect(() => { (window as any).__browserWebviewRefs = webviewRefs; }, []);
 
   const loadUrl = useCallback((tabId: string, url: string) => {
     const wv = webviewRefs.current.get(tabId);
@@ -69,9 +48,7 @@ const BrowserPanel: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    (window as any).__browserLoadUrl = loadUrl;
-  }, [loadUrl]);
+  useEffect(() => { (window as any).__browserLoadUrl = loadUrl; }, [loadUrl]);
 
   const attachListeners = useCallback((tabId: string, wv: Electron.WebviewTag) => {
     if (attachedIds.current.has(tabId)) return;
@@ -142,53 +119,43 @@ const BrowserPanel: React.FC = () => {
   const handleReload = (tabId: string) => {
     setCrashed(null);
     const wv = webviewRefs.current.get(tabId);
-    if (wv) { wv.reload(); } else {
-      const tab = tabs.find(t => t.id === tabId);
-      if (tab) loadUrl(tabId, tab.url);
-    }
+    if (wv) { wv.reload(); }
+    else { const tab = tabs.find(t => t.id === tabId); if (tab) loadUrl(tabId, tab.url); }
   };
 
   if (tabs.length === 0) {
     return (
-      <div style={{ position: 'absolute', inset: 0, background: 'var(--theme-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg)' }}>
         <BrowserNewTab onNavigate={(url) => createTab(url)} />
       </div>
     );
   }
 
   return (
-    // Root: absolute fill — does not depend on any flex parent height
-    <div style={{ position: 'absolute', inset: 0, background: 'var(--theme-bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-      {/* Tab bar */}
-      <div ref={tabBarRef} style={{ flexShrink: 0 }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)', overflow: 'hidden' }}>
+      {/* Tab bar — fixed height */}
+      <div style={{ flexShrink: 0 }}>
         <BrowserTabBar />
       </div>
-
-      {/* Toolbar */}
-      <div ref={toolbarRef} style={{ flexShrink: 0 }}>
+      {/* Toolbar — fixed height */}
+      <div style={{ flexShrink: 0 }}>
         <BrowserToolbar webviewRefs={webviewRefs} />
       </div>
-
-      {/* Body: sidebar + webview area — fills remaining height */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', minHeight: 0 }}>
-
-        {/* Webview container — absolute fill within body */}
-        <div style={{ position: 'relative', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-          {/* Progress bar */}
+      {/* Body — takes remaining height */}
+      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        {/* Webview area */}
+        <div style={{ flex: '1 1 0', minWidth: 0, position: 'relative', overflow: 'hidden' }}>
           {showProgress && (
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, height: 2, zIndex: 10,
-              background: 'var(--theme-accent)', transition: 'opacity 0.3s',
-              width: `${loadProgress}%`, opacity: loadProgress === 100 ? 0 : 1,
+              background: 'var(--theme-accent)',
+              width: `${loadProgress}%`, opacity: loadProgress === 100 ? 0 : 1, transition: 'opacity 0.3s',
             }} />
           )}
-
           {tabs.map(tab => {
             const isActive = tab.id === activeTabId;
-            const isNewTab = tab.url === '' || tab.url === 'about:newtab';
+            const isNewTab = !tab.url || tab.url === 'about:newtab';
             const isCrashed = crashed === tab.id;
-
             return (
               <div
                 key={tab.id}
@@ -196,23 +163,15 @@ const BrowserPanel: React.FC = () => {
                   position: 'absolute', inset: 0,
                   visibility: isActive ? 'visible' : 'hidden',
                   pointerEvents: isActive ? 'auto' : 'none',
-                  display: 'flex', flexDirection: 'column',
                 }}
               >
                 {isNewTab ? (
                   <BrowserNewTab onNavigate={(url) => loadUrl(tab.id, url)} />
                 ) : isCrashed ? (
-                  <div style={{
-                    flex: 1, display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center',
-                    color: 'var(--theme-fg-muted)', gap: 12,
-                  }}>
+                  <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--theme-fg-muted)', gap: 12 }}>
                     <IconCrash />
                     <span style={{ fontSize: 15 }}>This tab crashed</span>
-                    <button
-                      style={{ padding: '8px 20px', borderRadius: 6, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}
-                      onClick={() => handleReload(tab.id)}
-                    >Reload</button>
+                    <button style={{ padding: '8px 20px', borderRadius: 6, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }} onClick={() => handleReload(tab.id)}>Reload</button>
                   </div>
                 ) : (
                   <webview
@@ -229,11 +188,7 @@ const BrowserPanel: React.FC = () => {
                       }
                       return initialSrcs.current.get(tab.id)!;
                     })()}
-                    style={{
-                      position: 'absolute', inset: 0,
-                      width: '100%', height: '100%',
-                      border: 'none', display: 'block',
-                    }}
+                    style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
                     allowpopups="true"
                     webpreferences="contextIsolation=yes, javascript=yes"
                   />
@@ -241,10 +196,8 @@ const BrowserPanel: React.FC = () => {
               </div>
             );
           })}
-
           {findBarVisible && <BrowserFindBar webviewRefs={webviewRefs} />}
         </div>
-
         <BrowserSidebar webviewRefs={webviewRefs} />
       </div>
     </div>
