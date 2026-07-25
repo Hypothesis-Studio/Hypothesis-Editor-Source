@@ -10,11 +10,9 @@ interface Props {
 
 const S = {
   bar: {
-    position: 'absolute' as const, bottom: 0, right: 0,
     display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px',
-    background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)',
-    borderRadius: '8px 0 0 0', boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
-    zIndex: 100,
+    background: 'var(--theme-bg-secondary)', borderBottom: '1px solid var(--theme-border)',
+    borderTop: '1px solid var(--theme-border)',
   },
   input: {
     width: 200, height: 26, padding: '0 8px', borderRadius: 5,

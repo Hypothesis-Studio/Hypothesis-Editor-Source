@@ -116,7 +116,18 @@ const BrowserToolbar: React.FC<Props> = ({ webviewRefs }) => {
   const goBack    = () => getWv()?.goBack();
   const goForward = () => getWv()?.goForward();
   const reload    = () => { const wv = getWv(); if (wv) { activeTab?.isLoading ? wv.stop() : wv.reload(); } };
-  const goHome    = () => { if (activeTabId) navigate(activeTabId, ''); };
+  const goHome    = () => {
+    if (!activeTabId) return;
+    const homeUrl = 'https://www.google.com';
+    setAddressBarValue(homeUrl);
+    const wv = webviewRefs.current.get(activeTabId);
+    if (wv && typeof (wv as any).loadURL === 'function') {
+      try { (wv as any).loadURL(homeUrl); } catch {}
+    } else {
+      const globalLoad = (window as any).__browserLoadUrl;
+      if (typeof globalLoad === 'function') globalLoad(activeTabId, homeUrl);
+    }
+  };
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -205,11 +216,13 @@ const BrowserToolbar: React.FC<Props> = ({ webviewRefs }) => {
   return (
     <div style={S.bar}>
       {/* Back */}
-      <button style={S.navBtn(!activeTab?.canGoBack)} disabled={!activeTab?.canGoBack} onClick={goBack} title="Back">
+      <button style={S.navBtn(!activeTab?.canGoBack)} disabled={!activeTab?.canGoBack} onClick={goBack} title="Back"
+        onMouseEnter={e => !activeTab?.canGoBack ? null : btnHover(e, true)} onMouseLeave={e => btnHover(e, false)}>
         <IcoBack />
       </button>
       {/* Forward */}
-      <button style={S.navBtn(!activeTab?.canGoForward)} disabled={!activeTab?.canGoForward} onClick={goForward} title="Forward">
+      <button style={S.navBtn(!activeTab?.canGoForward)} disabled={!activeTab?.canGoForward} onClick={goForward} title="Forward"
+        onMouseEnter={e => !activeTab?.canGoForward ? null : btnHover(e, true)} onMouseLeave={e => btnHover(e, false)}>
         <IcoForward />
       </button>
       {/* Reload/Stop */}
@@ -279,7 +292,7 @@ const BrowserToolbar: React.FC<Props> = ({ webviewRefs }) => {
 
       {/* Find */}
       <button style={{ ...S.actionBtn, color: findBarVisible ? 'var(--theme-accent)' : 'var(--theme-fg-muted)' }}
-        onClick={() => setFindBarVisible(!findBarVisible)} title="Find in page (Ctrl+F)"
+        onClick={() => setFindBarVisible(!findBarVisible)} title="Find in page"
         onMouseEnter={e => btnHover(e, true)}
         onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.color = findBarVisible ? 'var(--theme-accent)' : 'var(--theme-fg-muted)'; }}
       ><IcoFind /></button>
