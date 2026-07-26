@@ -206,7 +206,7 @@ export const LiveServerList: React.FC = () => {
               {/* Actions */}
               <div
                 className="ls-actions"
-                style={{ display: 'flex', alignItems: 'center', gap: 3, opacity: hoveredId === server.id ? 1 : 0, transition: 'opacity 0.15s', padding: '0 4px' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 3, opacity: 1, padding: '0 4px' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Copy URL */}

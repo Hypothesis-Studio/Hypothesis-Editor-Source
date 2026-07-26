@@ -19,7 +19,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
 import { BrowserWindow, shell, clipboard } from 'electron';
-import chokidar, { FSWatcher } from 'chokidar';
 import { nanoid } from '../../utils/nanoid';
 import type {
   LiveServerEntry,
@@ -123,7 +122,7 @@ interface SSEClient {
 interface ServerRecord {
   entry: LiveServerEntry;
   server: http.Server | https.Server;
-  watcher: FSWatcher | null;
+  watcher: fs.FSWatcher | null;
   sseClients: Set<SSEClient>;
   closing: boolean;
 }
@@ -444,50 +443,69 @@ export class LiveServerService {
 
   private attachWatcher(record: ServerRecord): void {
     const { entry } = record;
-    const exts = entry.watchExtensions.map((e) => e.replace(/^\./, ''));
-    const pattern = `**/*.{${exts.join(',')}}`;
-
-    const watcher = chokidar.watch(pattern, {
-      cwd: entry.rootPath,
-      ignoreInitial: true,
-      ignored: [
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/dist/**',
-        '**/build/**',
-        '**/.cache/**',
-      ],
-      persistent: true,
-      awaitWriteFinish: { stabilityThreshold: 80, pollInterval: 20 },
-    });
+    const watchExts = new Set(entry.watchExtensions.map((e) => e.replace(/^\./, '')));
+    const debounceMap = new Map<string, ReturnType<typeof setTimeout>>();
 
     const handleChange = (filePath: string, changeType: 'add' | 'change' | 'unlink') => {
       if (record.closing) return;
 
-      const ext = path.extname(filePath).toLowerCase();
-      const isCSSOnly = ext === '.css';
+      const ext = path.extname(filePath).toLowerCase().replace('.', '');
+      if (!watchExts.has(ext)) return;
 
-      // Emit file-changed event to renderer
-      const evt: LiveServerFileChangedEvent = {
-        serverId: entry.id,
-        filePath,
-        changeType,
-        timestamp: new Date().toISOString(),
-      };
-      this.broadcast(LIVE_SERVER_IPC.EVT_FILE_CHANGED, evt);
+      // Debounce per file — 150ms
+      const existing = debounceMap.get(filePath);
+      if (existing) clearTimeout(existing);
+      debounceMap.set(filePath, setTimeout(() => {
+        debounceMap.delete(filePath);
+        if (record.closing) return;
 
-      // Push reload signal to all SSE clients
-      const msg = `data: ${JSON.stringify({ type: isCSSOnly ? 'css-reload' : 'reload', file: filePath })}\n\n`;
-      for (const client of record.sseClients) {
-        try { client.res.write(msg); } catch { record.sseClients.delete(client); }
-      }
+        const isCSSOnly = ext === 'css';
+
+        const evt: LiveServerFileChangedEvent = {
+          serverId: entry.id,
+          filePath: path.relative(entry.rootPath, filePath),
+          changeType,
+          timestamp: new Date().toISOString(),
+        };
+        this.broadcast(LIVE_SERVER_IPC.EVT_FILE_CHANGED, evt);
+
+        const msg = `data: ${JSON.stringify({ type: isCSSOnly ? 'css-reload' : 'reload', file: evt.filePath })}\n\n`;
+        for (const client of record.sseClients) {
+          try { client.res.write(msg); } catch { record.sseClients.delete(client); }
+        }
+      }, 150));
     };
 
-    watcher.on('add',    (f) => handleChange(f, 'add'));
-    watcher.on('change', (f) => handleChange(f, 'change'));
-    watcher.on('unlink', (f) => handleChange(f, 'unlink'));
+    try {
+      const watcher = fs.watch(entry.rootPath, { recursive: true }, (event, filename) => {
+        if (!filename) return;
+        const fullPath = path.join(entry.rootPath, filename);
+        // Skip ignored paths
+        if (/node_modules|[\\/]\.git[\\/]|[\\/]dist[\\/]|[\\/]build[\\/]|[\\/]\.cache[\\/]/.test(fullPath)) return;
 
-    record.watcher = watcher;
+        // Determine change type
+        let changeType: 'add' | 'change' | 'unlink' = 'change';
+        try {
+          fs.statSync(fullPath);
+          changeType = event === 'rename' ? 'add' : 'change';
+        } catch {
+          changeType = 'unlink';
+        }
+
+        handleChange(fullPath, changeType);
+      });
+
+      watcher.on('error', (err) => {
+        if (!record.closing) {
+          entry.error = `Watcher error: ${err.message}`;
+        }
+      });
+
+      record.watcher = watcher;
+    } catch (err) {
+      // fs.watch may fail on some network drives — non-fatal
+      entry.error = `Could not watch folder: ${err instanceof Error ? err.message : String(err)}`;
+    }
   }
 
   // ── Teardown ────────────────────────────────────────────────────────────────
@@ -504,7 +522,7 @@ export class LiveServerService {
 
     // Stop file watcher
     if (record.watcher) {
-      await record.watcher.close().catch(() => {});
+      try { record.watcher.close(); } catch { /* ignore */ }
       record.watcher = null;
     }
 
