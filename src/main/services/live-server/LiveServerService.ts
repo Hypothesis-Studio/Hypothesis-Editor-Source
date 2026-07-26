@@ -75,22 +75,23 @@ function buildLiveReloadScript(port: number): string {
   return `
 <script data-hypothesis-livereload>
 (function() {
-  var WS_URL = 'ws://localhost:${port}/__hypothesis_livereload__';
+  var SSE_URL = 'http://localhost:${port}/__hypothesis_sse__';
   var RECONNECT_DELAY = 1000;
   var MAX_RECONNECT_DELAY = 10000;
   var delay = RECONNECT_DELAY;
-  var ws, reloadPending = false;
+  var es;
 
   function connect() {
-    try { ws = new WebSocket(WS_URL); } catch(e) { schedule(); return; }
-    ws.onopen = function() { delay = RECONNECT_DELAY; };
-    ws.onmessage = function(e) {
-      var msg = JSON.parse(e.data);
-      if (msg.type === 'reload') { window.location.reload(); }
-      if (msg.type === 'css-reload') { reloadCSS(); }
+    try { es = new EventSource(SSE_URL); } catch(e) { schedule(); return; }
+    es.onopen = function() { delay = RECONNECT_DELAY; };
+    es.onmessage = function(e) {
+      try {
+        var msg = JSON.parse(e.data);
+        if (msg.type === 'reload') { window.location.reload(); }
+        if (msg.type === 'css-reload') { reloadCSS(); }
+      } catch(err) {}
     };
-    ws.onclose = function() { schedule(); };
-    ws.onerror = function() { ws.close(); };
+    es.onerror = function() { es.close(); schedule(); };
   }
 
   function schedule() {
@@ -111,48 +112,10 @@ function buildLiveReloadScript(port: number): string {
 </script>`;
 }
 
-// ── WebSocket upgrade handling (no external ws library needed) ────────────────
+// ── SSE client tracking ──────────────────────────────────────────────────────
 
-interface WSClient {
-  socket: net.Socket;
-  alive: boolean;
-}
-
-function upgradeToWebSocket(socket: net.Socket, head: Buffer): void {
-  const key = head.toString().match(/Sec-WebSocket-Key: (.+)\r\n/i)?.[1]?.trim();
-  if (!key) { socket.destroy(); return; }
-  const accept = require('crypto')
-    .createHash('sha1')
-    .update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
-    .digest('base64');
-  socket.write(
-    'HTTP/1.1 101 Switching Protocols\r\n' +
-    'Upgrade: websocket\r\n' +
-    'Connection: Upgrade\r\n' +
-    `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
-  );
-}
-
-function sendWSFrame(socket: net.Socket, data: string): void {
-  const payload = Buffer.from(data, 'utf8');
-  const len = payload.length;
-  let header: Buffer;
-  if (len < 126) {
-    header = Buffer.alloc(2);
-    header[0] = 0x81; // FIN + text frame
-    header[1] = len;
-  } else if (len < 65536) {
-    header = Buffer.alloc(4);
-    header[0] = 0x81;
-    header[1] = 126;
-    header.writeUInt16BE(len, 2);
-  } else {
-    header = Buffer.alloc(10);
-    header[0] = 0x81;
-    header[1] = 127;
-    header.writeBigUInt64BE(BigInt(len), 2);
-  }
-  try { socket.write(Buffer.concat([header, payload])); } catch { /* ignore closed socket */ }
+interface SSEClient {
+  res: http.ServerResponse;
 }
 
 // ── ServerRecord ──────────────────────────────────────────────────────────────
@@ -161,7 +124,7 @@ interface ServerRecord {
   entry: LiveServerEntry;
   server: http.Server | https.Server;
   watcher: FSWatcher | null;
-  wsClients: Set<WSClient>;
+  sseClients: Set<SSEClient>;
   closing: boolean;
 }
 
@@ -209,7 +172,7 @@ export class LiveServerService {
       entry,
       server: null as unknown as http.Server,
       watcher: null,
-      wsClients: new Set(),
+      sseClients: new Set(),
       closing: false,
     };
     this.records.set(id, record);
@@ -316,35 +279,6 @@ export class LiveServerService {
 
     record.server = server;
 
-    // Handle WebSocket upgrades for live-reload
-    server.on('upgrade', (req, socket: net.Socket, head) => {
-      if (req.url === '/__hypothesis_livereload__') {
-        const rawHead = Buffer.concat([Buffer.from(req.rawHeaders.join('\r\n') + '\r\n\r\n'), head]);
-        // Reconstruct headers string for key extraction
-        const headersStr = req.rawHeaders
-          .reduce<string[]>((acc, v, i) => { if (i % 2 === 0) acc.push(`${v}: `); else acc[acc.length - 1] += v + '\r\n'; return acc; }, [])
-          .join('');
-        const key = req.headers['sec-websocket-key'] as string | undefined;
-        if (!key) { socket.destroy(); return; }
-        const accept = require('crypto')
-          .createHash('sha1')
-          .update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
-          .digest('base64');
-        socket.write(
-          'HTTP/1.1 101 Switching Protocols\r\n' +
-          'Upgrade: websocket\r\n' +
-          'Connection: Upgrade\r\n' +
-          `Sec-WebSocket-Accept: ${accept}\r\n\r\n`,
-        );
-        const client: WSClient = { socket, alive: true };
-        record.wsClients.add(client);
-        socket.on('close', () => record.wsClients.delete(client));
-        socket.on('error', () => { socket.destroy(); record.wsClients.delete(client); });
-      } else {
-        socket.destroy();
-      }
-    });
-
     await new Promise<void>((resolve, reject) => {
       server.once('error', reject);
       server.listen(entry.port, '0.0.0.0', () => resolve());
@@ -363,6 +297,21 @@ export class LiveServerService {
     const method = req.method ?? 'GET';
     const rawUrl = req.url ?? '/';
     const urlPath = rawUrl.split('?')[0];
+
+    // SSE endpoint for live-reload
+    if (urlPath === '/__hypothesis_sse__') {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.writeHead(200);
+      res.write(':ok\n\n');
+      const client: SSEClient = { res };
+      record.sseClients.add(client);
+      req.on('close', () => record.sseClients.delete(client));
+      req.on('error', () => record.sseClients.delete(client));
+      return;
+    }
 
     // CORS
     if (entry.cors) {
@@ -527,10 +476,10 @@ export class LiveServerService {
       };
       this.broadcast(LIVE_SERVER_IPC.EVT_FILE_CHANGED, evt);
 
-      // Push reload signal to all WebSocket clients
-      const msg = JSON.stringify({ type: isCSSOnly ? 'css-reload' : 'reload', file: filePath });
-      for (const client of record.wsClients) {
-        if (client.alive) sendWSFrame(client.socket, msg);
+      // Push reload signal to all SSE clients
+      const msg = `data: ${JSON.stringify({ type: isCSSOnly ? 'css-reload' : 'reload', file: filePath })}\n\n`;
+      for (const client of record.sseClients) {
+        try { client.res.write(msg); } catch { record.sseClients.delete(client); }
       }
     };
 
@@ -547,11 +496,11 @@ export class LiveServerService {
     record.closing = true;
     record.entry.status = 'stopped';
 
-    // Close all WebSocket clients
-    for (const client of record.wsClients) {
-      try { client.socket.destroy(); } catch { /* ignore */ }
+    // Close all SSE clients
+    for (const client of record.sseClients) {
+      try { client.res.end(); } catch { /* ignore */ }
     }
-    record.wsClients.clear();
+    record.sseClients.clear();
 
     // Stop file watcher
     if (record.watcher) {

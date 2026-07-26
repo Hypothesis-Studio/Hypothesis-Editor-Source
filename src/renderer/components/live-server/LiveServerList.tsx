@@ -34,6 +34,7 @@ export const LiveServerList: React.FC = () => {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const editRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -100,19 +101,19 @@ export const LiveServerList: React.FC = () => {
               key={server.id}
               className="ls-row"
               onClick={() => setSelectedServer(isSelected ? null : server.id)}
+              onMouseEnter={() => setHoveredId(server.id)}
+              onMouseLeave={() => setHoveredId(null)}
               style={{
                 display: 'grid',
                 gridTemplateColumns: '22px 1fr 140px 80px 90px 90px',
                 gap: 0,
                 padding: '4px 8px',
                 borderBottom: '1px solid var(--theme-border-light)',
-                background: isSelected ? 'var(--theme-bg-active, var(--theme-accent)12)' : 'transparent',
+                background: isSelected ? 'var(--theme-bg-active, var(--theme-accent)12)' : hoveredId === server.id ? 'var(--theme-bg-hover)' : 'transparent',
                 cursor: 'pointer',
                 alignItems: 'center',
                 transition: 'background 0.1s',
               }}
-              onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'var(--theme-bg-hover)'; }}
-              onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
             >
               {/* Status dot */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -205,7 +206,7 @@ export const LiveServerList: React.FC = () => {
               {/* Actions */}
               <div
                 className="ls-actions"
-                style={{ display: 'flex', alignItems: 'center', gap: 3, opacity: 0, transition: 'opacity 0.15s', padding: '0 4px' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 3, opacity: hoveredId === server.id ? 1 : 0, transition: 'opacity 0.15s', padding: '0 4px' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Copy URL */}

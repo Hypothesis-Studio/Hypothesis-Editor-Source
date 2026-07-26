@@ -82,31 +82,28 @@ const MAX_REQUEST_LOGS = 500;
 const MAX_FILE_LOGS = 200;
 
 let ipcUnsubscribers: (() => void)[] = [];
+let ipcSubscribed = false;
 
 export const useLiveServerStore = create<LiveServerState>((set, get) => {
-  // Subscribe to IPC events once
+  // Subscribe to IPC events — called explicitly from loadServers
   const subscribeIPC = () => {
-    if (ipcUnsubscribers.length > 0) return;
+    if (ipcSubscribed) return;
     const api = (window as any).api;
     if (!api?.liveServer) return;
+    ipcSubscribed = true;
 
     const u1 = api.liveServer.onStatusChanged((evt: LiveServerStatusChangedEvent) => {
-      get().handleStatusChanged(evt);
+      useLiveServerStore.getState().handleStatusChanged(evt);
     });
     const u2 = api.liveServer.onRequest((evt: LiveServerRequestEvent) => {
-      get().handleRequest(evt);
+      useLiveServerStore.getState().handleRequest(evt);
     });
     const u3 = api.liveServer.onFileChanged((evt: LiveServerFileChangedEvent) => {
-      get().handleFileChanged(evt);
+      useLiveServerStore.getState().handleFileChanged(evt);
     });
 
     ipcUnsubscribers = [u1, u2, u3];
   };
-
-  // Auto-subscribe when store is first used
-  if (typeof window !== 'undefined') {
-    setTimeout(subscribeIPC, 0);
-  }
 
   return {
     servers: [],
