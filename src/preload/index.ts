@@ -788,6 +788,29 @@ const api = {
     clearData: (options: unknown) => ipcRenderer.invoke('browser:clear:data', options),
   },
 
+  // Tunnel
+  tunnel: {
+    open: (options: { localPort: number; label?: string; subdomain?: string; autoReconnect?: boolean }) =>
+      ipcRenderer.invoke('tunnel:open', options),
+    close: (id: string) => ipcRenderer.invoke('tunnel:close', id),
+    closeAll: () => ipcRenderer.invoke('tunnel:close-all'),
+    list: () => ipcRenderer.invoke('tunnel:list'),
+    get: (id: string) => ipcRenderer.invoke('tunnel:get', id),
+    updateLabel: (id: string, label: string) => ipcRenderer.invoke('tunnel:update-label', id, label),
+    copyUrl: (id: string) => ipcRenderer.invoke('tunnel:copy-url', id),
+    openInBrowser: (id: string) => ipcRenderer.invoke('tunnel:open-browser', id),
+    onStatusChanged: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('tunnel:evt:status', handler);
+      return () => ipcRenderer.removeListener('tunnel:evt:status', handler);
+    },
+    onRequest: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('tunnel:evt:request', handler);
+      return () => ipcRenderer.removeListener('tunnel:evt:request', handler);
+    },
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),

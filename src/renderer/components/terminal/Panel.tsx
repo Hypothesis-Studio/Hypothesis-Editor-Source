@@ -6,7 +6,9 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { useConsoleStore, type ConsoleLevel } from '../../stores/consoleStore';
 import { useRunStore, type RunOutputEntry, type ProblemEntry } from '../../stores/runStore';
+import { useTunnelStore } from '../../stores/tunnelStore';
 import { TerminalPanel } from './TerminalPanel';
+import { TunnelPanel } from '../tunnel/TunnelPanel';
 
 // ── Output Panel ──────────────────────────────────────────────────
 const OutputPanel: React.FC = () => {
@@ -281,11 +283,14 @@ export const Panel: React.FC = () => {
   const problemsCount = useRunStore((s) => s.problems.length);
   const consoleEntries = useConsoleStore((s) => s.entries);
 
+  const tunnelCount = useTunnelStore((s) => s.tunnels.filter((t) => t.status !== 'closed').length);
+
   const tabs = [
     { id: 'terminal', label: 'Terminal' },
     { id: 'output', label: 'Output' },
     { id: 'problems', label: `Problems${problemsCount > 0 ? ` (${problemsCount})` : ''}` },
     { id: 'console', label: `Console${consoleEntries.length > 0 ? ` (${consoleEntries.length})` : ''}` },
+    { id: 'tunnels', label: `Tunnels${tunnelCount > 0 ? ` (${tunnelCount})` : ''}` },
   ];
 
   return (
@@ -344,6 +349,7 @@ export const Panel: React.FC = () => {
         {activePanel === 'output' && <OutputPanel />}
         {activePanel === 'problems' && <ProblemsPanel />}
         {activePanel === 'console' && <ConsolePanel />}
+        {activePanel === 'tunnels' && <TunnelPanel />}
       </div>
     </div>
   );

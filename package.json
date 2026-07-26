@@ -1,6 +1,6 @@
 {
   "name": "hypothesis",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Every Great Solution Begins with a Hypothesis.",
   "author": "Hypothesis Team <team@hypothesis.dev>",
   "license": "MIT",
@@ -45,6 +45,7 @@
     "electron-updater": "^6.3.9",
     "glob": "^11.0.1",
     "immer": "^10.1.1",
+    "localtunnel": "^2.0.2",
     "monaco-editor": "^0.52.2",
     "mysql2": "^3.23.1",
     "nanoid": "^5.0.9",
@@ -63,6 +64,7 @@
     "@playwright/test": "^1.49.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/localtunnel": "^2.0.4",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

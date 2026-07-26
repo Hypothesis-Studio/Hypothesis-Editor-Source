@@ -29,6 +29,7 @@ import { PreviewService } from './services/preview/PreviewService';
 import { RestClientService } from './services/rest-client/RestClientService';
 import { DatabaseService } from './services/database/DatabaseService';
 import { BrowserService } from './services/browser/BrowserService';
+import { TunnelService } from './services/tunnel/TunnelService';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -76,6 +77,7 @@ if (!gotTheLock) {
   let appStore: AppStore;
   let databaseService: DatabaseService | undefined;
   let browserService: BrowserService | undefined;
+  let tunnelService: TunnelService | undefined;
 
   app.whenReady().then(async () => {
     logger.info(`${APP_NAME} starting...`, {
@@ -140,6 +142,9 @@ if (!gotTheLock) {
     // Initialize Browser service
     browserService = new BrowserService(() => BrowserWindow.getAllWindows()[0] ?? null);
 
+    // Initialize Tunnel service
+    tunnelService = new TunnelService();
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -187,6 +192,7 @@ if (!gotTheLock) {
       restClientService,
       databaseService: databaseService!,
       browserService: browserService!,
+      tunnelService: tunnelService!,
     });
 
     // Create application menu
@@ -231,6 +237,7 @@ if (!gotTheLock) {
     killAllRunProcesses();
     await databaseService?.dispose();
     browserService?.dispose();
+    tunnelService?.dispose();
     if (appStore) {
       await appStore.save();
     }

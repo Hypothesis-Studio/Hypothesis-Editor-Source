@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## [0.2.6] - 2026-07-26
+
+### Added
+- **Tunnels** — port forwarding via LocalTunnel
+  - Forward any local port to a public URL instantly
+  - Multi-tunnel support — run multiple tunnels simultaneously
+  - Auto-reconnect with exponential backoff on disconnect
+  - Custom subdomain support (optional)
+  - Custom label per tunnel (editable inline via double-click)
+  - Per-tunnel request activity log with method, status code, path, timestamp
+  - Per-tunnel stats: request count, bytes in/out
+  - Copy public URL to clipboard (one-click)
+  - Open public URL in system browser
+  - Close individual tunnel or close all at once
+  - Status indicator: Connecting / Connected / Error / Closed with animated dot
+  - Tunnel count + icon badge in form bar (accent color when active)
+  - Keyboard: accessible via Panel → Tunnels tab
+  - `TunnelService` with full lifecycle management, dispose on app quit
+  - Preload bridge: `api.tunnel.*` (open, close, closeAll, list, get, updateLabel, copyUrl, openInBrowser, onStatusChanged, onRequest)
+
 ## [0.2.5] - 2026-07-25
 
 ### Added
