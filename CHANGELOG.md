@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## [0.2.7] - 2026-07-26
+
+### Added
+- **Live Server** — embedded HTTP server with live-reload
+  - Serve any local folder via HTTP or HTTPS (self-signed cert)
+  - Live-reload via SSE (`/__hypothesis_sse__`) — works inside internal Web Browser
+  - File watcher via `fs.watch` native (recursive) with 150ms debounce per file
+  - CSS-only changes trigger CSS hot-swap (no full page reload)
+  - SPA mode — serves `index.html` for unknown routes
+  - CORS headers on all responses
+  - Per-request log: method, path, status, bytes, duration, timestamp
+  - Per-file-change log: file path, change type (add/change/unlink), timestamp
+  - Auto port-finding if requested port is busy
+  - Custom label per server (editable inline)
+  - Toggle chips: Live Reload, Open in Browser, SPA Mode, CORS
+  - Copy URL, Open in internal Web Browser, Open folder, Stop per server
+  - Stop All button in footer
+  - Server count + globe icon badge in form bar
+  - Keyboard: accessible via Panel → Live Server tab
+  - `LiveServerService` with full lifecycle management, dispose on app quit
+  - Preload bridge: `api.liveServer.*` (start, stop, stopAll, list, get, updateLabel, copyUrl, openInBrowser, openFolder, findFreePort, onStatusChanged, onRequest, onFileChanged)
+
+### Fixed
+- **Open in Browser** (Live Server + Tunnels) — now opens URL in internal Web Browser tab instead of external browser
+- **Panel tab order** — Live Server now appears before Tunnels
+
 ## [0.2.6] - 2026-07-26
 
 ### Added
