@@ -7,8 +7,10 @@ import { useAppStore } from '../../stores/appStore';
 import { useConsoleStore, type ConsoleLevel } from '../../stores/consoleStore';
 import { useRunStore, type RunOutputEntry, type ProblemEntry } from '../../stores/runStore';
 import { useTunnelStore } from '../../stores/tunnelStore';
+import { useLiveServerStore } from '../../stores/liveServerStore';
 import { TerminalPanel } from './TerminalPanel';
 import { TunnelPanel } from '../tunnel/TunnelPanel';
+import { LiveServerPanel } from '../live-server/LiveServerPanel';
 
 // ── Output Panel ──────────────────────────────────────────────────
 const OutputPanel: React.FC = () => {
@@ -284,6 +286,7 @@ export const Panel: React.FC = () => {
   const consoleEntries = useConsoleStore((s) => s.entries);
 
   const tunnelCount = useTunnelStore((s) => s.tunnels.filter((t) => t.status !== 'closed').length);
+  const liveServerCount = useLiveServerStore((s) => s.servers.filter((sv) => sv.status === 'running').length);
 
   const tabs = [
     { id: 'terminal', label: 'Terminal' },
@@ -291,6 +294,7 @@ export const Panel: React.FC = () => {
     { id: 'problems', label: `Problems${problemsCount > 0 ? ` (${problemsCount})` : ''}` },
     { id: 'console', label: `Console${consoleEntries.length > 0 ? ` (${consoleEntries.length})` : ''}` },
     { id: 'tunnels', label: `Tunnels${tunnelCount > 0 ? ` (${tunnelCount})` : ''}` },
+    { id: 'live-server', label: `Live Server${liveServerCount > 0 ? ` (${liveServerCount})` : ''}` },
   ];
 
   return (
@@ -350,6 +354,7 @@ export const Panel: React.FC = () => {
         {activePanel === 'problems' && <ProblemsPanel />}
         {activePanel === 'console' && <ConsolePanel />}
         {activePanel === 'tunnels' && <TunnelPanel />}
+        {activePanel === 'live-server' && <LiveServerPanel />}
       </div>
     </div>
   );

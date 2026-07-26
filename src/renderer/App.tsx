@@ -23,6 +23,7 @@ import { useEditorStore } from './stores/editorStore';
 import { useSessionStore } from './stores/sessionStore';
 import { useWorkspaceStore } from './stores/workspaceStore';
 import { initRunListeners } from './stores/runStore';
+import { useBrowserStore } from './stores/browserStore';
 import { pluginManager } from './plugins/PluginManager';
 import { WelcomePage } from './components/pages/WelcomePage';
 import { AboutDialog } from './components/docs/AboutDialog';
@@ -543,6 +544,24 @@ const App: React.FC = () => {
       });
     }
   }, []);
+
+  // Register global hook so tunnel/live-server can open URLs in the internal browser
+  useEffect(() => {
+    (window as any).__openInternalBrowser = (url: string) => {
+      openBrowserTab();
+      // Wait one tick for the browser tab to mount before navigating
+      setTimeout(() => {
+        const { tabs: browserTabs, createTab, navigate, activeTabId } = useBrowserStore.getState();
+        if (browserTabs.length === 0) {
+          createTab(url);
+        } else {
+          const targetId = activeTabId ?? browserTabs[browserTabs.length - 1].id;
+          navigate(targetId, url);
+        }
+      }, 80);
+    };
+    return () => { delete (window as any).__openInternalBrowser; };
+  }, [openBrowserTab]);
 
   // ── Actions ─────────────────────────────────────────────────────
   const handleNewFile = useCallback(() => {

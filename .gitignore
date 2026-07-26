@@ -12,3 +12,4 @@ coverage
 .editorconfig
 .eslintrc.json
 .prettierrc
+package-lock.json

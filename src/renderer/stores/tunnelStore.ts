@@ -134,9 +134,16 @@ export const useTunnelStore = create<TunnelState>((set, get) => ({
   },
 
   openInBrowser: async (id) => {
-    const api = (window as any).api;
-    if (!api?.tunnel) return;
-    await api.tunnel.openInBrowser(id);
+    const tunnel = get().tunnels.find((t) => t.id === id);
+    const url = tunnel?.publicUrl;
+    if (!url) return;
+    const openInternal = (window as any).__openInternalBrowser;
+    if (typeof openInternal === 'function') {
+      openInternal(url);
+    } else {
+      const api = (window as any).api;
+      if (api?.tunnel) await api.tunnel.openInBrowser(id);
+    }
   },
 
   handleStatusChanged: (event) => {

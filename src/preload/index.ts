@@ -811,6 +811,45 @@ const api = {
     },
   },
 
+  // Live Server
+  liveServer: {
+    start: (options: {
+      rootPath: string;
+      port?: number;
+      label?: string;
+      protocol?: 'http' | 'https';
+      liveReload?: boolean;
+      openBrowser?: boolean;
+      spaMode?: boolean;
+      cors?: boolean;
+      watchExtensions?: string[];
+    }) => ipcRenderer.invoke('live-server:start', options),
+    stop: (id: string) => ipcRenderer.invoke('live-server:stop', id),
+    stopAll: () => ipcRenderer.invoke('live-server:stop-all'),
+    list: () => ipcRenderer.invoke('live-server:list'),
+    get: (id: string) => ipcRenderer.invoke('live-server:get', id),
+    updateLabel: (id: string, label: string) => ipcRenderer.invoke('live-server:update-label', id, label),
+    copyUrl: (id: string) => ipcRenderer.invoke('live-server:copy-url', id),
+    openInBrowser: (id: string) => ipcRenderer.invoke('live-server:open-browser', id),
+    openFolder: (id: string) => ipcRenderer.invoke('live-server:open-folder', id),
+    findFreePort: (preferredPort?: number) => ipcRenderer.invoke('live-server:find-free-port', preferredPort),
+    onStatusChanged: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('live-server:evt:status', handler);
+      return () => ipcRenderer.removeListener('live-server:evt:status', handler);
+    },
+    onRequest: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('live-server:evt:request', handler);
+      return () => ipcRenderer.removeListener('live-server:evt:request', handler);
+    },
+    onFileChanged: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('live-server:evt:file-changed', handler);
+      return () => ipcRenderer.removeListener('live-server:evt:file-changed', handler);
+    },
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),
