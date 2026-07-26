@@ -293,8 +293,8 @@ export const Panel: React.FC = () => {
     { id: 'output', label: 'Output' },
     { id: 'problems', label: `Problems${problemsCount > 0 ? ` (${problemsCount})` : ''}` },
     { id: 'console', label: `Console${consoleEntries.length > 0 ? ` (${consoleEntries.length})` : ''}` },
-    { id: 'tunnels', label: `Tunnels${tunnelCount > 0 ? ` (${tunnelCount})` : ''}` },
     { id: 'live-server', label: `Live Server${liveServerCount > 0 ? ` (${liveServerCount})` : ''}` },
+    { id: 'tunnels', label: `Tunnels${tunnelCount > 0 ? ` (${tunnelCount})` : ''}` },
   ];
 
   return (
