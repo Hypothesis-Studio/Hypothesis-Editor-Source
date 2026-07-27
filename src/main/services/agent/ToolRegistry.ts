@@ -12,6 +12,7 @@ import { AgentError } from '../../../shared/types/agent';
 import { logger } from '../../utils/logger';
 import { FileService } from '../FileService';
 import { GitService } from '../GitService';
+import type { AppStore } from '../AppStore';
 import path from 'path';
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
@@ -32,10 +33,12 @@ export class ToolRegistry {
   private tools = new Map<string, RegisteredTool>();
   private fileService: FileService;
   private gitService: GitService;
+  private appStore?: AppStore;
 
-  constructor(fileService: FileService, gitService: GitService) {
+  constructor(fileService: FileService, gitService: GitService, appStore?: AppStore) {
     this.fileService = fileService;
     this.gitService = gitService;
+    this.appStore = appStore;
   }
 
   initialize(): void {
@@ -374,12 +377,39 @@ export class ToolRegistry {
 
   enableTool(id: string): void {
     const tool = this.tools.get(id);
-    if (tool) tool.definition.enabled = true;
+    if (tool) {
+      tool.definition.enabled = true;
+      this.saveDisabledTools();
+    }
   }
 
   disableTool(id: string): void {
     const tool = this.tools.get(id);
-    if (tool) tool.definition.enabled = false;
+    if (tool) {
+      tool.definition.enabled = false;
+      this.saveDisabledTools();
+    }
+  }
+
+  /** Save the set of disabled tool IDs to persistent storage */
+  private saveDisabledTools(): void {
+    if (!this.appStore) return;
+    const disabled = Array.from(this.tools.values())
+      .filter(t => !t.definition.enabled)
+      .map(t => t.definition.id);
+    this.appStore.set('agent.disabledTools', disabled);
+  }
+
+  /** Load disabled tool states from persistent storage */
+  loadDisabledTools(): void {
+    if (!this.appStore) return;
+    const disabled = this.appStore.get('agent.disabledTools') as string[] | undefined;
+    if (disabled && Array.isArray(disabled)) {
+      for (const id of disabled) {
+        const tool = this.tools.get(id);
+        if (tool) tool.definition.enabled = false;
+      }
+    }
   }
 
   async execute(
@@ -392,7 +422,10 @@ export class ToolRegistry {
       throw new AgentError(`Tool ${toolId} not found`, 'NOT_FOUND', 'tool');
     }
     if (!tool.definition.enabled) {
-      throw new AgentError(`Tool ${toolId} is disabled`, 'DISABLED', 'tool');
+      throw new AgentError(
+        `Tool "${toolId}" is currently disabled. Enable it in Settings → AI Agent → Tools, or ask the user to enable it.`,
+        'DISABLED', 'tool',
+      );
     }
 
     // Check permissions

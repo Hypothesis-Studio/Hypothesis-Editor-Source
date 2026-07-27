@@ -109,7 +109,7 @@ if (!gotTheLock) {
 
     // Initialize Agent system
     const providerRegistry = new ProviderRegistry(appStore);
-    const toolRegistry = new ToolRegistry(fileService, gitService);
+    const toolRegistry = new ToolRegistry(fileService, gitService, appStore);
     const memoryService = new MemoryService(appStore);
     const taskService = new TaskService(appStore);
     const sessionPersistence = new SessionPersistence(appStore);
@@ -117,6 +117,7 @@ if (!gotTheLock) {
     const rateLimiter = new RateLimiter();
 
     toolRegistry.initialize();
+    toolRegistry.loadDisabledTools();
     memoryService.initialize();
     taskService.initialize();
     sessionPersistence.initialize();

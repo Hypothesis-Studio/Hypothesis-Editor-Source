@@ -21,10 +21,26 @@
   - Keyboard: accessible via Panel → Live Server tab
   - `LiveServerService` with full lifecycle management, dispose on app quit
   - Preload bridge: `api.liveServer.*` (start, stop, stopAll, list, get, updateLabel, copyUrl, openInBrowser, openFolder, findFreePort, onStatusChanged, onRequest, onFileChanged)
+- **Documentation updated** — in-app docs (`DocumentationPage.tsx`) updated with new features:
+  - Web Browser section (multi-tab, bookmarks, history, downloads, find in page)
+  - Tunnels section (port forwarding, auto-reconnect, metrics)
+  - Live Server section (live-reload, SPA mode, HTTPS, file watcher)
+  - Database Explorer section (SQLite/PostgreSQL/MySQL, schema browser, query editor)
+  - Activity Bar entries updated (Database Explorer, Web Browser)
+  - Tips & Tricks updated with new keyboard shortcuts
+- **Keyboard Shortcuts page updated** — added Web Browser section (`Ctrl+Shift+B`, new tab, close tab, find in page, etc.)
 
 ### Fixed
 - **Open in Browser** (Live Server + Tunnels) — now opens URL in internal Web Browser tab instead of external browser
 - **Panel tab order** — Live Server now appears before Tunnels
+- **AI Agent raw JSON response** — when tools are disabled, AI no longer outputs raw JSON like `{"tool": "readFile", "path": "."}`. Added:
+  - Disabled tools list injected into system prompt so AI knows what's unavailable
+  - `sanitizeResponse()` post-processor catches raw tool-call JSON and replaces with professional message
+  - Tool usage rules added to system prompt to prevent raw JSON output
+  - Disabled tool check in streaming loop with clear error message
+  - Professional error messages for disabled/unknown tools in both streaming and non-streaming paths
+- **Session delete bug** — deleting the active session now properly clears messages and auto-creates a new empty session instead of leaving stale state
+- **Tool enable/disable persistence** — tool enabled/disabled states now persist across app restarts via `agent.disabledTools` in AppStore
 
 ## [0.2.6] - 2026-07-26
 

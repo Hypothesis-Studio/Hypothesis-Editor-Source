@@ -178,9 +178,9 @@ export class AgentService {
 
       // If no tool calls, we're done
       if (!response.toolCalls || response.toolCalls.length === 0) {
-        finalContent = response.content;
+        finalContent = this.sanitizeResponse(response.content, agent.enabledTools);
         // Add assistant response to conversation
-        conversationMessages.push({ role: 'assistant', content: response.content });
+        conversationMessages.push({ role: 'assistant', content: finalContent });
         break;
       }
 
@@ -214,7 +214,15 @@ export class AgentService {
           toolOutput = result.success ? result.output : `Error: ${result.error}`;
           this.agentLogs.info('tool', `${resolvedId} → ${result.success ? 'OK' : 'FAIL'}`, { output: result.output?.substring(0, 200) });
         } catch (err) {
-          toolOutput = `Error: ${(err as Error).message}`;
+          const errMsg = (err as Error).message;
+          // Provide professional error messages for disabled tools
+          if (errMsg.includes('is disabled') || errMsg.includes('DISABLED')) {
+            toolOutput = `Error: Tool "${resolvedId}" is currently disabled. Ask the user to enable it in Settings → AI Agent → Tools.`;
+          } else if (errMsg.includes('not found') || errMsg.includes('NOT_FOUND')) {
+            toolOutput = `Error: Tool "${resolvedId}" is not available. Available tools: ${this.tools.listTools().filter(t => t.enabled).map(t => t.id).join(', ')}`;
+          } else {
+            toolOutput = `Error: ${errMsg}`;
+          }
           this.agentLogs.error('tool', `${resolvedId} failed`, { error: toolOutput });
         }
 
@@ -402,6 +410,20 @@ export class AgentService {
             conversationMessages.push({ role: 'tool', tool_call_id: tc.id, content: unknownMsg } as any);
             continue;
           }
+
+          // Check if tool is disabled
+          const toolDef = this.tools.getTool(resolvedId);
+          if (toolDef && (!toolDef.definition.enabled || !agent.enabledTools.includes(resolvedId))) {
+            const disabledMsg = `Tool "${resolvedId}" is currently disabled. Enable it in Settings → AI Agent → Tools to use this capability.`;
+            yield {
+              type: 'tool_result',
+              data: { toolCallId: tc.id, status: 'error', error: disabledMsg, name: resolvedId },
+              timestamp: Date.now(),
+            };
+            conversationMessages.push({ role: 'tool', tool_call_id: tc.id, content: disabledMsg } as any);
+            continue;
+          }
+
           this.agentLogs.info('tool', `Executing: ${resolvedId}`);
 
           yield { type: 'tool_result', data: { toolCallId: tc.id, status: 'running' }, timestamp: Date.now() };
@@ -444,8 +466,9 @@ export class AgentService {
       }
 
       // Save final assistant message
+      const finalSanitized = this.sanitizeResponse(totalContent, agent.enabledTools);
       const assistantMsg: ChatMessage = {
-        id: nanoid(), role: 'assistant', content: totalContent,
+        id: nanoid(), role: 'assistant', content: finalSanitized,
         status: abortController.signal.aborted ? 'cancelled' : 'completed',
         timestamp: Date.now(),
       };
@@ -500,6 +523,17 @@ export class AgentService {
     if (wsPath) {
       systemPrompt += `\n\nWorkspace: ${wsPath}\nAll file operations and terminal commands should use this workspace directory as the working directory.`;
     }
+
+    // Inform AI about disabled tools so it doesn't output raw JSON
+    const allTools = this.tools.listTools();
+    const disabledTools = allTools.filter(t => !agent.enabledTools.includes(t.id) || !t.enabled);
+    if (disabledTools.length > 0) {
+      const disabledNames = disabledTools.map(t => t.id).join(', ');
+      systemPrompt += `\n\nIMPORTANT: The following tools are currently DISABLED and cannot be used: ${disabledNames}. Do NOT attempt to call them. If a task requires a disabled tool, explain to the user that the tool is unavailable and suggest they enable it in Settings → AI Agent → Tools. Never output raw tool-call JSON as text — always respond in natural language.`;
+    }
+
+    // Add tool usage guidance
+    systemPrompt += `\n\nTOOL USAGE RULES:\n- Always use proper tool calls — never output tool invocations as raw JSON text.\n- If you need to call a tool, use the function calling mechanism. If that's not available, describe what you would do in natural language.\n- Never output JSON like {\"tool\": \"readFile\", \"path\": \".\"} as your response. That's not a valid response format.`;
     messages.push({ role: 'system', content: systemPrompt });
 
     const history = this.sessions.getFormattedHistory(session.id, 50);
@@ -510,6 +544,69 @@ export class AgentService {
 
   private parseToolArgs(args: string): Record<string, unknown> {
     try { return JSON.parse(args); } catch { return {}; }
+  }
+
+  /**
+   * Sanitize AI responses that contain raw tool-call JSON instead of proper text.
+   * This catches cases where the model outputs things like {"tool": "readFile", "path": "."}
+   * instead of using the function-calling mechanism or responding in natural language.
+   */
+  private sanitizeResponse(content: string, enabledTools?: string[]): string {
+    if (!content) return content;
+
+    // Pattern: entire response is a JSON object with tool-like keys
+    const rawToolPatterns = [
+      // {"tool": "readFile", "path": "."}
+      /^\s*\{\s*"tool"\s*:\s*"[a-zA-Z]+"\s*,\s*"[a-z]+"\s*:\s*.*\}\s*$/s,
+      // {"tool": "readFile", "args": {...}}
+      /^\s*\{\s*"tool"\s*:\s*"[a-zA-Z]+"\s*,\s*"args"\s*:\s*.*\}\s*$/s,
+      // {"function": "readFile", ...}
+      /^\s*\{\s*"function"\s*:\s*"[a-zA-Z]+"\s*,.*\}\s*$/s,
+      // {"name": "readFile", "arguments": {...}}
+      /^\s*\{\s*"name"\s*:\s*"[a-zA-Z]+"\s*,\s*"arguments"\s*:\s*.*\}\s*$/s,
+    ];
+
+    for (const pattern of rawToolPatterns) {
+      if (pattern.test(content)) {
+        try {
+          const parsed = JSON.parse(content);
+          const toolName = parsed.tool || parsed.function || parsed.name;
+          if (toolName && this.tools.getTool(toolName)) {
+            const tool = this.tools.getTool(toolName);
+            const isEnabled = tool?.definition.enabled && (enabledTools ?? []).includes(toolName);
+            if (!isEnabled) {
+              return `I'm sorry, but the **${toolName}** tool is currently disabled. You can enable it in **Settings → AI Agent → Tools** and try again.`;
+            }
+            // If tool is enabled but model output raw JSON — shouldn't happen, but handle gracefully
+            return `I attempted to use the **${toolName}** tool, but the request couldn't be processed properly. Please try rephrasing your request.`;
+          }
+        } catch { /* Not valid JSON, leave as-is */ }
+      }
+    }
+
+    // Pattern: inline JSON tool calls mixed with text
+    // e.g. "Sure! Let me help.\n{\"tool\": \"readFile\", \"path\": \"index.ts\"}"
+    const inlinePattern = /\{\s*"tool"\s*:\s*"([a-zA-Z]+)"\s*,\s*"[a-z]+"\s*:\s*[^}]*\}/g;
+    let match;
+    let sanitized = content;
+    const foundTools: string[] = [];
+    while ((match = inlinePattern.exec(content)) !== null) {
+      foundTools.push(match[1]);
+    }
+    if (foundTools.length > 0) {
+      // Remove the raw JSON blocks
+      sanitized = sanitized.replace(inlinePattern, '').trim();
+      // Add a note about disabled tools
+      const disabledNames = [...new Set(foundTools)].filter(name => {
+        const t = this.tools.getTool(name);
+        return !t || !t.definition.enabled;
+      });
+      if (disabledNames.length > 0) {
+        sanitized += `\n\n> **Note:** The following tools are currently disabled: ${disabledNames.join(', ')}. Enable them in **Settings → AI Agent → Tools** to use them.`;
+      }
+    }
+
+    return sanitized;
   }
 
   getHealthStatus(): {

@@ -43,6 +43,7 @@ export class AppStore {
         'agent.sessions': [],
         'agent.memory': [],
         'agent.tasks': [],
+        'agent.disabledTools': [],
       },
       watch: true,
     });

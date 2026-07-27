@@ -1206,6 +1206,7 @@ export interface StoreSchema {
   'agent.sessions': unknown[];
   'agent.memory': unknown[];
   'agent.tasks': unknown[];
+  'agent.disabledTools': string[];
 }
 
 // ============================================================================

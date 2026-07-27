@@ -23,6 +23,10 @@ const NAV_SECTIONS = [
   { id: 'ai-agent', label: 'AI Agent' },
   { id: 'insights', label: 'Project Insights' },
   { id: 'preview', label: 'File Preview' },
+  { id: 'browser', label: 'Web Browser' },
+  { id: 'tunnels', label: 'Tunnels' },
+  { id: 'live-server', label: 'Live Server' },
+  { id: 'database', label: 'Database Explorer' },
   { id: 'extensions', label: 'Extensions' },
   { id: 'settings', label: 'Settings' },
   { id: 'tips', label: 'Tips & Tricks' },
@@ -148,6 +152,8 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                       ['Source Control (Ctrl+Shift+G)', 'Git integration'],
                       ['AI Agent (Ctrl+Shift+A)', 'Autonomous AI coding assistant'],
                       ['REST Client (Ctrl+Shift+R)', 'API testing client like Postman'],
+                      ['Database Explorer', 'Connect and query SQLite, PostgreSQL, MySQL'],
+                      ['Web Browser', 'Embedded multi-tab browser'],
                       ['Project Insights', 'Code health & analytics dashboard'],
                       ['Extensions', 'Install and manage .hyp extensions'],
                       ['Settings (Ctrl+,)', 'All editor and app preferences'],
@@ -372,6 +378,99 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
             </Section>
           </div>
 
+          {/* Web Browser */}
+          <div id="doc-browser">
+            <Section title="Web Browser">
+              <Card>
+                <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 12 }}>
+                  Full-featured embedded web browser. Open with <Kbd>Ctrl+Shift+B</Kbd> or the globe icon in the Activity Bar.
+                </p>
+                <FeatureGrid features={[
+                  ['Multi-Tab', 'Open multiple tabs with independent navigation'],
+                  ['Navigation Bar', 'URL input, back/forward, reload, home button'],
+                  ['Find in Page', 'Ctrl+F search within the current web page'],
+                  ['Bookmarks', 'Save and organize favorite URLs'],
+                  ['History', 'Browse history with timestamps and re-open'],
+                  ['Downloads', 'Track and manage file downloads'],
+                  ['Sidebar', 'Quick access to bookmarks, history, and downloads'],
+                  ['New Tab Page', 'Speed dial with bookmarks and recent history'],
+                ]} />
+              </Card>
+            </Section>
+          </div>
+
+          {/* Tunnels */}
+          <div id="doc-tunnels">
+            <Section title="Tunnels">
+              <Card>
+                <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 12 }}>
+                  Expose local ports to the internet via localtunnel. Open from the View menu or Command Palette.
+                </p>
+                <FeatureGrid features={[
+                  ['Port Forwarding', 'Expose any local port to a public URL'],
+                  ['Custom Subdomain', 'Request a preferred subdomain for the tunnel'],
+                  ['Auto-Reconnect', 'Automatically reconnect on disconnect with exponential backoff'],
+                  ['Request Metrics', 'Track request count, bytes in/out per tunnel'],
+                  ['Copy URL', 'One-click copy of the public URL to clipboard'],
+                  ['Open in Browser', 'Open the public URL directly in your default browser'],
+                  ['Multiple Tunnels', 'Run several tunnels simultaneously'],
+                  ['Status Events', 'Real-time status updates (connecting, connected, error, closed)'],
+                ]} />
+              </Card>
+            </Section>
+          </div>
+
+          {/* Live Server */}
+          <div id="doc-live-server">
+            <Section title="Live Server">
+              <Card>
+                <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 12 }}>
+                  Production-grade local HTTP server with live-reload. Open from the View menu or Command Palette.
+                </p>
+                <FeatureGrid features={[
+                  ['Static File Serving', 'Serve any local directory as a website'],
+                  ['Live Reload', 'Auto-refresh pages on file changes via SSE'],
+                  ['SPA Mode', 'Serve index.html for all unknown routes'],
+                  ['CORS Headers', 'Configurable CORS on all responses'],
+                  ['HTTPS', 'Optional self-signed HTTPS with auto-generated cert'],
+                  ['Request Log', 'Per-request metrics (method, path, status, bytes, duration)'],
+                  ['Auto Port Finding', 'Automatically finds a free port if requested one is busy'],
+                  ['File Watcher', 'chokidar-based watching with configurable extensions'],
+                ]} />
+              </Card>
+            </Section>
+          </div>
+
+          {/* Database Explorer */}
+          <div id="doc-database">
+            <Section title="Database Explorer">
+              <Card>
+                <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 12 }}>
+                  Connect, browse, and query databases visually. Open from the database icon in the Activity Bar or View menu.
+                </p>
+                <SubSection title="Supported Databases">
+                  <FeatureGrid features={[
+                    ['SQLite', 'Local .db files via sql.js (WASM, no native deps)'],
+                    ['PostgreSQL', 'Full network connection support'],
+                    ['MySQL / MariaDB', 'Full network connection support'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="Features">
+                  <FeatureGrid features={[
+                    ['Schema Browser', 'Browse databases, tables, views, columns, indexes, foreign keys'],
+                    ['Query Editor', 'Write and execute SQL with syntax highlighting'],
+                    ['Table Data Viewer', 'Browse table contents with pagination and sorting'],
+                    ['Query History', 'Track and re-run previous queries'],
+                    ['Connection Manager', 'Save and manage multiple database connections'],
+                    ['Connection Dialog', 'Easy setup with driver-specific fields'],
+                  ]} />
+                </SubSection>
+              </Card>
+            </Section>
+          </div>
+
           {/* Extensions */}
           <div id="doc-extensions">
             <Section title="Extensions">
@@ -444,6 +543,10 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                   ['Multi-select', 'Ctrl+D to select next match, Ctrl+Shift+L for all'],
                   ['REST Client', 'Ctrl+Shift+R — test APIs without leaving the editor'],
                   ['AI Agent', 'Ctrl+Shift+A — ask AI to write, fix, or explain code'],
+                  ['Web Browser', 'Ctrl+Shift+B — browse the web inside the editor'],
+                  ['Tunnels', 'Expose local ports to the internet via localtunnel'],
+                  ['Live Server', 'Serve local folders with live-reload on file changes'],
+                  ['Database Explorer', 'Connect, browse, and query databases visually'],
                   ['Project Insights', 'Dashboard icon — check code health before shipping'],
                   ['File Preview', 'Click any image/markdown/HTML in Explorer to preview'],
                   ['Breadcrumbs', 'Click symbols in breadcrumb bar to navigate functions'],

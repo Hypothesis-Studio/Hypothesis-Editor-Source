@@ -183,10 +183,20 @@ export const useAgentStore = create<AgentState>((set, get) => {
     deleteSession: async (id) => {
       const result = (await window.api.agent.session.delete(id)) as IPCResult;
       if (result.success) {
+        const wasActive = get().activeSessionId === id;
         set((s) => ({
           sessions: s.sessions.filter((ses) => ses.id !== id),
-          activeSessionId: s.activeSessionId === id ? null : s.activeSessionId,
+          activeSessionId: wasActive ? null : s.activeSessionId,
+          messages: wasActive ? [] : s.messages,
+          streamingContent: wasActive ? '' : s.streamingContent,
         }));
+        // Auto-create a fresh session if the deleted one was active
+        if (wasActive) {
+          const agentId = get().activeAgentId;
+          if (agentId) {
+            await get().createSession(agentId);
+          }
+        }
       }
     },
 

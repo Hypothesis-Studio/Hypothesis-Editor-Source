@@ -134,6 +134,7 @@ export const KeyboardShortcutsPage: React.FC<PageProps> = ({ onClose }) => {
               <Row keys="Ctrl+Shift+G" desc="Source Control (Git)" />
               <Row keys="Ctrl+Shift+A" desc="AI Agent" />
               <Row keys="Ctrl+Shift+R" desc="REST Client" />
+              <Row keys="Ctrl+Shift+B" desc="Web Browser" />
               <Row keys="Ctrl+Shift+X" desc="Extensions" />
               <Row keys="Ctrl+Shift+Z" desc="Zen Mode" />
             </Section>
@@ -170,6 +171,17 @@ export const KeyboardShortcutsPage: React.FC<PageProps> = ({ onClose }) => {
               <Row keys="/status" desc="System health" muted />
               <Row keys="/export" desc="Export chat as JSON" muted />
               <Row keys="/settings" desc="Open agent settings" muted />
+            </Section>
+
+            <Section title="Web Browser">
+              <Row keys="Ctrl+Shift+B" desc="Open Web Browser" />
+              <Row keys="Ctrl+T" desc="New Tab" />
+              <Row keys="Ctrl+W" desc="Close Tab" />
+              <Row keys="Ctrl+L" desc="Focus Address Bar" />
+              <Row keys="Ctrl+R" desc="Reload Page" />
+              <Row keys="Alt+←" desc="Go Back" />
+              <Row keys="Alt+→" desc="Go Forward" />
+              <Row keys="Ctrl+F" desc="Find in Page" />
             </Section>
           </div>
         </div>
