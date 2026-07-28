@@ -92,6 +92,8 @@ if (!gotTheLock) {
 
     // Initialize core services
     appStore = new AppStore();
+    // Expose for extension theme sync
+    (global as any).__hypothesisAppStore = appStore;
     const settingsService = new SettingsService(appStore);
     const themeService = new ThemeService(appStore);
     const fileService = new FileService();

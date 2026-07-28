@@ -851,10 +851,10 @@ export class PluginService {
       theme: {
         getCurrent: () => {
           const themeId = this.appStore.get('theme');
-          return (this as any).themeService?.getThemes?.().find((t: any) => t.id === themeId) || undefined;
+          return this.themeService?.getThemes?.().find((t: any) => t.id === themeId) || undefined;
         },
         list: () => {
-          return (this as any).themeService?.getThemes?.() || [];
+          return this.themeService?.getThemes?.() || [];
         },
         set: async (themeId: string) => {
           this.appStore.set('theme', themeId);
@@ -862,13 +862,28 @@ export class PluginService {
           return true;
         },
         register: (themeDef: any) => {
+          if (this.themeService?.registerExtensionTheme) {
+            this.themeService.registerExtensionTheme(themeDef);
+          }
           sendToRenderer('ext:theme:registered', themeDef);
-          return { dispose: () => {} };
+          return { dispose: () => {
+            if (this.themeService?.unregisterTheme) {
+              this.themeService.unregisterTheme(themeDef.id);
+            }
+            sendToRenderer('ext:theme:unregistered', { id: themeDef.id });
+          }};
         },
         onDidChange: (listener: (themeId: string) => void) => {
           const handler = (_event: any, themeId: string) => listener(themeId);
           ipcMain.on('theme:changed', handler);
           return { dispose: () => ipcMain.removeListener('theme:changed', handler) };
+        },
+        injectCSS: (cssId: string, css: string) => {
+          sendToRenderer('ext:theme:injectCSS', { id: cssId, css });
+          return { dispose: () => sendToRenderer('ext:theme:removeCSS', { id: cssId }) };
+        },
+        removeCSS: (cssId: string) => {
+          sendToRenderer('ext:theme:removeCSS', { id: cssId });
         },
       },
 
@@ -1101,6 +1116,26 @@ export class PluginService {
           return { dispose: () => {} };
         },
         showSidebarView: (id: string) => sendToRenderer('ext:ui:showSidebarView', { id }),
+        injectCSS: (cssId: string, css: string) => {
+          sendToRenderer('ext:ui:injectCSS', { id: cssId, css });
+          return { dispose: () => sendToRenderer('ext:ui:removeCSS', { id: cssId }) };
+        },
+        removeCSS: (cssId: string) => {
+          sendToRenderer('ext:ui:removeCSS', { id: cssId });
+        },
+        createWidget: (id: string, html: string, options?: { position?: string; target?: string }) => {
+          sendToRenderer('ext:ui:createWidget', { id, html, options });
+          return {
+            update: (newHtml: string) => sendToRenderer('ext:ui:updateWidget', { id, html: newHtml }),
+            show: () => sendToRenderer('ext:ui:showWidget', { id }),
+            hide: () => sendToRenderer('ext:ui:hideWidget', { id }),
+            dispose: () => sendToRenderer('ext:ui:disposeWidget', { id }),
+          };
+        },
+        setStyle: (selector: string, styles: Record<string, string>) => {
+          sendToRenderer('ext:ui:setStyle', { selector, styles });
+          return { dispose: () => sendToRenderer('ext:ui:clearStyle', { selector }) };
+        },
       },
 
       // ── Notifications ─────────────────────────────────────────

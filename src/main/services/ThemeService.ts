@@ -486,10 +486,23 @@ export class ThemeService {
   private appStore: AppStore;
   private themes: Map<string, ThemeDefinition> = new Map();
   private currentThemeId: string;
+  private extensionCss: Map<string, string> = new Map();
 
   constructor(appStore: AppStore) {
     this.appStore = appStore;
     this.currentThemeId = appStore.get('theme');
+  }
+
+  setExtensionCss(extensionId: string, css: string): void {
+    this.extensionCss.set(extensionId, css);
+  }
+
+  removeExtensionCss(extensionId: string): void {
+    this.extensionCss.delete(extensionId);
+  }
+
+  getExtensionCss(): Map<string, string> {
+    return this.extensionCss;
   }
 
   async initialize(): Promise<void> {
@@ -515,6 +528,11 @@ export class ThemeService {
     return Array.from(this.themes.values());
   }
 
+  /** Get all extension-registered themes (non-builtin) */
+  getExtensionThemes(): ThemeDefinition[] {
+    return Array.from(this.themes.values()).filter(t => !t.isBuiltin);
+  }
+
   registerTheme(theme: ThemeDefinition): void {
     this.themes.set(theme.id, theme);
   }
@@ -523,5 +541,33 @@ export class ThemeService {
     if (!this.themes.get(themeId)?.isBuiltin) {
       this.themes.delete(themeId);
     }
+  }
+
+  registerExtensionTheme(themeDef: {
+    id: string;
+    name: string;
+    type: 'dark' | 'light' | 'high-contrast';
+    colors: Record<string, string>;
+    tokenColors?: Array<{ scope: string | string[]; settings: { foreground?: string; fontStyle?: string; background?: string } }>;
+  }): void {
+    const baseTheme = themeDef.type === 'light' ? BUILTIN_THEMES[1] : themeDef.type === 'high-contrast' ? BUILTIN_THEMES[2] : BUILTIN_THEMES[0];
+    const mergedColors: Record<string, string | undefined> = { ...baseTheme.colors };
+    for (const [key, value] of Object.entries(themeDef.colors)) {
+      if (value !== undefined) mergedColors[key] = value;
+    }
+    const theme: ThemeDefinition = {
+      id: themeDef.id,
+      name: themeDef.name,
+      type: themeDef.type,
+      author: 'Extension',
+      description: `Extension theme: ${themeDef.name}`,
+      version: '1.0.0',
+      isBuiltin: false,
+      semanticHighlighting: true,
+      colors: mergedColors as any,
+      tokenColors: themeDef.tokenColors || baseTheme.tokenColors,
+    };
+    this.themes.set(theme.id, theme);
+    logger.info(`Extension theme registered: ${theme.id} (${theme.name})`);
   }
 }

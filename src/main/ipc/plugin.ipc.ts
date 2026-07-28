@@ -11,7 +11,8 @@ export function registerPluginIPC(pluginService: PluginService): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.PLUGIN_INSTALL, async (_event, pluginPath: string) => {
-    return pluginService.install(pluginPath);
+    const plugin = await pluginService.install(pluginPath);
+    return { manifest: plugin.manifest, path: plugin.path, enabled: plugin.enabled, loaded: plugin.loaded };
   });
 
   ipcMain.handle(IPC_CHANNELS.PLUGIN_UNINSTALL, async (_event, pluginId: string) => {
@@ -40,7 +41,9 @@ export function registerPluginIPC(pluginService: PluginService): void {
   );
 
   ipcMain.handle('plugin:installHyp', async (_event, hypPath: string) => {
-    return pluginService.installHyp(hypPath);
+    const plugin = await pluginService.installHyp(hypPath);
+    // Return serializable subset (not the full InstalledPlugin with functions)
+    return { manifest: plugin.manifest, path: plugin.path, enabled: plugin.enabled, loaded: plugin.loaded };
   });
 
   ipcMain.handle('plugin:pack', async (_event, folderPath: string, outputPath?: string) => {

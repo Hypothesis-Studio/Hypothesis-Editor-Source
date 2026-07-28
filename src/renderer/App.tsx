@@ -127,6 +127,83 @@ const App: React.FC = () => {
     setTheme(themeId);
   }, [settings['workbench.colorTheme']]);
 
+  // ── Extension theme registration from main process ─────────────
+  const registerExtensionTheme = useThemeStore((s) => s.registerExtensionTheme);
+  const unregisterExtensionTheme = useThemeStore((s) => s.unregisterExtensionTheme);
+  const injectCSS = useThemeStore((s) => s.injectCSS);
+  const removeCSS = useThemeStore((s) => s.removeCSS);
+  useEffect(() => {
+    const api = (window as any).api;
+    if (!api?.menu?.onChannel) return;
+    const unsubs: Array<() => void> = [];
+
+    // When extension registers a theme → store it, re-apply if active
+    unsubs.push(api.menu.onChannel('ext:theme:registered', (themeDef: any) => {
+      if (themeDef?.id && themeDef?.colors) {
+        registerExtensionTheme(themeDef);
+        // Re-apply if this is the current theme (handles race condition)
+        const state = useThemeStore.getState();
+        if (state.currentTheme === themeDef.id) {
+          state.setTheme(themeDef.id);
+        }
+      }
+    }));
+
+    unsubs.push(api.menu.onChannel('ext:theme:unregistered', (data: any) => {
+      if (data?.id) unregisterExtensionTheme(data.id);
+    }));
+
+    unsubs.push(api.menu.onChannel('ext:theme:injectCSS', (data: any) => {
+      if (data?.id && data?.css) injectCSS(data.id, data.css);
+    }));
+
+    unsubs.push(api.menu.onChannel('ext:theme:removeCSS', (data: any) => {
+      if (data?.id) removeCSS(data.id);
+    }));
+
+    unsubs.push(api.menu.onChannel('ext:ui:injectCSS', (data: any) => {
+      if (data?.id && data?.css) injectCSS(data.id, data.css);
+    }));
+
+    unsubs.push(api.menu.onChannel('ext:ui:removeCSS', (data: any) => {
+      if (data?.id) removeCSS(data.id);
+    }));
+
+    // When extension theme is deactivated/uninstalled, revert to default
+    unsubs.push(api.menu.onChannel('ext:theme:revert', () => {
+      useSettingsStore.getState().setSetting('workbench.colorTheme', 'hypothesis-dark');
+      setTheme('hypothesis-dark');
+    }));
+
+    // Sync settings from main process (extension settings.set → renderer store)
+    unsubs.push(api.menu.onChannel('settings:changed', (settingsData: any) => {
+      if (settingsData && typeof settingsData === 'object') {
+        const store = useSettingsStore.getState();
+        for (const [key, value] of Object.entries(settingsData)) {
+          if (store.settings[key] !== value) {
+            store.setSetting(key, value);
+          }
+        }
+      }
+    }));
+
+    // Restore extension themes on app start (ext:theme:registered may have been missed)
+    api.theme.list().then((themes: any[]) => {
+      if (Array.isArray(themes)) {
+        for (const t of themes) {
+          if (!t.isBuiltin && t.id && t.colors) {
+            registerExtensionTheme(t);
+          }
+        }
+        // Re-apply current theme now that extension themes are registered
+        const currentTheme = useSettingsStore.getState().settings['workbench.colorTheme'] || 'hypothesis-dark';
+        setTheme(currentTheme);
+      }
+    }).catch(() => {});
+
+    return () => unsubs.forEach(u => u());
+  }, []);
+
   // ── Zoom level ──────────────────────────────────────────────────
   useEffect(() => {
     const level = (settings['window.zoomLevel'] as number) || 0;

@@ -225,6 +225,31 @@ export function registerExtensionIPC(
     return true;
   });
 
+  // ── Monaco theme cache (so renderer can request on mount) ─────
+  const monacoThemeCache = new Map<string, { baseTheme: string; rules: any[]; colors: Record<string, string> }>();
+
+  ipcMain.handle('ext:monaco:getCachedThemes', () => {
+    return Array.from(monacoThemeCache.entries()).map(([themeId, data]) => ({ themeId, ...data }));
+  });
+
+  // Also listen for renderer requesting cached themes (one-way)
+  ipcMain.on('ext:monaco:requestCachedThemes', () => {
+    const win = getMainWindow();
+    if (win && !win.isDestroyed()) {
+      const themes = Array.from(monacoThemeCache.entries()).map(([themeId, data]) => ({ themeId, ...data }));
+      win.webContents.send('ext:monaco:cachedThemes', themes);
+    }
+  });
+
+  ipcMain.handle('ext:monaco:unregister', (_e, themeIds: string[]) => {
+    for (const id of themeIds) monacoThemeCache.delete(id);
+    const win = getMainWindow();
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('ext:monaco:unregister', themeIds);
+    }
+    return true;
+  });
+
   // ── Terminal ──────────────────────────────────────────────────
   ipcMain.handle('ext:terminal:create', (_e, options?: unknown) => {
     const win = getMainWindow();
@@ -536,6 +561,18 @@ export function registerExtensionIPC(
     const win = getMainWindow();
     if (win && !win.isDestroyed()) {
       win.webContents.send('ext:notification', { message, type: type || 'info' });
+    }
+    return true;
+  });
+
+  // ── Monaco theme registration (cached for renderer to request) ──
+  ipcMain.handle('ext:monaco:defineTheme', (_e, data: { themeId: string; baseTheme: string; rules: any[]; colors: Record<string, string> }) => {
+    if (data?.themeId) {
+      monacoThemeCache.set(data.themeId, { baseTheme: data.baseTheme, rules: data.rules, colors: data.colors });
+      const win = getMainWindow();
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('ext:monaco:defineTheme', data);
+      }
     }
     return true;
   });

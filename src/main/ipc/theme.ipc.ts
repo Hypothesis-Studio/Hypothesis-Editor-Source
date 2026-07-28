@@ -22,4 +22,9 @@ export function registerThemeIPC(themeService: ThemeService): void {
   ipcMain.handle(IPC_CHANNELS.THEME_LIST, async () => {
     return themeService.getThemes();
   });
+
+  // Get only extension-registered themes (for renderer to restore on mount)
+  ipcMain.handle('ext:themes:getAll', async () => {
+    return themeService.getExtensionThemes();
+  });
 }

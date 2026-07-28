@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAppStore } from '../../stores/appStore';
+import { useThemeStore } from '../../stores/themeStore';
 import { DropdownSelect } from '../common/DropdownSelect';
 import { AgentSettingsPanel } from './AgentSettingsPanel';
 import { Icon } from '../common/Icon';
@@ -184,6 +185,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ initialCategory })
 
   const filteredSettings = useMemo(() => {
     let filtered = SETTINGS_SCHEMA;
+    // Dynamically inject extension themes into the Color Theme dropdown
+    const colorTheme = filtered.find(s => s.key === 'workbench.colorTheme');
+    if (colorTheme && colorTheme.type === 'select') {
+      const opts = [
+        { value: 'hypothesis-dark', label: 'Hypothesis Dark' },
+        { value: 'hypothesis-light', label: 'Hypothesis Light' },
+      ];
+      for (const [id, ext] of Object.entries(useThemeStore.getState().extensionThemes)) {
+        if (!opts.some(o => o.value === id)) opts.push({ value: id, label: ext.name });
+      }
+      colorTheme.selectOptions = opts;
+    }
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(

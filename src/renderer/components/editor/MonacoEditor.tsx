@@ -3,6 +3,9 @@
  */
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import * as monaco from 'monaco-editor';
+import { useAppStore } from '../../stores/appStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { useThemeStore } from '../../stores/themeStore';
 import { format as prettierFormat } from 'prettier';
 import * as prettierBabel from 'prettier/plugins/babel';
 import * as prettierEstree from 'prettier/plugins/estree';
@@ -11,8 +14,6 @@ import * as prettierHtml from 'prettier/plugins/html';
 import * as prettierCss from 'prettier/plugins/postcss';
 import * as prettierMarkdown from 'prettier/plugins/markdown';
 import { useEditorStore } from '../../stores/editorStore';
-import { useAppStore } from '../../stores/appStore';
-import { useSettingsStore } from '../../stores/settingsStore';
 import type { EditorTab } from '../../../shared/types';
 
 interface MonacoEditorProps {
@@ -67,6 +68,8 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({ tab, isActive }) => 
 const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const monacoThemeRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const monacoThemesAppliedRef = useRef<Set<string>>(new Set());
   const { updateTab, setCursorPosition, setTabDirty } = useEditorStore();
   const { wordWrap, minimapVisible, lineNumbers, stickyScroll, breadcrumbsVisible } = useAppStore();
   const { settings } = useSettingsStore();
@@ -663,15 +666,20 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         bottom: (settings['editor.padding.bottom'] as number) || 0,
       },
     });
-    // Apply theme
-    const theme = (settings['workbench.colorTheme'] as string) || 'hypothesis-dark';
-    if (theme === 'hypothesis-light' || theme === 'vs') {
-      monaco.editor.setTheme('vs');
-    } else if (theme === 'hc-black') {
-      monaco.editor.setTheme('hc-black');
+    // Apply theme — detect light/dark from theme type
+    const colorTheme = (settings['workbench.colorTheme'] as string) || 'hypothesis-dark';
+    const extTheme = useThemeStore.getState().extensionThemes[colorTheme];
+    // Determine base Monaco theme from type
+    let baseMonaco: string;
+    if (colorTheme === 'hc-black') {
+      baseMonaco = 'hc-black';
+    } else if (extTheme) {
+      baseMonaco = extTheme.type === 'light' ? 'vs' : 'vs-dark';
     } else {
-      monaco.editor.setTheme('vs-dark');
+      baseMonaco = (colorTheme === 'hypothesis-light' || colorTheme === 'vs') ? 'vs' : 'vs-dark';
     }
+    // Always set base theme as fallback (defineTheme listener overrides with extension theme)
+    monaco.editor.setTheme(baseMonaco);
   }, [
     settings['editor.fontSize'], settings['editor.fontFamily'], settings['editor.tabSize'], settings['editor.insertSpaces'],
     settings['editor.lineHeight'], settings['editor.cursorStyle'], settings['editor.cursorBlinking'],
@@ -700,6 +708,67 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       }
     }
   }, [tab.content]);
+
+  // ── Listen for extension Monaco theme registration ─────────────
+  useEffect(() => {
+    const api = (window as any).api;
+    if (!api?.menu?.onChannel) return;
+    const unsubs: Array<() => void> = [];
+
+    // When extension defines a Monaco theme, register it AND apply if it's the current theme
+    unsubs.push(api.menu.onChannel('ext:monaco:defineTheme', (data: any) => {
+      if (data?.themeId && data?.baseTheme) {
+        try {
+          monaco.editor.defineTheme(data.themeId, {
+            base: data.baseTheme,
+            inherit: true,
+            rules: data.rules || [],
+            colors: data.colors || {},
+          });
+          monacoThemesAppliedRef.current.add(data.themeId);
+          // Apply immediately if this is the current workbench theme
+          const currentTheme = useSettingsStore.getState().settings['workbench.colorTheme'] || 'hypothesis-dark';
+          if (currentTheme === data.themeId) {
+            // Use requestAnimationFrame + delay to ensure Monaco processes defineTheme first
+            requestAnimationFrame(() => {
+              monaco.editor.setTheme(data.themeId);
+            });
+            setTimeout(() => monaco.editor.setTheme(data.themeId), 200);
+            setTimeout(() => monaco.editor.setTheme(data.themeId), 500);
+          }
+        } catch (e) {
+          console.warn('Failed to define Monaco theme:', e);
+        }
+      }
+    }));
+
+    // When extension themes are unregistered, revert to default
+    unsubs.push(api.menu.onChannel('ext:monaco:unregister', (themeIds: string[]) => {
+      if (Array.isArray(themeIds)) {
+        const currentTheme = useSettingsStore.getState().settings['workbench.colorTheme'] || 'hypothesis-dark';
+        if (themeIds.includes(currentTheme)) {
+          useSettingsStore.getState().setSetting('workbench.colorTheme', 'hypothesis-dark');
+          monaco.editor.setTheme('vs-dark');
+        }
+      }
+    }));
+
+    unsubs.push(api.menu.onChannel('ext:monaco:setTheme', (themeId: string) => {
+      if (themeId) {
+        try { monaco.editor.setTheme(themeId); } catch {}
+      }
+    }));
+
+    // Re-apply the current theme whenever settings change (covers extension themes)
+    // This ensures that if defineTheme arrived late, the next setTheme picks it up
+    // Listen for theme unregistered → revert to default
+    unsubs.push(api.menu.onChannel('ext:theme:revert', () => {
+      useSettingsStore.getState().setSetting('workbench.colorTheme', 'hypothesis-dark');
+      monaco.editor.setTheme('vs-dark');
+    }));
+
+    return () => unsubs.forEach(u => u());
+  }, []);
 
   return (
     <div
