@@ -45,6 +45,7 @@
 - **AI Agent Ctrl+A scope** — Ctrl+A in agent panel now correctly selects only text in the focused input/textarea; when focus is on chat area it selects chat messages only, not the entire panel
 - **AI Agent file refresh** — Monaco editor now live-updates open tabs when the AI agent modifies a file via writeFile/editFile tools, without closing or reopening the tab
 - **Tool enable/disable persistence** — tool enabled/disabled states now persist across app restarts via `agent.disabledTools` in AppStore
+- **Seach** - Add `rootPath` to the `useCallback` dependency array.
 
 ## [0.2.6] - 2026-07-26
 

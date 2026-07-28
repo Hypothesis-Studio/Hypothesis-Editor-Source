@@ -186,15 +186,16 @@ const App: React.FC = () => {
   // ── Session restore on mount ────────────────────────────────────
   useEffect(() => {
     const saved = session.restoreSession();
-    workspace.restoreSession();
-    // Use workspace folders if available, else session rootPath
-    const folders = workspace.folders;
-    if (folders.length > 0) {
-      setRootPath(folders[0]);
-    } else if (saved.rootPath) {
-      setRootPath(saved.rootPath);
-    }
-    setSessionRestored(true);
+    // Await workspace restore so folders are validated before we read them
+    workspace.restoreSession().then(() => {
+      const folders = useWorkspaceStore.getState().folders;
+      if (folders.length > 0) {
+        setRootPath(folders[0]);
+      } else if (saved.rootPath) {
+        setRootPath(saved.rootPath);
+      }
+      setSessionRestored(true);
+    });
   }, []);
 
   // ── Persist rootPath changes ────────────────────────────────────

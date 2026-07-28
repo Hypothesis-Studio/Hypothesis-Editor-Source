@@ -37,7 +37,7 @@ interface WorkspaceState {
 
   // Session persistence
   saveSession: () => void;
-  restoreSession: () => void;
+  restoreSession: () => Promise<void>;
 
   // Recent
   addRecentWorkspace: (path: string) => void;
@@ -130,7 +130,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     saveToStorage(STORAGE_KEY, { folders, currentWorkspace });
   },
 
-  restoreSession: () => {
+  restoreSession: async () => {
     const data = loadFromStorage<{ folders: string[]; currentWorkspace: Workspace | null }>(STORAGE_KEY, {
       folders: [],
       currentWorkspace: null,
@@ -142,19 +142,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     });
     // Validate that restored folders still exist on disk
     if (folders.length > 0) {
-      (async () => {
-        const valid: string[] = [];
-        for (const f of folders) {
-          try {
-            const exists = await window.api.file.exists(f);
-            if (exists) valid.push(f);
-          } catch { /* skip missing */ }
-        }
-        if (valid.length !== folders.length) {
-          set({ folders: valid });
-          saveToStorage(STORAGE_KEY, { folders: valid, currentWorkspace: data.currentWorkspace });
-        }
-      })();
+      const valid: string[] = [];
+      for (const f of folders) {
+        try {
+          const exists = await window.api.file.exists(f);
+          if (exists) valid.push(f);
+        } catch { /* skip missing */ }
+      }
+      if (valid.length !== folders.length) {
+        set({ folders: valid });
+        saveToStorage(STORAGE_KEY, { folders: valid, currentWorkspace: data.currentWorkspace });
+      } else {
+        set({ folders: valid });
+      }
     }
   },
 

@@ -23,13 +23,15 @@ export const SearchView: React.FC = () => {
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) { setResults([]); return; }
-    if (!rootPath) { setSearchError('No folder opened. Open a folder first.'); return; }
+    // Always read rootPath fresh from store at call time to avoid stale closure
+    const currentRootPath = useWorkspaceStore.getState().folders[0] ?? null;
+    if (!currentRootPath) { setSearchError('No folder opened. Open a folder first.'); return; }
     setIsSearching(true);
     setSearchError(null);
     try {
       const searchResults = await window.api.search.find({
         query,
-        rootPath,
+        rootPath: currentRootPath,
         isRegex,
         isCaseSensitive,
         isWholeWord,
@@ -62,9 +64,11 @@ export const SearchView: React.FC = () => {
 
   const handleReplaceAll = async () => {
     try {
+      const currentRootPath = useWorkspaceStore.getState().folders[0] ?? undefined;
       await window.api.search.replaceAll({
         query,
         replace: replaceValue,
+        rootPath: currentRootPath,
         isRegex,
         isCaseSensitive,
         isWholeWord,
