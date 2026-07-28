@@ -40,6 +40,10 @@
   - Disabled tool check in streaming loop with clear error message
   - Professional error messages for disabled/unknown tools in both streaming and non-streaming paths
 - **Session delete bug** — deleting the active session now properly clears messages and auto-creates a new empty session instead of leaving stale state
+- **AI Agent chat copy/paste** — fixed keyboard shortcuts (Ctrl+C, Ctrl+V, Ctrl+Z, etc.) not working in agent chat panel; App.tsx global capture-phase handler now skips editor shortcuts when focus is inside the agent panel
+- **AI Agent right-click context menu** — added context menu on chat messages area with Copy (selected text), Select All, and Copy All Messages options
+- **AI Agent Ctrl+A scope** — Ctrl+A in agent panel now correctly selects only text in the focused input/textarea; when focus is on chat area it selects chat messages only, not the entire panel
+- **AI Agent file refresh** — Monaco editor now live-updates open tabs when the AI agent modifies a file via writeFile/editFile tools, without closing or reopening the tab
 - **Tool enable/disable persistence** — tool enabled/disabled states now persist across app restarts via `agent.disabledTools` in AppStore
 
 ## [0.2.6] - 2026-07-26

@@ -16,6 +16,7 @@ import type { AppStore } from '../AppStore';
 import path from 'path';
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
+import { BrowserWindow } from 'electron';
 
 const log = logger.scope('ToolRegistry');
 
@@ -94,6 +95,7 @@ export class ToolRegistry {
       }
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, content, 'utf-8');
+      this.broadcastFileChanged(filePath);
       return { success: true, output: `Written to ${filePath}`, executionTimeMs: 0 };
     });
 
@@ -229,6 +231,7 @@ export class ToolRegistry {
       }
       content = content.replace(oldText, newText);
       await fs.writeFile(filePath, content, 'utf-8');
+      this.broadcastFileChanged(filePath);
       return { success: true, output: `File updated: ${filePath}`, executionTimeMs: 0 };
     });
 
@@ -361,6 +364,19 @@ export class ToolRegistry {
       // This communicates via IPC in runtime; placeholder for tool definition
       return { success: true, output: 'Open editors retrieved via IPC', executionTimeMs: 0 };
     });
+  }
+
+  /**
+   * Broadcast a file-changed event to all renderer windows so open tabs
+   * reload their content from disk automatically.
+   */
+  private broadcastFileChanged(filePath: string): void {
+    const payload = { filePath };
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('agent:file-changed', payload);
+      }
+    }
   }
 
   private register(definition: ToolDefinition, handler: ToolHandler): void {

@@ -548,6 +548,11 @@ const api = {
       ipcRenderer.on('agent:log:entry', handler);
       return () => { ipcRenderer.removeListener('agent:log:entry', handler); };
     },
+    onFileChanged: (callback: (data: { filePath: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, data: { filePath: string }) => callback(data);
+      ipcRenderer.on('agent:file-changed', handler);
+      return () => { ipcRenderer.removeListener('agent:file-changed', handler); };
+    },
   },
 
   // Insights - Project analysis

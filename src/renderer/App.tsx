@@ -306,6 +306,26 @@ const App: React.FC = () => {
       const ctrl = e.ctrlKey || e.metaKey;
       const shift = e.shiftKey;
 
+      // Skip editor shortcuts when focus is inside the agent panel
+      // (textarea, buttons, selects, or any child of [data-agent-panel])
+      const agentPanel = document.querySelector('[data-agent-panel]');
+      const isInAgentPanel = agentPanel?.contains(document.activeElement);
+      if (isInAgentPanel) {
+        // Only allow global shortcuts that make sense outside the editor
+        const allowList = [
+          ctrl && shift && e.key === 'P', // command palette
+          ctrl && !shift && e.key === 'p', // command palette
+          ctrl && shift && e.key === 'A', // open agent
+          ctrl && shift && e.key === 'B', // open browser
+          ctrl && shift && e.key === 'R', // open rest client
+          ctrl && shift && e.key === 'D', // open database
+          ctrl && e.key === ',',           // settings
+          e.key === 'F11',
+          e.key === 'F1',
+        ];
+        if (!allowList.some(Boolean)) return;
+      }
+
       if (ctrl && shift && e.key === 'P') { e.preventDefault(); commandPaletteVisible ? hideCommandPalette() : showCommandPalette(); }
       else if (ctrl && !shift && e.key === 'p') { e.preventDefault(); showCommandPalette(); }
       else if (ctrl && !shift && e.key === 'z') { e.preventDefault(); useEditorStore.getState().triggerUndo(); }
@@ -385,6 +405,32 @@ const App: React.FC = () => {
     document.addEventListener('drop', onDrop);
     return () => { document.removeEventListener('dragover', onDragOver); document.removeEventListener('drop', onDrop); };
   }, [openTab]);
+
+  // ── Agent file-changed: reload open tab content from disk ────────
+  useEffect(() => {
+    const cleanup = (window.api.agent as any).onFileChanged?.(async (data: { filePath: string }) => {
+      const { filePath } = data;
+      if (!filePath) return;
+      const { tabs, updateTab } = useEditorStore.getState();
+      const tab = tabs.find(t => t.filePath === filePath);
+      if (!tab) return; // file not open in editor, nothing to do
+      try {
+        const newContent = await window.api.file.read(filePath);
+        // Only update if content actually changed to avoid cursor jump
+        if (newContent !== tab.content) {
+          updateTab(tab.id, {
+            content: newContent,
+            savedContent: newContent,
+            isDirty: false,
+            modifiedAt: Date.now(),
+          });
+        }
+      } catch (err) {
+        console.warn('[Agent] Failed to reload file after agent edit:', filePath, err);
+      }
+    });
+    return () => cleanup?.();
+  }, []);
 
   // ── Open AI Agent as editor tab ──────────────────────────────────
   const openAgentTab = useCallback(() => {

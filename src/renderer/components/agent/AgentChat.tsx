@@ -14,6 +14,14 @@ const PROFILE_AVATARS: string[] = Object.values(profileSvgs);
 const DEFAULT_USER_AVATAR = PROFILE_AVATARS[0] || '';
 const DEFAULT_AGENT_AVATAR = PROFILE_AVATARS[5] || '';
 
+const ctxMenuItemStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8,
+  width: '100%', textAlign: 'left',
+  padding: '6px 12px', border: 'none', background: 'transparent',
+  cursor: 'pointer', fontSize: 12, color: 'var(--theme-fg)',
+  userSelect: 'none',
+};
+
 interface AgentChatProps {
   onOpenSettings?: () => void;
 }
@@ -28,6 +36,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
   } = useAgentStore();
 
   const [input, setInput] = useState('');
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; selection: string } | null>(null);
   const [prefillCode, setPrefillCode] = useState<string | null>(null);
   const [prefillMode, setPrefillMode] = useState<'ask' | 'fix' | null>(null);
   const [showSessionList, setShowSessionList] = useState(false);
@@ -220,8 +229,136 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
     }
   }, [activeSessionId, clearMessages]);
 
+  // Context menu for chat messages
+  const closeChatContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const showChatContextMenu = useCallback((e: React.MouseEvent, selection: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, selection });
+  }, []);
+
+  // Dismiss context menu on outside click or Escape
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = () => closeChatContextMenu();
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') closeChatContextMenu(); };
+    window.addEventListener('mousedown', handler);
+    window.addEventListener('keydown', keyHandler);
+    return () => {
+      window.removeEventListener('mousedown', handler);
+      window.removeEventListener('keydown', keyHandler);
+    };
+  }, [contextMenu, closeChatContextMenu]);
+
+  const copySelection = useCallback(async (text: string) => {
+    try { await navigator.clipboard.writeText(text); } catch { document.execCommand('copy'); }
+    closeChatContextMenu();
+  }, [closeChatContextMenu]);
+
+  const copyAllMessages = useCallback(async () => {
+    const text = messages
+      .filter(m => m.role !== 'system')
+      .map(m => `[${m.role === 'user' ? 'You' : 'Agent'}] ${m.content}`)
+      .join('\n\n');
+    try { await navigator.clipboard.writeText(text); } catch { document.execCommand('copy'); }
+    closeChatContextMenu();
+  }, [messages, closeChatContextMenu]);
+
+  // Stop clipboard/text-editing shortcuts from bubbling up to Monaco/App handlers
+  const handlePanelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && ['c','C','x','X','v','V','a','A','z','Z','y','Y'].includes(e.key)) {
+      e.stopPropagation();
+      // Ctrl+A: only override when focus is NOT on the textarea input
+      if (e.key === 'a' || e.key === 'A') {
+        const focused = document.activeElement;
+        const isInInput = focused instanceof HTMLTextAreaElement || focused instanceof HTMLInputElement;
+        if (!isInInput) {
+          const sel = window.getSelection();
+          const chatArea = document.querySelector('[data-chat-messages]') as HTMLElement;
+          if (sel && chatArea) {
+            const range = document.createRange();
+            range.selectNodeContents(chatArea);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            e.preventDefault();
+          }
+        }
+        // If focus is in textarea, let browser handle Ctrl+A natively
+      }
+    }
+  }, []);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div
+      data-agent-panel
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}
+      onKeyDown={handlePanelKeyDown}
+      onClick={(e) => { if (contextMenu) { e.stopPropagation(); closeChatContextMenu(); } }}
+    >
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed', zIndex: 9999,
+            top: contextMenu.y, left: contextMenu.x,
+            background: 'var(--theme-bg-secondary)',
+            border: '1px solid var(--theme-border)',
+            borderRadius: 6, minWidth: 160,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            padding: '4px 0',
+            fontSize: 12,
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {contextMenu.selection && (
+            <>
+              <button
+                style={ctxMenuItemStyle}
+                onClick={() => copySelection(contextMenu.selection)}
+              >
+                <svg width={13} height={13} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ flexShrink: 0 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy
+                <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: 10 }}>Ctrl+C</span>
+              </button>
+              <div style={{ height: 1, background: 'var(--theme-border)', margin: '4px 0' }} />
+            </>
+          )}
+          <button
+            style={ctxMenuItemStyle}
+            onClick={() => {
+              const sel = window.getSelection();
+              const container = document.querySelector('[data-chat-messages]') as HTMLElement;
+              if (sel && container) {
+                const range = document.createRange();
+                range.selectNodeContents(container);
+                sel.removeAllRanges();
+                sel.addRange(range);
+              }
+              closeChatContextMenu();
+            }}
+          >
+            <svg width={13} height={13} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            Select All
+            <span style={{ marginLeft: 'auto', opacity: 0.5, fontSize: 10 }}>Ctrl+A</span>
+          </button>
+          <button
+            style={ctxMenuItemStyle}
+            onClick={copyAllMessages}
+          >
+            <svg width={13} height={13} fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Copy All Messages
+          </button>
+        </div>
+      )}
+
       {/* Header bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
@@ -330,7 +467,14 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+      <div
+        data-chat-messages
+        style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', userSelect: 'text' }}
+        onContextMenu={(e) => {
+          const selection = window.getSelection()?.toString() || '';
+          showChatContextMenu(e, selection);
+        }}
+      >
         {messages.length === 0 && !isStreaming && (
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -957,3 +1101,5 @@ const menuItemStyle: React.CSSProperties = {
   padding: '8px 12px', border: 'none', background: 'transparent',
   cursor: 'pointer', fontSize: 11, color: 'var(--theme-fg)',
 };
+
+
