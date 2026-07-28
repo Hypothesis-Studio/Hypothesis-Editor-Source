@@ -32,10 +32,10 @@ export const DropdownSelect: React.FC<DropdownSelectProps> = ({
   const rootStyle = getComputedStyle(document.documentElement);
   const bgColor = rootStyle.getPropertyValue('--theme-bg').trim();
   const isLight = bgColor && !bgColor.startsWith('#1') && !bgColor.startsWith('#0') && bgColor !== '#1e1e1e' && bgColor !== '#252526';
-  const hoverBg = isLight ? '#d9d9d9' : 'var(--theme-bg-active)';
-  const hoverFg = isLight ? '#000000' : 'var(--theme-accent-fg)';
-  const selectedBg = isLight ? '#d9d9d9' : 'var(--theme-bg-active)';
-  const selectedFg = isLight ? '#000000' : 'var(--theme-accent-fg)';
+  const hoverBg = isLight ? '#d9d9d9' : '#3a3a4a';
+  const hoverFg = isLight ? '#1a1a1a' : '#ffffff';
+  const selectedBg = isLight ? '#c8d8f0' : '#2a3a5c';
+  const selectedFg = isLight ? '#1a1a1a' : '#ffffff';
 
   useEffect(() => {
     if (!isOpen) return;
