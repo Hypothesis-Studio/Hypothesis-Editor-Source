@@ -549,6 +549,7 @@ export class ThemeService {
     type: 'dark' | 'light' | 'high-contrast';
     colors: Record<string, string>;
     tokenColors?: Array<{ scope: string | string[]; settings: { foreground?: string; fontStyle?: string; background?: string } }>;
+    cssVars?: Record<string, string>;
   }): void {
     const baseTheme = themeDef.type === 'light' ? BUILTIN_THEMES[1] : themeDef.type === 'high-contrast' ? BUILTIN_THEMES[2] : BUILTIN_THEMES[0];
     const mergedColors: Record<string, string | undefined> = { ...baseTheme.colors };
@@ -566,7 +567,8 @@ export class ThemeService {
       semanticHighlighting: true,
       colors: mergedColors as any,
       tokenColors: themeDef.tokenColors || baseTheme.tokenColors,
-    };
+      cssVars: themeDef.cssVars || {},
+    } as any;
     this.themes.set(theme.id, theme);
     logger.info(`Extension theme registered: ${theme.id} (${theme.name})`);
   }

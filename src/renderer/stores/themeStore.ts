@@ -280,6 +280,19 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
     // Set as current theme so setTheme finds it later
     set({ colors: mappedColors, currentTheme: themeDef.id });
+
+    // If this extension theme matches the user's saved workbench.colorTheme,
+    // re-apply it fully now. This handles the race where setTheme() ran before
+    // extensions loaded (extensionThemes was empty → fell back to default).
+    // Use a microtask to avoid Zustand batching issues.
+    queueMicrotask(() => {
+      try {
+        const s = get();
+        if (s.currentTheme === themeDef.id) {
+          s.setTheme(themeDef.id);
+        }
+      } catch {}
+    });
   },
 
   unregisterExtensionTheme: (themeId: string) => {

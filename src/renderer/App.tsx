@@ -142,9 +142,10 @@ const App: React.FC = () => {
       if (themeDef?.id && themeDef?.colors) {
         registerExtensionTheme(themeDef);
         // Re-apply if this is the current theme (handles race condition)
-        const state = useThemeStore.getState();
-        if (state.currentTheme === themeDef.id) {
-          state.setTheme(themeDef.id);
+        // Check settings store, not themeStore, because setTheme may have fallen back
+        const savedTheme = useSettingsStore.getState().settings['workbench.colorTheme'];
+        if (savedTheme === themeDef.id) {
+          useThemeStore.getState().setTheme(themeDef.id);
         }
       }
     }));

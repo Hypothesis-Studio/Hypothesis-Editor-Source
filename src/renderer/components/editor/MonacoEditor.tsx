@@ -92,6 +92,18 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
     const paddingTop = (settings['editor.padding.top'] as number) || 0;
     const paddingBottom = (settings['editor.padding.bottom'] as number) || 0;
 
+    // Determine base Monaco theme from current settings
+    const colorThemeForCreate = (settings['workbench.colorTheme'] as string) || 'hypothesis-dark';
+    const extThemeForCreate = useThemeStore.getState().extensionThemes[colorThemeForCreate];
+    let baseMonacoForCreate: string;
+    if (colorThemeForCreate === 'hc-black') {
+      baseMonacoForCreate = 'hc-black';
+    } else if (extThemeForCreate) {
+      baseMonacoForCreate = extThemeForCreate.type === 'light' ? 'vs' : 'vs-dark';
+    } else {
+      baseMonacoForCreate = (colorThemeForCreate === 'hypothesis-light' || colorThemeForCreate === 'vs') ? 'vs' : 'vs-dark';
+    }
+
     const editor = monaco.editor.create(editorRef.current, {
       value: tab.content,
       language: tab.language,
@@ -214,6 +226,33 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
 
     monacoRef.current = editor;
     setIsReady(true);
+
+    // Re-apply the current extension theme after editor creation.
+    // monaco.editor.create() resets the global theme, so we must re-apply.
+    const currentThemeId = (settings['workbench.colorTheme'] as string) || 'hypothesis-dark';
+    const currentExtTheme = useThemeStore.getState().extensionThemes[currentThemeId];
+    if (currentExtTheme) {
+      const baseMonacoTheme = currentExtTheme.type === 'light' ? 'vs' : 'vs-dark';
+      // defineTheme is idempotent — safe to call again
+      const rules: any[] = [];
+      if (currentExtTheme.tokenColors) {
+        for (const tc of currentExtTheme.tokenColors) {
+          const scopes = Array.isArray(tc.scope) ? tc.scope : [tc.scope];
+          for (const scope of scopes) {
+            rules.push({ token: scope, foreground: tc.settings?.foreground?.replace('#', ''), fontStyle: tc.settings?.fontStyle || '' });
+          }
+        }
+      }
+      const colors: Record<string, string> = {};
+      for (const [key, value] of Object.entries(currentExtTheme.rawColors || currentExtTheme.colors || {})) {
+        if (typeof value === 'string') colors[key] = value;
+      }
+      monaco.editor.defineTheme(currentThemeId, { base: baseMonacoTheme as any, inherit: true, rules, colors });
+      // Apply with delay to ensure Monaco processes it
+      requestAnimationFrame(() => monaco.editor.setTheme(currentThemeId));
+      setTimeout(() => monaco.editor.setTheme(currentThemeId), 200);
+      setTimeout(() => monaco.editor.setTheme(currentThemeId), 500);
+    }
 
     // Register this editor as the active one for menu actions
     if (isActive) {
@@ -666,20 +705,8 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         bottom: (settings['editor.padding.bottom'] as number) || 0,
       },
     });
-    // Apply theme — detect light/dark from theme type
-    const colorTheme = (settings['workbench.colorTheme'] as string) || 'hypothesis-dark';
-    const extTheme = useThemeStore.getState().extensionThemes[colorTheme];
-    // Determine base Monaco theme from type
-    let baseMonaco: string;
-    if (colorTheme === 'hc-black') {
-      baseMonaco = 'hc-black';
-    } else if (extTheme) {
-      baseMonaco = extTheme.type === 'light' ? 'vs' : 'vs-dark';
-    } else {
-      baseMonaco = (colorTheme === 'hypothesis-light' || colorTheme === 'vs') ? 'vs' : 'vs-dark';
-    }
-    // Always set base theme as fallback (defineTheme listener overrides with extension theme)
-    monaco.editor.setTheme(baseMonaco);
+    // NOTE: Theme is handled by the creation effect above + the ext:monaco:defineTheme listener.
+    // Do NOT set theme here — it would override extension themes on every settings change.
   }, [
     settings['editor.fontSize'], settings['editor.fontFamily'], settings['editor.tabSize'], settings['editor.insertSpaces'],
     settings['editor.lineHeight'], settings['editor.cursorStyle'], settings['editor.cursorBlinking'],
@@ -688,7 +715,6 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
     settings['editor.folding'], settings['editor.bracketPairColorization.enabled'],
     settings['editor.stickyScroll.enabled'],
     settings['editor.padding.top'], settings['editor.padding.bottom'],
-    settings['workbench.colorTheme'],
   ]);
 
   // Focus and register as active editor when tab becomes active
@@ -725,14 +751,10 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
             rules: data.rules || [],
             colors: data.colors || {},
           });
-          monacoThemesAppliedRef.current.add(data.themeId);
           // Apply immediately if this is the current workbench theme
           const currentTheme = useSettingsStore.getState().settings['workbench.colorTheme'] || 'hypothesis-dark';
           if (currentTheme === data.themeId) {
-            // Use requestAnimationFrame + delay to ensure Monaco processes defineTheme first
-            requestAnimationFrame(() => {
-              monaco.editor.setTheme(data.themeId);
-            });
+            requestAnimationFrame(() => monaco.editor.setTheme(data.themeId));
             setTimeout(() => monaco.editor.setTheme(data.themeId), 200);
             setTimeout(() => monaco.editor.setTheme(data.themeId), 500);
           }

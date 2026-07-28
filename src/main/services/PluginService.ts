@@ -876,6 +876,28 @@ export class PluginService {
             this.themeService.registerExtensionTheme(themeDef);
           }
           sendToRenderer('ext:theme:registered', themeDef);
+
+          // Also register Monaco theme so editor picks it up immediately
+          const baseTheme = themeDef.type === 'light' ? 'vs' : 'vs-dark';
+          const rules: any[] = [];
+          if (themeDef.tokenColors) {
+            for (const tc of themeDef.tokenColors) {
+              const scopes = Array.isArray(tc.scope) ? tc.scope : [tc.scope];
+              for (const scope of scopes) {
+                rules.push({
+                  token: scope,
+                  foreground: tc.settings?.foreground?.replace('#', ''),
+                  fontStyle: tc.settings?.fontStyle || '',
+                });
+              }
+            }
+          }
+          const colors: Record<string, string> = {};
+          for (const [key, value] of Object.entries(themeDef.colors || {})) {
+            if (typeof value === 'string') colors[key] = value;
+          }
+          sendToRenderer('ext:monaco:defineTheme', { themeId: themeDef.id, baseTheme, rules, colors });
+
           const disposable = { dispose: () => {
             if (this.themeService?.unregisterTheme) {
               this.themeService.unregisterTheme(themeDef.id);
