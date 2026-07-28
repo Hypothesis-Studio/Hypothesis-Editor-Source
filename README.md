@@ -27,6 +27,20 @@ npm install
 npm run build
 ```
 
+### Release Artefact
+
+```bash
+git checkout main
+git pull
+
+git commit --allow-empty -m "chore: trigger release v0.2.7"
+
+git tag -fa v0.2.7 -m "Release v0.2.7"
+
+git push origin main
+git push origin v0.2.7 --force
+```
+
 ### Package
 
 ```bash
