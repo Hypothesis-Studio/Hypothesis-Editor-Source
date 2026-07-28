@@ -73,7 +73,7 @@ const SETTINGS_SCHEMA: SettingItem[] = [
   { key: 'files.insertFinalNewline', label: 'Insert Final Newline', description: 'When enabled, insert a final new line at the end of the file when saving.', type: 'boolean', default: false, category: 'Files' },
 
   // Workbench
-  { key: 'workbench.colorTheme', label: 'Color Theme', description: 'Specifies the color theme used in the workbench.', type: 'select', selectOptions: [
+  { key: 'workbench.colorTheme', label: 'Color Theme', description: 'Specifies the color theme used in the workbench. Defaults use the built-in Hypothesis themes.', type: 'select', selectOptions: [
     { value: 'hypothesis-dark', label: 'Hypothesis Dark' },
     { value: 'hypothesis-light', label: 'Hypothesis Light' },
   ], default: 'hypothesis-dark', category: 'Workbench' },

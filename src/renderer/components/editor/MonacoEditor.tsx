@@ -107,7 +107,7 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
     const editor = monaco.editor.create(editorRef.current, {
       value: tab.content,
       language: tab.language,
-      theme: 'vs-dark',
+      theme: baseMonacoForCreate as any,
       automaticLayout: true,
       unusualLineTerminators: 'off',
       fontSize,
@@ -252,6 +252,10 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       requestAnimationFrame(() => monaco.editor.setTheme(currentThemeId));
       setTimeout(() => monaco.editor.setTheme(currentThemeId), 200);
       setTimeout(() => monaco.editor.setTheme(currentThemeId), 500);
+    } else if (baseMonacoForCreate !== 'vs-dark') {
+      // Ensure built-in light/default themes apply to newly created editors too
+      requestAnimationFrame(() => monaco.editor.setTheme(baseMonacoForCreate));
+      setTimeout(() => monaco.editor.setTheme(baseMonacoForCreate), 200);
     }
 
     // Register this editor as the active one for menu actions
