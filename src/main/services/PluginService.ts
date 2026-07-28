@@ -28,6 +28,7 @@ interface InstalledPlugin {
   loaded: boolean;
   instance: any | null;
   registeredCommands: Map<string, (...args: any[]) => any>;
+  contextSubscriptions: Array<{ dispose: () => void }>;
 }
 
 export class PluginService {
@@ -79,6 +80,7 @@ export class PluginService {
           loaded: false,
           instance: null,
           registeredCommands: new Map(),
+          contextSubscriptions: [],
         });
         restored++;
       } catch (_e) {
@@ -278,6 +280,7 @@ export class PluginService {
       loaded: false,
       instance: null,
       registeredCommands: new Map(),
+      contextSubscriptions: [],
     };
 
     this.plugins.set(manifest.id, plugin);
@@ -321,6 +324,7 @@ export class PluginService {
       loaded: false,
       instance: null,
       registeredCommands: new Map(),
+      contextSubscriptions: [],
     };
 
     this.plugins.set(manifest.id, plugin);
@@ -473,6 +477,12 @@ export class PluginService {
     } catch (e) {
       logger.error(`Error deactivating plugin ${pluginId}: ${e}`);
     }
+
+    // Dispose all context subscriptions (theme.register disposables, etc.)
+    for (const sub of plugin.contextSubscriptions) {
+      try { sub.dispose(); } catch {}
+    }
+    plugin.contextSubscriptions = [];
 
     plugin.registeredCommands.clear();
     plugin.instance = null;
@@ -866,12 +876,14 @@ export class PluginService {
             this.themeService.registerExtensionTheme(themeDef);
           }
           sendToRenderer('ext:theme:registered', themeDef);
-          return { dispose: () => {
+          const disposable = { dispose: () => {
             if (this.themeService?.unregisterTheme) {
               this.themeService.unregisterTheme(themeDef.id);
             }
             sendToRenderer('ext:theme:unregistered', { id: themeDef.id });
           }};
+          plugin.contextSubscriptions.push(disposable);
+          return disposable;
         },
         onDidChange: (listener: (themeId: string) => void) => {
           const handler = (_event: any, themeId: string) => listener(themeId);
