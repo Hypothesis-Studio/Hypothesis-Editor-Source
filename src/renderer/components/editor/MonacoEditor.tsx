@@ -785,13 +785,8 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       }
     }));
 
-    // Re-apply the current theme whenever settings change (covers extension themes)
-    // This ensures that if defineTheme arrived late, the next setTheme picks it up
-    // Listen for theme unregistered → revert to default
-    unsubs.push(api.menu.onChannel('ext:theme:revert', () => {
-      useSettingsStore.getState().setSetting('workbench.colorTheme', 'hypothesis-dark');
-      monaco.editor.setTheme('vs-dark');
-    }));
+    // NOTE: ext:theme:revert is never sent from main process — removed dead code.
+    // Theme revert logic lives in unregisterExtensionTheme() in themeStore.
 
     return () => unsubs.forEach(u => u());
   }, []);

@@ -170,11 +170,8 @@ const App: React.FC = () => {
       if (data?.id) removeCSS(data.id);
     }));
 
-    // When extension theme is deactivated/uninstalled, revert to default
-    unsubs.push(api.menu.onChannel('ext:theme:revert', () => {
-      useSettingsStore.getState().setSetting('workbench.colorTheme', 'hypothesis-dark');
-      setTheme('hypothesis-dark');
-    }));
+    // NOTE: ext:theme:revert is never sent from main process — removed dead code.
+    // Theme revert logic lives in unregisterExtensionTheme() in themeStore.
 
     // Sync settings from main process (extension settings.set → renderer store)
     unsubs.push(api.menu.onChannel('settings:changed', (settingsData: any) => {

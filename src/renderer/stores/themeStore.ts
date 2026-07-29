@@ -3,6 +3,7 @@
  * Supports built-in themes + extension-registered themes + CSS injection.
  */
 import { create } from 'zustand';
+import { useSettingsStore } from './settingsStore';
 
 interface ThemeColors {
   // Background
@@ -233,6 +234,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   registerExtensionTheme: (themeDef) => {
     const mappedColors = mapExtensionColors(themeDef.colors);
 
+    // 1. Store the extension theme entry — always, regardless of whether it's
+    //    the active theme.  This lets setTheme() find it later.
     const extThemes = { ...get().extensionThemes };
     extThemes[themeDef.id] = {
       id: themeDef.id,
@@ -245,62 +248,56 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     };
     set({ extensionThemes: extThemes });
 
-    // Always apply immediately — handles race where setTheme fires before this
-    const root = document.documentElement;
-    const c = themeDef.colors || {};
-
-    // 1. Apply the 19 core CSS vars components read
-    applyThemeToDocument(mappedColors);
-
-    // 2. Apply ALL 127 extension color keys as --theme-* CSS vars
-    for (const [key, value] of Object.entries(c)) {
-      if (typeof value === 'string') {
-        const cssKey = `--theme-${key.replace(/\./g, '-').replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-        root.style.setProperty(cssKey, value);
-      }
-    }
-
-    // 3. Apply :root shorthand vars from cssVars (in theme JSON)
-    const cssVars = (themeDef as any).cssVars || {};
-    for (const [varName, value] of Object.entries(cssVars)) {
-      if (typeof value === 'string') root.style.setProperty(varName, value);
-    }
-
-    // 4. Apply :root syntax vars from tokenColors
-    const tokenMap: Record<string, string> = { comment: '--editor-comment', keyword: '--editor-keyword', string: '--editor-string', number: '--editor-number', function: '--editor-function', variable: '--editor-variable', type: '--editor-type' };
-    if (themeDef.tokenColors) {
-      for (const tc of themeDef.tokenColors) {
-        const scopes = Array.isArray(tc.scope) ? tc.scope : [tc.scope];
-        for (const scope of scopes) {
-          const varName = tokenMap[scope];
-          if (varName && tc.settings?.foreground) root.style.setProperty(varName, tc.settings.foreground);
+    // 2. If this extension's theme is the one the user actually selected,
+    //    apply it immediately so the UI updates even if setTheme() hasn't
+    //    been called yet (race: setTheme ran before this extension loaded).
+    //    Do NOT touch currentTheme — let setTheme() be the single source
+    //    of truth for which theme is active.
+    const savedTheme = useSettingsStore.getState().settings['workbench.colorTheme'] as string;
+    if (savedTheme === themeDef.id) {
+      const root = document.documentElement;
+      const c = themeDef.colors || {};
+      applyThemeToDocument(mappedColors);
+      for (const [key, value] of Object.entries(c)) {
+        if (typeof value === 'string') {
+          const cssKey = `--theme-${key.replace(/\./g, '-').replace(/([A-Z])/g, '-$1').toLowerCase()}`;
+          root.style.setProperty(cssKey, value);
         }
       }
-    }
-
-    // Set as current theme so setTheme finds it later
-    set({ colors: mappedColors, currentTheme: themeDef.id });
-
-    // If this extension theme matches the user's saved workbench.colorTheme,
-    // re-apply it fully now. This handles the race where setTheme() ran before
-    // extensions loaded (extensionThemes was empty → fell back to default).
-    // Use a microtask to avoid Zustand batching issues.
-    queueMicrotask(() => {
-      try {
-        const s = get();
-        if (s.currentTheme === themeDef.id) {
-          s.setTheme(themeDef.id);
+      const cssVars = (themeDef as any).cssVars || {};
+      for (const [varName, value] of Object.entries(cssVars)) {
+        if (typeof value === 'string') root.style.setProperty(varName, value);
+      }
+      const tokenMap: Record<string, string> = { comment: '--editor-comment', keyword: '--editor-keyword', string: '--editor-string', number: '--editor-number', function: '--editor-function', variable: '--editor-variable', type: '--editor-type' };
+      if (themeDef.tokenColors) {
+        for (const tc of themeDef.tokenColors) {
+          const scopes = Array.isArray(tc.scope) ? tc.scope : [tc.scope];
+          for (const scope of scopes) {
+            const varName = tokenMap[scope];
+            if (varName && tc.settings?.foreground) root.style.setProperty(varName, tc.settings.foreground);
+          }
         }
-      } catch {}
-    });
+      }
+      // Let setTheme handle currentTheme + colors via microtask
+      queueMicrotask(() => {
+        try { get().setTheme(themeDef.id); } catch {}
+      });
+    }
   },
 
   unregisterExtensionTheme: (themeId: string) => {
     const extThemes = { ...get().extensionThemes };
     delete extThemes[themeId];
     set({ extensionThemes: extThemes });
-    if (get().currentTheme === themeId) {
+
+    // Use settings store (source of truth) to check active theme.
+    const activeTheme = (useSettingsStore.getState().settings['workbench.colorTheme'] as string) || 'hypothesis-dark';
+    console.log('[themeStore] unregisterExtensionTheme:', { themeId, activeTheme, willRevert: activeTheme === themeId });
+    if (activeTheme === themeId) {
       get().setTheme('hypothesis-dark');
+      try {
+        useSettingsStore.getState().setSetting('workbench.colorTheme', 'hypothesis-dark');
+      } catch {}
     }
   },
 
