@@ -80,7 +80,7 @@ const S = {
     fontSize: 10, fontWeight: 600, color: 'var(--theme-fg-muted)',
     textTransform: 'uppercase' as const, letterSpacing: 0.5,
   },
-  tableCell: { padding: '6px 8px', fontSize: 12, verticalAlign: 'top' as const },
+  tableCell: { padding: '6px 8px', fontSize: 12, verticalAlign: 'top' as const, userSelect: 'text' as const },
   kbd: {
     display: 'inline-block', padding: '1px 5px',
     background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)',
@@ -89,7 +89,7 @@ const S = {
   timelineBar: (pct: number, color: string): React.CSSProperties => ({
     width: `${pct}%`, background: color, minWidth: 2,
   }),
-  timelinePhase: { display: 'flex', alignItems: 'center', gap: 8 },
+  timelinePhase: { display: 'flex', alignItems: 'center', gap: 8, userSelect: 'text' as const },
   timelineDot: (color: string): React.CSSProperties => ({
     width: 12, height: 12, borderRadius: 2, background: color, flexShrink: 0,
   }),
@@ -98,6 +98,7 @@ const S = {
     padding: '6px 10px', borderRadius: 4,
     background: passed ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)',
     border: `1px solid ${passed ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`,
+    userSelect: 'text' as const,
   }),
 };
 
@@ -340,6 +341,10 @@ export const ResponseViewer: React.FC<Props> = ({ response, error, isLoading }) 
                 color: 'var(--theme-fg)', overflow: 'auto',
                 whiteSpace: wrap ? 'pre-wrap' : 'pre',
                 wordBreak: wrap ? 'break-all' : 'normal', tabSize: 2,
+                userSelect: 'text' as const,
+                WebkitUserSelect: 'text' as const,
+                MozUserSelect: 'text' as const,
+                msUserSelect: 'text' as const,
               }}>
                 {parsedBody && fmt === 'pretty' ? <JsonHighlight json={prettyBody} /> : resp.body}
               </pre>
