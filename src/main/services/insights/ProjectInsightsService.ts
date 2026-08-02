@@ -182,6 +182,227 @@ export class ProjectInsightsService {
   /**
    * Full project scan — all phases.
    */
+  // ── Multi-root cache key ────────────────────────────────────────
+  private multiKey(paths: string[]): string {
+    return paths.slice().sort().join('\0');
+  }
+
+  getCachedMulti(paths: string[]): ProjectInsights | null {
+    const key = this.multiKey(paths);
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) return cached.data;
+    return null;
+  }
+
+  clearCacheMulti(paths: string[]): void {
+    this.cache.delete(this.multiKey(paths));
+  }
+
+  /**
+   * Merge results from multiple single-folder scans into one unified report.
+   * Real merging: sums file stats, merges language maps, takes worst-case complexity,
+   * deduplicates security vulns/dependencies, picks the git repo with most commits,
+   * re-runs health scoring on merged data.
+   */
+  mergeResults(results: ProjectInsights[]): ProjectInsights {
+    if (results.length === 0) throw new Error('No results to merge');
+    if (results.length === 1) return results[0];
+
+    const startTime = Date.now();
+    const allPaths = results.map(r => r.projectPath);
+
+    // ── Merge fileStats ──
+    const mergedFileStats: FileStats = {
+      totalFiles: results.reduce((s, r) => s + r.fileStats.totalFiles, 0),
+      totalDirectories: results.reduce((s, r) => s + r.fileStats.totalDirectories, 0),
+      totalSize: results.reduce((s, r) => s + r.fileStats.totalSize, 0),
+      totalLines: results.reduce((s, r) => s + r.fileStats.totalLines, 0),
+      codeLines: results.reduce((s, r) => s + r.fileStats.codeLines, 0),
+      commentLines: results.reduce((s, r) => s + r.fileStats.commentLines, 0),
+      blankLines: results.reduce((s, r) => s + r.fileStats.blankLines, 0),
+      largestFile: results.reduce((best, r) => {
+        if (!r.fileStats.largestFile) return best;
+        if (!best) return r.fileStats.largestFile;
+        return r.fileStats.largestFile.size > best.size ? r.fileStats.largestFile : best;
+      }, null as FileInfo | null),
+      newestFile: results.reduce((best, r) => {
+        if (!r.fileStats.newestFile) return best;
+        if (!best) return r.fileStats.newestFile;
+        return new Date(r.fileStats.newestFile.modifiedAt) > new Date(best.modifiedAt) ? r.fileStats.newestFile : best;
+      }, null as FileInfo | null),
+      oldestFile: results.reduce((best, r) => {
+        if (!r.fileStats.oldestFile) return best;
+        if (!best) return r.fileStats.oldestFile;
+        return new Date(r.fileStats.oldestFile.modifiedAt) < new Date(best.modifiedAt) ? r.fileStats.oldestFile : best;
+      }, null as FileInfo | null),
+    };
+
+    // ── Merge languages ──
+    const langMap = new Map<string, LanguageStat>();
+    for (const r of results) {
+      for (const l of r.languages) {
+        const existing = langMap.get(l.language);
+        if (existing) {
+          existing.fileCount += l.fileCount;
+          existing.totalLines += l.totalLines;
+          existing.codeLines += l.codeLines;
+          existing.commentLines += l.commentLines;
+          existing.blankLines += l.blankLines;
+          existing.totalSize += l.totalSize;
+        } else {
+          langMap.set(l.language, { ...l });
+        }
+      }
+    }
+    const totalAllLines = Array.from(langMap.values()).reduce((s, l) => s + l.totalLines, 0);
+    const mergedLanguages: LanguageStat[] = Array.from(langMap.values()).map(l => ({
+      ...l,
+      percentage: totalAllLines > 0 ? (l.totalLines / totalAllLines) * 100 : 0,
+    })).sort((a, b) => b.totalLines - a.totalLines);
+
+    // ── Merge complexity (worst-case) ──
+    const mergedComplexity: ComplexityMetrics = {
+      averageFileSize: mergedFileStats.totalFiles > 0
+        ? Math.round(mergedFileStats.totalLines / mergedFileStats.totalFiles) : 0,
+      maxFileSize: Math.max(...results.map(r => r.complexity.maxFileSize)),
+      averageFunctionLength: Math.round(
+        results.reduce((s, r) => s + r.complexity.averageFunctionLength, 0) / results.length
+      ),
+      maxFunctionLength: Math.max(...results.map(r => r.complexity.maxFunctionLength)),
+      deeplyNestedFiles: results.flatMap(r => r.complexity.deeplyNestedFiles)
+        .sort((a, b) => b.value - a.value).slice(0, 20),
+      longFiles: results.flatMap(r => r.complexity.longFiles)
+        .sort((a, b) => b.value - a.value).slice(0, 20),
+      largeFiles: results.flatMap(r => r.complexity.largeFiles)
+        .sort((a, b) => b.value - a.value).slice(0, 20),
+      overallScore: Math.round(
+        results.reduce((s, r) => s + r.complexity.overallScore, 0) / results.length
+      ),
+    };
+
+    // ── Merge file type distribution ──
+    const ftMap = new Map<string, FileTypeDistribution>();
+    for (const r of results) {
+      for (const ft of r.fileTypeDistribution) {
+        const ex = ftMap.get(ft.extension);
+        if (ex) {
+          ex.fileCount += ft.fileCount;
+          ex.totalSize += ft.totalSize;
+          ex.totalLines += ft.totalLines;
+        } else {
+          ftMap.set(ft.extension, { ...ft });
+        }
+      }
+    }
+    const mergedFileTypeDistribution = Array.from(ftMap.values())
+      .sort((a, b) => b.totalLines - a.totalLines).slice(0, 30);
+
+    // ── Merge dependencies (deduplicate by name) ──
+    const outdatedMap = new Map<string, OutdatedDependency>();
+    for (const r of results) {
+      for (const d of r.dependencies.outdated) outdatedMap.set(d.name, d);
+    }
+    const mergedDeps: DependencyAnalysis = {
+      totalDependencies: results.reduce((s, r) => s + r.dependencies.totalDependencies, 0),
+      totalDevDependencies: results.reduce((s, r) => s + r.dependencies.totalDevDependencies, 0),
+      outdated: Array.from(outdatedMap.values()),
+      unused: [...new Set(results.flatMap(r => r.dependencies.unused))],
+      missing: [...new Set(results.flatMap(r => r.dependencies.missing))],
+      licenseBreakdown: [],
+      totalSizeEstimate: 'N/A',
+    };
+
+    // ── Merge security (deduplicate by name, keep highest severity) ──
+    const severityOrder: Record<string, number> = { critical: 4, high: 3, moderate: 2, low: 1, info: 0 };
+    const vulnMap = new Map<string, SecurityVulnerability>();
+    for (const r of results) {
+      const allVulns = [...r.security.critical, ...r.security.high, ...r.security.moderate, ...r.security.low, ...r.security.info];
+      for (const v of allVulns) {
+        const existing = vulnMap.get(v.name);
+        if (!existing || (severityOrder[v.severity] ?? 0) > (severityOrder[existing.severity] ?? 0)) {
+          vulnMap.set(v.name, v);
+        }
+      }
+    }
+    const allVulns = Array.from(vulnMap.values());
+    const mergedSecurity: SecurityAudit = {
+      totalVulnerabilities: allVulns.length,
+      critical: allVulns.filter(v => v.severity === 'critical'),
+      high: allVulns.filter(v => v.severity === 'high'),
+      moderate: allVulns.filter(v => v.severity === 'moderate'),
+      low: allVulns.filter(v => v.severity === 'low'),
+      info: allVulns.filter(v => v.severity === 'info'),
+      lastScanned: new Date().toISOString(),
+      scanDuration: results.reduce((s, r) => s + r.security.scanDuration, 0),
+    };
+
+    // ── Pick best git repo (most commits, or first isRepo) ──
+    const gitRepos = results.map(r => r.git).filter(g => g.isRepo);
+    const mergedGit: GitHealth = gitRepos.length > 0
+      ? gitRepos.reduce((best, g) => g.totalCommits > best.totalCommits ? g : best)
+      : results[0].git;
+
+    // ── Merge duplicates ──
+    const dupMap = new Map<string, DuplicateGroup>();
+    for (const r of results) {
+      for (const g of r.duplicates.groups) {
+        const ex = dupMap.get(g.hash);
+        if (ex) {
+          const mergedFiles = [...new Set([...ex.files, ...g.files])];
+          dupMap.set(g.hash, {
+            ...g,
+            files: mergedFiles,
+            wastedLines: g.lineCount * (mergedFiles.length - 1),
+          });
+        } else {
+          dupMap.set(g.hash, { ...g });
+        }
+      }
+    }
+    const mergedDupGroups = Array.from(dupMap.values()).sort((a, b) => b.wastedLines - a.wastedLines);
+    const mergedDuplicates: DuplicateAnalysis = {
+      totalDuplicateGroups: mergedDupGroups.length,
+      totalWastedLines: mergedDupGroups.reduce((s, g) => s + g.wastedLines, 0),
+      totalWastedBytes: results.reduce((s, r) => s + r.duplicates.totalWastedBytes, 0),
+      groups: mergedDupGroups.slice(0, 50),
+    };
+
+    // ── Merge test + doc counts ──
+    const mergedTestFileCount = results.reduce((s, r) => s + r.testFileCount, 0);
+    const mergedDocFileCount = results.reduce((s, r) => s + r.docFileCount, 0);
+    const totalCodeFiles = results.reduce((s, r) => s + r.fileStats.totalFiles, 0);
+
+    // ── Recompute health score on merged data ──
+    const mergedHealth = this.computeHealthScore(
+      mergedFileStats, mergedLanguages, mergedComplexity,
+      mergedDeps, mergedSecurity, mergedGit, mergedDuplicates,
+      mergedTestFileCount, mergedDocFileCount, totalCodeFiles
+    );
+
+    const merged: ProjectInsights = {
+      projectPath: allPaths[0],
+      projectPaths: allPaths,
+      projectName: allPaths.map(p => p.split(/[\\/]/).pop() || p).join(', '),
+      scannedAt: new Date().toISOString(),
+      scanDuration: Date.now() - startTime,
+      fileStats: mergedFileStats,
+      languages: mergedLanguages,
+      complexity: mergedComplexity,
+      dependencies: mergedDeps,
+      security: mergedSecurity,
+      git: mergedGit,
+      healthScore: mergedHealth,
+      fileTypeDistribution: mergedFileTypeDistribution,
+      duplicates: mergedDuplicates,
+      testFileCount: mergedTestFileCount,
+      docFileCount: mergedDocFileCount,
+    };
+
+    // Cache under the combined key
+    this.cache.set(this.multiKey(allPaths), { data: merged, timestamp: Date.now() });
+    return merged;
+  }
+
   async scanProject(projectPath: string, onProgress?: ProgressCallback): Promise<ProjectInsights> {
     const startTime = Date.now();
 
@@ -198,7 +419,7 @@ export class ProjectInsightsService {
     report('files', 0, 'Scanning files...');
 
     // Phase 1: File discovery and stats
-    const { files, directories, fileStats } = await this.scanFiles(projectPath);
+    const { files, directories, fileStats, testFileCount, docFileCount } = await this.scanFiles(projectPath);
     report('files', 100, `Found ${files.length} files in ${directories.length} directories`);
 
     // Phase 2: Language breakdown
@@ -236,11 +457,13 @@ export class ProjectInsightsService {
 
     // Phase 9: Health score
     report('health', 0, 'Computing health score...');
-    const healthScore = this.computeHealthScore(fileStats, languages, complexity, dependencies, security, git, duplicates);
+    const totalCodeFiles = files.filter(f => !f.isBinary).length;
+    const healthScore = this.computeHealthScore(fileStats, languages, complexity, dependencies, security, git, duplicates, testFileCount, docFileCount, totalCodeFiles);
     report('health', 100, `Health score: ${healthScore.overall}/100`);
 
     const result: ProjectInsights = {
       projectPath,
+      projectPaths: [projectPath],
       projectName: path.basename(projectPath),
       scannedAt: new Date().toISOString(),
       scanDuration: Date.now() - startTime,
@@ -253,6 +476,8 @@ export class ProjectInsightsService {
       healthScore,
       fileTypeDistribution,
       duplicates,
+      testFileCount,
+      docFileCount,
     };
 
     this.cache.set(projectPath, { data: result, timestamp: Date.now() });
@@ -280,10 +505,50 @@ export class ProjectInsightsService {
   }
 
   // ── Phase 1: File Scanning ─────────────────────────────────────
+  // Test file patterns — real detection, not heuristics
+  private readonly TEST_PATTERNS = [
+    /\.test\.[a-z]+$/i,
+    /\.spec\.[a-z]+$/i,
+    /__tests__/,
+    /__mocks__/,
+    /\/tests?\//,
+    /\/spec\//,
+    /\/e2e\//,
+    /\/cypress\//,
+    /\/playwright\//,
+    /\/jest\//,
+    /\/vitest\//,
+  ];
+
+  // Documentation file patterns
+  private readonly DOC_PATTERNS = [
+    /^readme(\.md|\.txt|\.rst)?$/i,
+    /^changelog(\.md|\.txt)?$/i,
+    /^contributing(\.md|\.txt)?$/i,
+    /^license(\.md|\.txt)?$/i,
+    /\/docs?\//i,
+    /\/documentation\//i,
+    /\/wiki\//i,
+    /\.mdx?$/i,
+    /\.rst$/i,
+  ];
+
+  private isTestFile(filePath: string): boolean {
+    const normalised = filePath.replace(/\\/g, '/');
+    return this.TEST_PATTERNS.some(p => p.test(normalised));
+  }
+
+  private isDocFile(filePath: string, name: string): boolean {
+    const normalised = filePath.replace(/\\/g, '/');
+    return this.DOC_PATTERNS.some(p => p.test(normalised) || p.test(name));
+  }
+
   private async scanFiles(projectPath: string): Promise<{
     files: ScannedFile[];
     directories: string[];
     fileStats: FileStats;
+    testFileCount: number;
+    docFileCount: number;
   }> {
     const files: ScannedFile[] = [];
     const directories: string[] = [];
@@ -295,6 +560,8 @@ export class ProjectInsightsService {
     let largestFile: FileInfo | null = null;
     let newestFile: FileInfo | null = null;
     let oldestFile: FileInfo | null = null;
+    let testFileCount = 0;
+    let docFileCount = 0;
 
     const walk = async (dir: string, depth: number = 0) => {
       if (depth > 20) return; // prevent infinite recursion
@@ -324,7 +591,11 @@ export class ProjectInsightsService {
             const ext = path.extname(entry.name).toLowerCase();
 
             if (BINARY_EXTENSIONS.has(ext)) {
-              files.push({
+              const isBinTest = this.isTestFile(fullPath);
+            const isBinDoc = this.isDocFile(fullPath, entry.name);
+            if (isBinTest) testFileCount++;
+            if (isBinDoc) docFileCount++;
+            files.push({
                 path: fullPath,
                 name: entry.name,
                 extension: ext,
@@ -336,6 +607,8 @@ export class ProjectInsightsService {
                 modifiedAt: stat.mtime.toISOString(),
                 createdAt: stat.birthtime.toISOString(),
                 isBinary: true,
+                isTest: isBinTest,
+                isDoc: isBinDoc,
               });
               totalSize += stat.size;
               continue;
@@ -350,6 +623,10 @@ export class ProjectInsightsService {
             }
 
             const lineResult = this.countLines(content, ext);
+            const isTest = this.isTestFile(fullPath);
+            const isDoc = this.isDocFile(fullPath, entry.name);
+            if (isTest) testFileCount++;
+            if (isDoc) docFileCount++;
             files.push({
               path: fullPath,
               name: entry.name,
@@ -362,6 +639,8 @@ export class ProjectInsightsService {
               modifiedAt: stat.mtime.toISOString(),
               createdAt: stat.birthtime.toISOString(),
               isBinary: false,
+              isTest,
+              isDoc,
             });
 
             totalSize += stat.size;
@@ -392,6 +671,8 @@ export class ProjectInsightsService {
     return {
       files,
       directories,
+      testFileCount,
+      docFileCount,
       fileStats: {
         totalFiles: files.length,
         totalDirectories: directories.length,
@@ -909,6 +1190,9 @@ export class ProjectInsightsService {
     security: SecurityAudit,
     git: GitHealth,
     duplicates: DuplicateAnalysis,
+    testFileCount: number,
+    docFileCount: number,
+    totalCodeFiles: number,
   ): ProjectHealthScore {
     const recommendations: HealthRecommendation[] = [];
 
@@ -922,19 +1206,68 @@ export class ProjectInsightsService {
       recommendations.push({ id: 'low-comments', category: 'documentation', severity: 'info', title: 'Low comment ratio', description: 'Less than 5% of code lines are comments. Consider adding documentation.', action: 'Add JSDoc/docstrings to key functions' });
     }
 
-    // Documentation
-    let documentation = 50; // baseline
-    const hasReadme = fileStats.totalFiles > 0; // Would need to check for README specifically
-    documentation = Math.min(100, documentation + (hasReadme ? 30 : 0));
+    // Documentation — real scoring based on actual doc files found
+    let documentation = 0;
+    if (docFileCount > 0) documentation += 40;           // has some docs
+    if (docFileCount >= 3) documentation += 20;          // decent coverage
+    if (docFileCount >= 8) documentation += 20;          // good coverage
+    // Comment ratio across all code
+    const totalCode = languages.reduce((s, l) => s + l.codeLines, 0);
+    const totalComment = languages.reduce((s, l) => s + l.commentLines, 0);
+    const commentRatio = totalCode > 0 ? totalComment / totalCode : 0;
+    if (commentRatio >= 0.15) documentation += 20;       // well-commented
+    else if (commentRatio >= 0.05) documentation += 10;  // some comments
+    if (docFileCount === 0) {
+      recommendations.push({
+        id: 'no-docs',
+        category: 'documentation',
+        severity: 'warning',
+        title: 'No documentation files found',
+        description: 'No README, changelog, or docs folder detected. Documentation helps contributors understand the project.',
+        action: 'Add a README.md and a docs/ folder',
+      });
+    } else if (commentRatio < 0.05) {
+      recommendations.push({
+        id: 'low-comments',
+        category: 'documentation',
+        severity: 'info',
+        title: 'Low inline comment ratio',
+        description: `Only ${(commentRatio * 100).toFixed(1)}% of code lines are comments. Consider documenting complex logic.`,
+        action: 'Add JSDoc/docstrings to key functions and modules',
+      });
+    }
 
-    // Testing (heuristic: look for test files)
-    let testing = 30; // baseline
-    const testFileCount = languages.reduce((sum, l) => {
-      // This is a rough heuristic
-      return sum;
-    }, 0);
-    // We'd need file-level analysis for this; set baseline
-    testing = 50;
+    // Testing — real scoring based on actual test file count
+    let testing = 0;
+    if (totalCodeFiles > 0) {
+      const testRatio = testFileCount / totalCodeFiles;
+      if (testRatio >= 0.3) testing = 100;        // excellent: ~1 test file per 3 code files
+      else if (testRatio >= 0.15) testing = 75;   // good
+      else if (testRatio >= 0.05) testing = 50;   // some tests
+      else if (testFileCount > 0) testing = 25;   // minimal
+      else testing = 0;                           // no tests at all
+    } else {
+      testing = 50; // can't judge with no code files
+    }
+    if (testFileCount === 0 && totalCodeFiles > 0) {
+      recommendations.push({
+        id: 'no-tests',
+        category: 'testing',
+        severity: 'warning',
+        title: 'No test files detected',
+        description: 'No *.test.*, *.spec.*, or __tests__ files found. Automated tests are essential for reliability.',
+        action: 'Add unit tests using Jest, Vitest, or your preferred framework',
+      });
+    } else if (testFileCount > 0 && totalCodeFiles > 0 && testFileCount / totalCodeFiles < 0.05) {
+      recommendations.push({
+        id: 'low-test-coverage',
+        category: 'testing',
+        severity: 'info',
+        title: 'Low test file ratio',
+        description: `Only ${testFileCount} test file(s) for ${totalCodeFiles} code files. Consider expanding test coverage.`,
+        action: 'Add more unit and integration tests',
+      });
+    }
 
     // Security
     let securityScore = 100;
@@ -1013,4 +1346,6 @@ interface ScannedFile {
   modifiedAt: string;
   createdAt: string;
   isBinary: boolean;
+  isTest: boolean;
+  isDoc: boolean;
 }

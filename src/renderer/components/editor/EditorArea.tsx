@@ -164,7 +164,10 @@ export const EditorArea: React.FC<EditorAreaProps> = ({ onOpenFolder, onOpenSett
         ) : isAgentTab ? (
           <AgentPanel onOpenSettings={onOpenSettings} />
         ) : isInsightsTab ? (
-          <ProjectInsightsPanel rootPath={(window as any).__hypothesis_rootPath || null} />
+          <ProjectInsightsPanel
+            rootPath={(window as any).__hypothesis_rootPath || null}
+            workspaceFolders={(window as any).__hypothesis_workspaceFolders || ((window as any).__hypothesis_rootPath ? [(window as any).__hypothesis_rootPath] : [])}
+          />
         ) : isRestClientTab ? (
           <RestClientPanel />
         ) : isDatabaseTab ? (

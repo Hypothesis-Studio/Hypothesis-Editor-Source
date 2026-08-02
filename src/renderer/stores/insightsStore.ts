@@ -1,14 +1,17 @@
 /**
  * Project Insights Store - Zustand store for project analysis state.
- * Manages scan lifecycle, progress tracking, and cached results.
+ * Supports single-path and multi-root workspace scanning.
  */
 import { create } from 'zustand';
-import type { ProjectInsights, ScanProgress, INSIGHTS_CHANNELS } from '../../shared/types/insights';
+import type { ProjectInsights, ScanProgress } from '../../shared/types/insights';
+
+type SectionId = 'overview' | 'languages' | 'complexity' | 'dependencies' | 'security' | 'git' | 'health' | 'duplicates';
 
 interface InsightsState {
   // Data
   insights: ProjectInsights | null;
-  projectPath: string | null;
+  /** The path(s) last scanned. Array for multi-root, string for single. */
+  projectPath: string | string[] | null;
 
   // Scan state
   isScanning: boolean;
@@ -16,20 +19,19 @@ interface InsightsState {
   lastScanError: string | null;
 
   // UI state
-  activeSection: 'overview' | 'languages' | 'complexity' | 'dependencies' | 'security' | 'git' | 'health' | 'duplicates';
+  activeSection: SectionId;
   expandedSections: Set<string>;
 
   // Actions
-  scanProject: (projectPath: string) => Promise<void>;
-  loadCached: (projectPath: string) => Promise<void>;
+  scanProject: (projectPath: string | string[]) => Promise<void>;
+  loadCached: (projectPath: string | string[]) => Promise<void>;
   clearCache: () => Promise<void>;
-  setActiveSection: (section: InsightsState['activeSection']) => void;
+  setActiveSection: (section: SectionId) => void;
   toggleSection: (section: string) => void;
   reset: () => void;
 }
 
 export const useInsightsStore = create<InsightsState>((set, get) => ({
-  // Initial state
   insights: null,
   projectPath: null,
   isScanning: false,
@@ -39,15 +41,15 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
   expandedSections: new Set(['overview']),
 
   /**
-   * Trigger a full project scan. Listens for progress events.
+   * Trigger a full project scan. Accepts a single path or an array of paths
+   * for multi-root workspaces. Listens for IPC progress events.
    */
-  scanProject: async (projectPath: string) => {
+  scanProject: async (projectPath: string | string[]) => {
     const api = (window as any).api;
     if (!api?.insights) return;
 
     set({ isScanning: true, scanProgress: null, lastScanError: null, projectPath });
 
-    // Register progress listener
     const unsubscribe = api.insights.onProgress((progress: ScanProgress) => {
       set({ scanProgress: progress });
     });
@@ -55,7 +57,11 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
     try {
       const result = await api.insights.scanProject(projectPath);
       if (result.success && result.data) {
-        set({ insights: result.data, isScanning: false, scanProgress: { phase: 'complete', progress: 100, message: 'Scan complete' } });
+        set({
+          insights: result.data,
+          isScanning: false,
+          scanProgress: { phase: 'complete', progress: 100, message: 'Scan complete' },
+        });
       } else {
         set({ isScanning: false, lastScanError: result.error || 'Scan failed' });
       }
@@ -67,34 +73,34 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
   },
 
   /**
-   * Load cached insights without triggering a new scan.
+   * Load cached insights for the given path(s) without rescanning.
+   * For multi-root, uses the serialised key of all paths joined.
    */
-  loadCached: async (projectPath: string) => {
+  loadCached: async (projectPath: string | string[]) => {
     const api = (window as any).api;
     if (!api?.insights) return;
 
+    // Normalise: always pass what the main process expects
+    const key = Array.isArray(projectPath) ? projectPath : projectPath;
     try {
-      const result = await api.insights.getCached(projectPath);
+      const result = await api.insights.getCached(key);
       if (result.success && result.data) {
         set({ insights: result.data, projectPath });
       }
     } catch {
-      // Silent fail — cache miss is expected
+      // Cache miss — silent
     }
   },
 
-  /**
-   * Clear cached insights on the main process side.
-   */
   clearCache: async () => {
     const api = (window as any).api;
     if (!api?.insights) return;
     const { projectPath } = get();
     try {
-      await api.insights.clearCache(projectPath || undefined);
+      await api.insights.clearCache(projectPath ?? undefined);
       set({ insights: null });
     } catch {
-      // Silent fail
+      // Silent
     }
   },
 
@@ -103,11 +109,8 @@ export const useInsightsStore = create<InsightsState>((set, get) => ({
   toggleSection: (section) => {
     const { expandedSections } = get();
     const next = new Set(expandedSections);
-    if (next.has(section)) {
-      next.delete(section);
-    } else {
-      next.add(section);
-    }
+    if (next.has(section)) next.delete(section);
+    else next.add(section);
     set({ expandedSections: next });
   },
 

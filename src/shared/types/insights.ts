@@ -187,6 +187,8 @@ export interface DuplicateAnalysis {
 export interface ProjectInsights {
   projectPath: string;
   projectName: string;
+  /** All scanned root paths (multi-workspace). Single path = [projectPath]. */
+  projectPaths: string[];
   scannedAt: string;
   scanDuration: number;         // ms
   fileStats: FileStats;
@@ -198,13 +200,21 @@ export interface ProjectInsights {
   healthScore: ProjectHealthScore;
   fileTypeDistribution: FileTypeDistribution[];
   duplicates: DuplicateAnalysis;
+  /** Number of test files found across all scanned paths. */
+  testFileCount: number;
+  /** Number of documentation files found (README, docs/, etc.). */
+  docFileCount: number;
 }
 
 // ── Scan Progress ────────────────────────────────────────────────
 export interface ScanProgress {
-  phase: 'files' | 'languages' | 'complexity' | 'dependencies' | 'security' | 'git' | 'health' | 'duplicates' | 'complete';
+  phase: 'files' | 'languages' | 'complexity' | 'dependencies' | 'security' | 'git' | 'health' | 'duplicates' | 'complete' | 'merging';
   progress: number;             // 0-100
   message: string;
+  /** Which folder is being scanned (multi-root scans). */
+  currentFolder?: string;
+  folderIndex?: number;
+  totalFolders?: number;
 }
 
 // ── IPC Channel Names ────────────────────────────────────────────
