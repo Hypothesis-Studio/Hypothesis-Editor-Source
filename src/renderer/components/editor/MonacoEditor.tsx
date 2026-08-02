@@ -22,35 +22,31 @@ interface MonacoEditorProps {
 }
 
 // Configure Monaco Editor workers
+// Uses pre-bundled worker files from public/workers/ for Electron compatibility.
+// The import.meta.url + /monaco-editor/esm/... approach only works in Vite dev server,
+// not in Electron production (file:// protocol). Static worker files resolve correctly.
 const setupMonacoWorkers = () => {
   (self as unknown as Record<string, unknown>).MonacoEnvironment = {
-    getWorker: function (_workerId: string, label: string) {
-      const getWorkerModule = (moduleUrl: string, label: string) => {
-        return new Worker(new URL(moduleUrl, import.meta.url), {
-          name: label,
-          type: 'module',
-        });
-      };
-
+    getWorkerUrl: function (_moduleId: string, label: string): string {
+      // Use relative paths so workers resolve correctly under both
+      // Vite dev server (http://) and Electron production (file://).
+      // Absolute paths like /workers/... fail under file:// protocol.
       switch (label) {
         case 'json':
-          return getWorkerModule('/monaco-editor/esm/vs/language/json/json.worker?worker', label);
+          return './workers/json.worker.js';
         case 'css':
         case 'scss':
         case 'less':
-          return getWorkerModule('/monaco-editor/esm/vs/language/css/css.worker?worker', label);
+          return './workers/css.worker.js';
         case 'html':
         case 'handlebars':
         case 'razor':
-          return getWorkerModule('/monaco-editor/esm/vs/language/html/html.worker?worker', label);
+          return './workers/html.worker.js';
         case 'typescript':
         case 'javascript':
-          return getWorkerModule(
-            '/monaco-editor/esm/vs/language/typescript/ts.worker?worker',
-            label,
-          );
+          return './workers/ts.worker.js';
         default:
-          return getWorkerModule('/monaco-editor/esm/vs/editor/editor.worker?worker', label);
+          return './workers/editor.worker.js';
       }
     },
   };
@@ -139,6 +135,9 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       },
       stickyScroll: {
         enabled: (settings['editor.stickyScroll.enabled'] as boolean) !== false,
+        maxLineCount: 5,
+        defaultModel: 'foldingProviderModel',
+        scrollWithEditor: true,
       },
       folding: (settings['editor.folding'] as boolean) !== false,
       foldingStrategy: 'auto',
@@ -681,7 +680,12 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       wordWrap,
       minimap: { enabled: minimapVisible },
       lineNumbers,
-      stickyScroll: { enabled: stickyScroll },
+      stickyScroll: {
+        enabled: stickyScroll,
+        maxLineCount: 5,
+        defaultModel: 'foldingProviderModel',
+        scrollWithEditor: true,
+      },
     });
   }, [wordWrap, minimapVisible, lineNumbers, stickyScroll]);
 
@@ -703,7 +707,12 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       smoothScrolling: (settings['editor.smoothScrolling'] as boolean) || false,
       folding: (settings['editor.folding'] as boolean) !== false,
       bracketPairColorization: { enabled: (settings['editor.bracketPairColorization.enabled'] as boolean) !== false },
-      stickyScroll: { enabled: (settings['editor.stickyScroll.enabled'] as boolean) !== false },
+      stickyScroll: {
+        enabled: (settings['editor.stickyScroll.enabled'] as boolean) !== false,
+        maxLineCount: 5,
+        defaultModel: 'foldingProviderModel',
+        scrollWithEditor: true,
+      },
       padding: {
         top: (settings['editor.padding.top'] as number) || 0,
         bottom: (settings['editor.padding.bottom'] as number) || 0,

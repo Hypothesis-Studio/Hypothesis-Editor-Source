@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.2.8] - 2026-08-02
+
+### Added
+
+- **Sticky Scroll** — Monaco editor now correctly displays sticky function/class headers at the top of the editor while scrolling. The root cause was Monaco language workers (TypeScript, CSS, HTML, JSON) failing to load in Electron production builds because the previous `getWorker` setup used `new Worker(new URL('/monaco-editor/esm/...', import.meta.url))`, which only resolves correctly in the Vite development server and not under the `file://` protocol.
+  - Pre-bundled worker files are copied to `public/workers/` (`ts.worker.js`, `css.worker.js`, `html.worker.js`, `json.worker.js`, `editor.worker.js`)
+  - `setupMonacoWorkers()` now uses `getWorkerUrl` to return static `/workers/*.worker.js` paths that resolve correctly in both development and Electron production
+  - Workers are now served from `dist/renderer/workers/` in production builds
+
+### Fixed
+
+- **Universal Sticky Scroll language support** — Sticky Scroll now works across all languages supported by Monaco (PHP, Python, Ruby, Go, Rust, etc.), not just TypeScript/JavaScript.
+  - Set `defaultModel: 'foldingProviderModel'` so Monaco uses folding ranges as a fallback for languages without a dedicated language worker
+  - Monaco language workers (`ts.worker`, `css.worker`, `html.worker`, `json.worker`, `editor.worker`) are now bundled as self-contained files using a separate Vite build (`vite.workers.config.mts`); previously, they were raw ESM sources that could not run as standalone Web Workers
+  - Changed worker paths from absolute (`/workers/...`) to relative (`./workers/...`) so they resolve correctly under Electron's `file://` protocol
+  - Added a `build:workers` script to `package.json` that runs `vite build --config vite.workers.config.mts`
+
 ## [0.2.7] - 2026-07-26
 
 ### Added

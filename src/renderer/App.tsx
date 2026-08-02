@@ -120,7 +120,12 @@ const App: React.FC = () => {
   const setTheme = useThemeStore((s) => s.setTheme);
   useEffect(() => {
     // Load settings on mount so theme + all prefs restore on restart
-    useSettingsStore.getState().loadSettings();
+    useSettingsStore.getState().loadSettings().then(() => {
+      // Sync appStore view toggles from persisted settings
+      const s = useSettingsStore.getState().settings;
+      const stickyEnabled = (s['editor.stickyScroll.enabled'] as boolean) !== false;
+      useAppStore.getState().setStickyScroll(stickyEnabled);
+    });
   }, []);
   useEffect(() => {
     const themeId = (settings['workbench.colorTheme'] as string) || 'hypothesis-dark';

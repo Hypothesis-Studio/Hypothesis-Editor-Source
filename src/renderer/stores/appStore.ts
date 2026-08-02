@@ -46,6 +46,7 @@ interface AppState {
   toggleMinimap: () => void;
   toggleLineNumbers: () => void;
   toggleStickyScroll: () => void;
+  setStickyScroll: (enabled: boolean) => void;
 
   // Theme
   currentTheme: string;
@@ -157,6 +158,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       lineNumbers: s.lineNumbers === 'on' ? 'off' : 'on',
     })),
   toggleStickyScroll: () => set((s) => ({ stickyScroll: !s.stickyScroll })),
+  setStickyScroll: (enabled) => set({ stickyScroll: enabled }),
 
   // Theme
   currentTheme: 'hypothesis-dark',

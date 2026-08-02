@@ -138,7 +138,7 @@ function applySettingToApp(key: string, value: unknown) {
     case 'editor.wordWrap': store.toggleWordWrap(); break; // handled via store
     case 'editor.lineNumbers': store.toggleLineNumbers(); break;
     case 'editor.minimap.enabled': store.toggleMinimap(); break;
-    case 'editor.stickyScroll.enabled': store.toggleStickyScroll(); break;
+    case 'editor.stickyScroll.enabled': store.setStickyScroll(value as boolean); break;
     case 'window.zoomLevel': {
       const level = (value as number) || 0;
       (document as any).body.style.zoom = `${100 + level * 10}%`;
