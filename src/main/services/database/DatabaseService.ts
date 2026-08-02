@@ -678,6 +678,60 @@ export class DatabaseService extends EventEmitter {
     return false;
   }
 
+  // ── ER Diagram ─────────────────────────────────────────────────────
+
+  async getERDiagram(connectionId: string): Promise<import('../../../shared/types/database').ERDiagram> {
+    const schema = await this.getSchema(connectionId);
+    const db = schema.databases[0];
+    if (!db) throw new Error('No database found for connection');
+
+    const relations: import('../../../shared/types/database').ERDiagramRelation[] = [];
+    for (const table of db.tables) {
+      for (const fk of table.foreignKeys) {
+        for (let i = 0; i < fk.columns.length; i++) {
+          relations.push({
+            fromTable: table.name,
+            fromColumn: fk.columns[i],
+            toTable: fk.referencedTable,
+            toColumn: fk.referencedColumns[i] ?? fk.referencedColumns[0],
+            constraintName: fk.name,
+            onDelete: fk.onDelete,
+            onUpdate: fk.onUpdate,
+          });
+        }
+      }
+    }
+
+    // Auto-layout: arrange tables in a grid, spacing based on column count
+    const CARD_WIDTH = 200;
+    const COL_HEIGHT = 22;
+    const HEADER_HEIGHT = 32;
+    const H_GAP = 60;
+    const V_GAP = 40;
+    const COLS_PER_ROW = Math.max(1, Math.ceil(Math.sqrt(db.tables.length)));
+
+    const tables: import('../../../shared/types/database').ERDiagramTable[] = db.tables.map((t, i) => {
+      const col = i % COLS_PER_ROW;
+      const row = Math.floor(i / COLS_PER_ROW);
+      const height = HEADER_HEIGHT + t.columns.length * COL_HEIGHT + 8;
+      // Offset x by accumulated widths in this row slot
+      const x = col * (CARD_WIDTH + H_GAP) + 24;
+      const y = row * (220 + V_GAP) + 24;
+      return {
+        name: t.name,
+        schema: t.schema,
+        columns: t.columns,
+        primaryKey: t.primaryKey ?? [],
+        x,
+        y,
+        width: CARD_WIDTH,
+        height,
+      };
+    });
+
+    return { connectionId, databaseName: db.name, tables, relations };
+  }
+
   // ── Cleanup ───────────────────────────────────────────────────────
 
   async dispose(): Promise<void> {

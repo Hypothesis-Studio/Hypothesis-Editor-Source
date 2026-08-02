@@ -7,6 +7,8 @@
 - **Public rooms via Tunnel** — when hosting a room, toggle Public mode to generate a shareable link anyone can join from outside your network, powered by the existing Tunnel feature.
 - **Kick participants** — room hosts can remove a participant from the room at any time.
 - **AI Agent now works across multiple open folders** — when you have more than one project folder open, the AI Agent now sees all of them, can read and edit files from any folder, and mentions all open workspaces in its context.
+- **ER Diagram Auto Generator** — generate a high-level Entity Relationship diagram from any connected database schema in one click. Accessible via the diagram icon next to the database name in the Database Explorer sidebar. The diagram renders all tables, columns, primary keys, foreign keys, and relations as an interactive SVG canvas with pan, zoom, and draggable table cards. Hovering a table highlights all its foreign key relations and the connected columns on both ends.
+- **Database Explorer sidebar tree redesigned** — replaced emoji icons with proper SVG icons and file-explorer-style tree connector lines, showing the full table/view/column hierarchy with accurate branch and continuation lines at every depth level.
 
 ### Fixed
 - AI Agent no longer ignores additional workspace folders when multiple projects are open simultaneously.

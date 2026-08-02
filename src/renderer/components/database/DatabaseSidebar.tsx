@@ -44,6 +44,21 @@ const IcoView = () => (
     <path d="M8 2a5.97 5.97 0 0 0-4.192 1.694A7.967 7.967 0 0 0 2 8a7.967 7.967 0 0 0 1.808 4.306A5.97 5.97 0 0 0 8 14a5.97 5.97 0 0 0 4.192-1.694A7.967 7.967 0 0 0 14 8a7.967 7.967 0 0 0-1.808-4.306A5.97 5.97 0 0 0 8 2zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
   </svg>
 );
+const IcoDatabase = () => (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M8 1C4.5 1 2 2.3 2 3.9v8.2C2 13.7 4.5 15 8 15s6-1.3 6-2.9V3.9C14 2.3 11.5 1 8 1zm4.5 2.9c0 .7-1.9 1.4-4.5 1.4S3.5 4.6 3.5 3.9s1.9-1.4 4.5-1.4 4.5.7 4.5 1.4zM3.5 6.3c.9.5 2.6.8 4.5.8s3.6-.3 4.5-.8v1.5c0 .7-1.9 1.4-4.5 1.4S3.5 8.5 3.5 7.8V6.3zm0 3.4c.9.5 2.6.8 4.5.8s3.6-.3 4.5-.8v1.4c0 .7-1.9 1.4-4.5 1.4s-4.5-.7-4.5-1.4V9.7z"/>
+  </svg>
+);
+const IcoChevronRight = () => (
+  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06z"/>
+  </svg>
+);
+const IcoChevronDown = () => (
+  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M12.78 6.22a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.22 7.28a.75.75 0 0 1 1.06-1.06L8 9.94l3.72-3.72a.75.75 0 0 1 1.06 0z"/>
+  </svg>
+);
 const IcoBrowse = () => (
   <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
     <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/>
@@ -52,6 +67,31 @@ const IcoBrowse = () => (
 const IcoQuery = () => (
   <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
     <path d="M3.24 1.178a1.5 1.5 0 0 1 1.56.12l8.5 5.5a1.5 1.5 0 0 1 0 2.4l-8.5 5.5A1.5 1.5 0 0 1 2.5 13.5v-11a1.5 1.5 0 0 1 .74-1.322z"/>
+  </svg>
+);
+const IcoDiagram = () => (
+  <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+    <path d="M1 2.75A.75.75 0 0 1 1.75 2h3.5a.75.75 0 0 1 .75.75v2.5A.75.75 0 0 1 5.25 6H4v1h4V6h-1.25A.75.75 0 0 1 6 5.25v-2.5A.75.75 0 0 1 6.75 2h3.5a.75.75 0 0 1 .75.75v2.5A.75.75 0 0 1 10.25 6H9v1h2.25a.75.75 0 0 1 .75.75V9h.25a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-.75.75h-3.5a.75.75 0 0 1-.75-.75v-2.5A.75.75 0 0 1 8.75 9H9V8H4v1h.25a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-.75.75h-3.5A.75.75 0 0 1 0 12.25v-2.5A.75.75 0 0 1 .75 9H1V7.75A.75.75 0 0 1 1.75 7H4V6H2.75A.75.75 0 0 1 2 5.25v-2.5z"/>
+  </svg>
+);
+
+// ── Tree line helpers ────────────────────────────────────────────
+// Renders the vertical + horizontal connector lines like a file explorer tree.
+const TreeLine: React.FC<{ isLast: boolean; depth: number }> = ({ isLast, depth }) => (
+  <svg
+    width={12}
+    height={20}
+    viewBox="0 0 12 20"
+    style={{ flexShrink: 0, overflow: 'visible' }}
+  >
+    <line x1={6} y1={0} x2={6} y2={isLast ? 10 : 20} stroke="var(--theme-border)" strokeWidth={1} opacity={0.5} />
+    <line x1={6} y1={10} x2={12} y2={10} stroke="var(--theme-border)" strokeWidth={1} opacity={0.5} />
+  </svg>
+);
+
+const TreeContinue: React.FC = () => (
+  <svg width={12} height={20} viewBox="0 0 12 20" style={{ flexShrink: 0 }}>
+    <line x1={6} y1={0} x2={6} y2={20} stroke="var(--theme-border)" strokeWidth={1} opacity={0.5} />
   </svg>
 );
 
@@ -107,35 +147,35 @@ const S = {
 
   // Schema tree
   schemaWrap: { paddingBottom: 4 },
-  dbSection: { margin: '4px 0' },
+  dbSection: { margin: '2px 0' },
   dbLabel: {
-    display: 'flex', alignItems: 'center', gap: 5,
-    padding: '3px 10px 3px 24px', fontSize: 10, fontWeight: 700,
-    color: 'var(--theme-fg-muted)', textTransform: 'uppercase' as const,
-    letterSpacing: '0.07em',
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '3px 8px 3px 8px', fontSize: 12, fontWeight: 500,
+    color: 'var(--theme-fg)',
+    cursor: 'default',
   },
   sectionLabel: {
-    padding: '2px 10px 2px 28px', fontSize: 10, fontWeight: 600,
+    display: 'flex', alignItems: 'center',
+    padding: '2px 8px 2px 8px', fontSize: 10, fontWeight: 600,
     color: 'var(--theme-fg-muted)', opacity: 0.6,
     textTransform: 'uppercase' as const, letterSpacing: '0.05em',
   },
 
   tableRow: (hovered: boolean): React.CSSProperties => ({
-    display: 'flex', alignItems: 'center', gap: 5,
-    padding: '3px 8px 3px 28px', cursor: 'pointer', fontSize: 12,
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '2px 8px 2px 0', cursor: 'pointer', fontSize: 12,
     background: hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
-    borderRadius: 3, margin: '1px 4px',
+    borderRadius: 3, margin: '1px 4px 1px 0',
     color: 'var(--theme-fg)',
     transition: 'background 0.1s',
   }),
-  tableChevron: { fontSize: 8, color: 'var(--theme-fg-muted)', width: 10, flexShrink: 0 },
   tableName: { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
   tableRowCount: { fontSize: 10, color: 'var(--theme-fg-muted)', opacity: 0.7 },
   tableActions: { display: 'flex', gap: 1 },
 
   colRow: {
-    display: 'flex', alignItems: 'center', gap: 5,
-    padding: '2px 8px 2px 44px', fontSize: 11,
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '1px 8px 1px 0', fontSize: 11,
     color: 'var(--theme-fg-muted)',
   },
   colName: { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
@@ -198,6 +238,7 @@ export const DatabaseSidebar: React.FC = () => {
     connections, activeConnectionId, schemas, loadingSchema, expandedTables,
     loadConnections, connect, disconnect, deleteConnection,
     setActiveConnection, loadSchema, toggleTable, loadTableData, openQueryTab,
+    loadERDiagram,
   } = useDBStore();
 
   const [showNewConn, setShowNewConn] = useState(false);
@@ -254,6 +295,11 @@ export const DatabaseSidebar: React.FC = () => {
     useDBStore.getState().setActiveView('query');
   };
 
+  const handleDiagram = (e: React.MouseEvent, connId: string) => {
+    e.stopPropagation(); e.preventDefault();
+    loadERDiagram(connId);
+  };
+
   return (
     <div style={S.root}>
       {/* Header */}
@@ -270,7 +316,11 @@ export const DatabaseSidebar: React.FC = () => {
       <div style={S.scroll}>
         {connections.length === 0 ? (
           <div style={S.emptyWrap}>
-            <span style={S.emptyIcon}>🗄️</span>
+            <span style={S.emptyIcon}>
+              <svg width="28" height="28" viewBox="0 0 16 16" fill="var(--theme-fg-muted)" opacity={0.3}>
+                <path d="M8 1C4.5 1 2 2.3 2 3.9v8.2C2 13.7 4.5 15 8 15s6-1.3 6-2.9V3.9C14 2.3 11.5 1 8 1zm4.5 2.9c0 .7-1.9 1.4-4.5 1.4S3.5 4.6 3.5 3.9s1.9-1.4 4.5-1.4 4.5.7 4.5 1.4zM3.5 6.3c.9.5 2.6.8 4.5.8s3.6-.3 4.5-.8v1.5c0 .7-1.9 1.4-4.5 1.4S3.5 8.5 3.5 7.8V6.3zm0 3.4c.9.5 2.6.8 4.5.8s3.6-.3 4.5-.8v1.4c0 .7-1.9 1.4-4.5 1.4s-4.5-.7-4.5-1.4V9.7z"/>
+              </svg>
+            </span>
             <span style={S.emptyText}>No database connections yet.</span>
             <button style={S.emptyBtn} onClick={() => setShowNewConn(true)}>Add Connection</button>
           </div>
@@ -320,76 +370,118 @@ export const DatabaseSidebar: React.FC = () => {
                       <div style={S.loading}><Spinner /><span>Loading schema…</span></div>
                     ) : schema?.databases?.map((db) => (
                       <div key={db.name} style={S.dbSection}>
+                        {/* DB label row */}
                         <div style={S.dbLabel}>
-                          <span>📁</span>
-                          <span>{db.name}</span>
-                          <span style={{ opacity: 0.5 }}>({db.tables.length} tables)</span>
+                          <div style={{ width: 4, flexShrink: 0 }} />
+                          <IcoDatabase />
+                          <span style={{ flex: 1, fontWeight: 600, fontSize: 11 }}>{db.name}</span>
+                          <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)', opacity: 0.5 }}>{db.tables.length}</span>
+                          <IconBtn title="View ER Diagram" onClick={(e) => handleDiagram(e, conn.id)}>
+                            <IcoDiagram />
+                          </IconBtn>
                         </div>
 
                         {/* Tables */}
-                        {db.tables.length > 0 && (
-                          <>
-                            <div style={S.sectionLabel}>Tables</div>
-                            {db.tables.map((table) => {
-                              const key = `${conn.id}::${table.name}`;
-                              const expanded = expandedTables[key];
-                              const isHovTable = hoveredTable === key;
+                        {db.tables.length > 0 && (() => {
+                          const totalItems = db.tables.length + (db.views.length > 0 ? 1 : 0);
+                          return (
+                            <>
+                              {/* Tables section header */}
+                              <div style={{ ...S.sectionLabel, paddingLeft: 0 }}>
+                                <div style={{ width: 4, flexShrink: 0 }} />
+                                <TreeLine isLast={db.views.length === 0} depth={1} />
+                                <span style={{ paddingLeft: 2 }}>Tables</span>
+                              </div>
+                              {db.tables.map((table, tIdx) => {
+                                const key = `${conn.id}::${table.name}`;
+                                const expanded = expandedTables[key];
+                                const isHovTable = hoveredTable === key;
+                                const isLastTable = tIdx === db.tables.length - 1;
 
-                              return (
-                                <div key={table.name}>
-                                  <div
-                                    style={S.tableRow(isHovTable)}
-                                    onClick={() => handleTableClick(conn.id, table.name)}
-                                    onMouseEnter={() => setHoveredTable(key)}
-                                    onMouseLeave={() => setHoveredTable(null)}
-                                  >
-                                    <span style={S.tableChevron}>{expanded ? '▾' : '▸'}</span>
-                                    <IcoTable />
-                                    <span style={S.tableName} title={table.name}>{table.name}</span>
-                                    {!isHovTable && table.rowCount !== undefined && (
-                                      <span style={S.tableRowCount}>{table.rowCount.toLocaleString()}</span>
-                                    )}
-                                    {isHovTable && (
-                                      <div style={S.tableActions} onClick={e => e.stopPropagation()}>
-                                        <IconBtn title="Browse data" onClick={(e) => handleBrowse(e, conn.id, table.name)}>
-                                          <IcoBrowse />
-                                        </IconBtn>
-                                        <IconBtn title="Open in Query Editor" onClick={(e) => handleQuery(e, conn.id, table.name)}>
-                                          <IcoQuery />
-                                        </IconBtn>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* Columns */}
-                                  {expanded && table.columns.map((col) => (
-                                    <div key={col.name} style={S.colRow}>
-                                      {col.isPrimaryKey && <span style={S.badge('#e3b341')}>PK</span>}
-                                      {col.isForeignKey && !col.isPrimaryKey && <span style={S.badge('#a371f7')}>FK</span>}
-                                      <span style={S.colName} title={col.name}>{col.name}</span>
-                                      <span style={S.colType}>{col.type}</span>
-                                      {col.nullable && <span style={{ fontSize: 9, color: 'var(--theme-fg-muted)', opacity: 0.5 }}>null</span>}
+                                return (
+                                  <div key={table.name}>
+                                    <div
+                                      style={S.tableRow(isHovTable)}
+                                      onClick={() => handleTableClick(conn.id, table.name)}
+                                      onMouseEnter={() => setHoveredTable(key)}
+                                      onMouseLeave={() => setHoveredTable(null)}
+                                    >
+                                      {/* Tree indent */}
+                                      <div style={{ width: 4, flexShrink: 0 }} />
+                                      {db.views.length > 0 ? <TreeContinue /> : <div style={{ width: 12, flexShrink: 0 }} />}
+                                      <TreeLine isLast={isLastTable} depth={2} />
+                                      {/* Chevron */}
+                                      <span style={{ width: 12, flexShrink: 0, color: 'var(--theme-fg-muted)', display: 'flex', alignItems: 'center' }}>
+                                        {expanded ? <IcoChevronDown /> : <IcoChevronRight />}
+                                      </span>
+                                      <IcoTable />
+                                      <span style={S.tableName} title={table.name}>{table.name}</span>
+                                      {!isHovTable && table.rowCount !== undefined && (
+                                        <span style={S.tableRowCount}>{table.rowCount.toLocaleString()}</span>
+                                      )}
+                                      {isHovTable && (
+                                        <div style={S.tableActions} onClick={e => e.stopPropagation()}>
+                                          <IconBtn title="Browse data" onClick={(e) => handleBrowse(e, conn.id, table.name)}>
+                                            <IcoBrowse />
+                                          </IconBtn>
+                                          <IconBtn title="Open in Query Editor" onClick={(e) => handleQuery(e, conn.id, table.name)}>
+                                            <IcoQuery />
+                                          </IconBtn>
+                                        </div>
+                                      )}
                                     </div>
-                                  ))}
-                                </div>
-                              );
-                            })}
-                          </>
-                        )}
+
+                                    {/* Columns */}
+                                    {expanded && table.columns.map((col, cIdx) => {
+                                      const isLastCol = cIdx === table.columns.length - 1;
+                                      return (
+                                        <div key={col.name} style={S.colRow}>
+                                          <div style={{ width: 4, flexShrink: 0 }} />
+                                          {db.views.length > 0 ? <TreeContinue /> : <div style={{ width: 12, flexShrink: 0 }} />}
+                                          {isLastTable ? <div style={{ width: 12, flexShrink: 0 }} /> : <TreeContinue />}
+                                          <TreeLine isLast={isLastCol} depth={3} />
+                                          {col.isPrimaryKey && <span style={S.badge('#e3b341')}>PK</span>}
+                                          {col.isForeignKey && !col.isPrimaryKey && <span style={S.badge('#a371f7')}>FK</span>}
+                                          <span style={S.colName} title={col.name}>{col.name}</span>
+                                          <span style={S.colType}>{col.type}</span>
+                                          {col.nullable && <span style={{ fontSize: 9, color: 'var(--theme-fg-muted)', opacity: 0.5 }}>null</span>}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
 
                         {/* Views */}
                         {db.views.length > 0 && (
                           <>
-                            <div style={{ ...S.sectionLabel, marginTop: 6 }}>Views</div>
-                            {db.views.map((view) => (
-                              <div key={view.name} style={S.tableRow(hoveredTable === `${conn.id}::view::${view.name}`)}
-                                onMouseEnter={() => setHoveredTable(`${conn.id}::view::${view.name}`)}
-                                onMouseLeave={() => setHoveredTable(null)}>
-                                <span style={S.tableChevron} />
-                                <IcoView />
-                                <span style={S.tableName}>{view.name}</span>
-                              </div>
-                            ))}
+                            <div style={{ ...S.sectionLabel, paddingLeft: 0 }}>
+                              <div style={{ width: 4, flexShrink: 0 }} />
+                              <TreeLine isLast={true} depth={1} />
+                              <span style={{ paddingLeft: 2 }}>Views</span>
+                            </div>
+                            {db.views.map((view, vIdx) => {
+                              const isLastView = vIdx === db.views.length - 1;
+                              const vKey = `${conn.id}::view::${view.name}`;
+                              return (
+                                <div
+                                  key={view.name}
+                                  style={S.tableRow(hoveredTable === vKey)}
+                                  onMouseEnter={() => setHoveredTable(vKey)}
+                                  onMouseLeave={() => setHoveredTable(null)}
+                                >
+                                  <div style={{ width: 4, flexShrink: 0 }} />
+                                  <div style={{ width: 12, flexShrink: 0 }} />
+                                  <TreeLine isLast={isLastView} depth={2} />
+                                  <span style={{ width: 12, flexShrink: 0 }} />
+                                  <IcoView />
+                                  <span style={S.tableName}>{view.name}</span>
+                                </div>
+                              );
+                            })}
                           </>
                         )}
                       </div>

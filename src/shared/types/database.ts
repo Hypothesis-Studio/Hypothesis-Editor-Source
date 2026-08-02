@@ -182,6 +182,38 @@ export interface TableDataResult {
 }
 
 // ============================================================================
+// ER Diagram Types
+// ============================================================================
+
+export interface ERDiagramTable {
+  name: string;
+  schema?: string;
+  columns: ColumnInfo[];
+  primaryKey: string[];
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ERDiagramRelation {
+  fromTable: string;
+  fromColumn: string;
+  toTable: string;
+  toColumn: string;
+  constraintName: string;
+  onDelete?: string;
+  onUpdate?: string;
+}
+
+export interface ERDiagram {
+  connectionId: string;
+  databaseName: string;
+  tables: ERDiagramTable[];
+  relations: ERDiagramRelation[];
+}
+
+// ============================================================================
 // IPC Channels
 // ============================================================================
 
@@ -215,6 +247,9 @@ export const DB_IPC = {
   SAVED_QUERY_CREATE: 'db:saved-query-create',
   SAVED_QUERY_UPDATE: 'db:saved-query-update',
   SAVED_QUERY_DELETE: 'db:saved-query-delete',
+
+  // ER Diagram
+  ER_DIAGRAM_GET: 'db:er-diagram-get',
 
   // Events (main → renderer)
   CONNECTION_STATUS: 'db:connection-status',

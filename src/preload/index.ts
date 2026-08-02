@@ -720,6 +720,9 @@ const api = {
     schema: {
       get: (connectionId: string) => ipcRenderer.invoke('db:schema-get', connectionId),
     },
+    erDiagram: {
+      get: (connectionId: string) => ipcRenderer.invoke('db:er-diagram-get', connectionId),
+    },
     query: {
       execute: (req: unknown) => ipcRenderer.invoke('db:query-execute', req),
     },

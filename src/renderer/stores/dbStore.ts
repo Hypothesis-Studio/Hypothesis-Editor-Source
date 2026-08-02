@@ -11,6 +11,7 @@ import type {
   SavedQuery,
   TableDataResult,
   TableInfo,
+  ERDiagram,
 } from '../../shared/types/database';
 
 interface DBState {
@@ -37,9 +38,13 @@ interface DBState {
   history: QueryHistoryEntry[];
   savedQueries: SavedQuery[];
 
+  // ER Diagram
+  erDiagram: ERDiagram | null;
+  erDiagramLoading: boolean;
+
   // UI state
   sidebarWidth: number;
-  activeView: 'query' | 'table' | 'history' | 'saved';
+  activeView: 'query' | 'table' | 'history' | 'saved' | 'diagram';
 
   // Actions
   loadConnections: () => Promise<void>;
@@ -63,6 +68,8 @@ interface DBState {
   loadTableData: (connectionId: string, table: string, page?: number) => Promise<void>;
   setActiveTable: (table: string | null) => void;
 
+  loadERDiagram: (connectionId: string) => Promise<void>;
+
   loadHistory: () => Promise<void>;
   clearHistory: () => Promise<void>;
 
@@ -70,7 +77,7 @@ interface DBState {
   saveQuery: (name: string, sql: string, connectionId?: string) => Promise<void>;
   deleteSavedQuery: (id: string) => Promise<void>;
 
-  setActiveView: (view: 'query' | 'table' | 'history' | 'saved') => void;
+  setActiveView: (view: 'query' | 'table' | 'history' | 'saved' | 'diagram') => void;
   setSidebarWidth: (w: number) => void;
 
   handleConnectionStatus: (data: { id: string; isConnected: boolean; isConnecting: boolean; error?: string }) => void;
@@ -104,6 +111,8 @@ export const useDBStore = create<DBState>((set, get) => ({
   activeTable: null,
   history: [],
   savedQueries: [],
+  erDiagram: null,
+  erDiagramLoading: false,
   sidebarWidth: 240,
   activeView: 'query',
 
@@ -283,6 +292,21 @@ export const useDBStore = create<DBState>((set, get) => ({
   },
 
   setActiveTable: (table) => set({ activeTable: table }),
+
+  loadERDiagram: async (connectionId: string) => {
+    set({ erDiagramLoading: true, activeView: 'diagram' });
+    try {
+      const api = (window as any).api;
+      const result = await api.db.erDiagram.get(connectionId);
+      if (result && !result.error) {
+        set({ erDiagram: result, erDiagramLoading: false });
+      } else {
+        set({ erDiagramLoading: false });
+      }
+    } catch {
+      set({ erDiagramLoading: false });
+    }
+  },
 
   // ── History ──────────────────────────────────────────────────────
 

@@ -51,6 +51,11 @@ export function registerDatabaseIPC(dbService: DatabaseService, getWindow: () =>
     catch (err: any) { return { error: err.message }; }
   });
 
+  ipcMain.handle(DB_IPC.ER_DIAGRAM_GET, async (_e, connectionId: string) => {
+    try { return await dbService.getERDiagram(connectionId); }
+    catch (err: any) { return { error: err.message }; }
+  });
+
   // ── Query ───────────────────────────────────────────────────────
   ipcMain.handle(DB_IPC.QUERY_EXECUTE, async (_e, req: QueryRequest) => {
     try { return await dbService.executeQuery(req); }
