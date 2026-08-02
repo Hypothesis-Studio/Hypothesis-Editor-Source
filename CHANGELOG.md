@@ -3,6 +3,15 @@
 ## [0.2.8] - 2026-08-02
 
 ### Added
+- **Preview Panel — Viewport Presets** — preset ukuran layar untuk HTML preview internal
+  - **Responsive** — iframe mengisi container (default)
+  - **Mobile** — 375px (iPhone SE)
+  - **Tablet** — 768px (iPad)
+  - **Desktop** — 1280px
+  - **Custom** — input bebas 100–3840px
+  - Preset toolbar muncul otomatis hanya saat preview file HTML
+  - Viewport non-responsive ditampilkan sebagai device frame (shadow + border-radius) di atas background abu-abu
+  - `HtmlPreview.tsx` direfactor: support prop `viewportWidth`, centered device frame saat preset aktif
 - **Keyboard Shortcut Customization** — sistem shortcut terpusat yang dapat dikustomisasi penuh
   - `keyboardShortcutStore.ts` — Zustand store dengan 40+ shortcut terdefinisi, persist via localStorage
   - Settings → Keyboard Shortcuts — panel baru untuk edit, record, reset shortcut individual atau semua sekaligus
