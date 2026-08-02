@@ -3,7 +3,10 @@
 ## [0.2.8] - 2026-08-02
 
 ### Added
-
+- **Zen Mode** — sembunyikan semua panel dan sidebar, hanya editor yang tersisa. Toggle via `Ctrl+Shift+Z`, Command Palette, atau menu View
+  - Menyembunyikan: TitleBar, ActivityBar, Sidebar, Panel (terminal/output), StatusBar
+  - Saat keluar zen mode, semua panel dikembalikan ke state sebelum masuk (bukan default)
+  - State disimpan di `_zenSnapshot` sebelum masuk zen, di-restore saat keluar
 - **Sticky Scroll** — Monaco editor now correctly displays sticky function/class headers at the top of the editor while scrolling. The root cause was Monaco language workers (TypeScript, CSS, HTML, JSON) failing to load in Electron production builds because the previous `getWorker` setup used `new Worker(new URL('/monaco-editor/esm/...', import.meta.url))`, which only resolves correctly in the Vite development server and not under the `file://` protocol.
   - Pre-bundled worker files are copied to `public/workers/` (`ts.worker.js`, `css.worker.js`, `html.worker.js`, `json.worker.js`, `editor.worker.js`)
   - `setupMonacoWorkers()` now uses `getWorkerUrl` to return static `/workers/*.worker.js` paths that resolve correctly in both development and Electron production

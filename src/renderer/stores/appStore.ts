@@ -34,6 +34,12 @@ interface AppState {
   statusBarVisible: boolean;
   breadcrumbsVisible: boolean;
   zenMode: boolean;
+  _zenSnapshot: {
+    sidebarVisible: boolean;
+    panelVisible: boolean;
+    activityBarVisible: boolean;
+    statusBarVisible: boolean;
+  } | null;
   wordWrap: 'off' | 'on' | 'wordWrapColumn' | 'bounded';
   minimapVisible: boolean;
   lineNumbers: 'on' | 'off' | 'relative' | 'interval';
@@ -135,6 +141,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   statusBarVisible: true,
   breadcrumbsVisible: true,
   zenMode: false,
+  _zenSnapshot: null,
   wordWrap: 'off',
   minimapVisible: true,
   lineNumbers: 'on',
@@ -145,10 +152,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleZenMode: () => {
     const s = get();
     const entering = !s.zenMode;
-    set({
-      zenMode: entering,
-      ...(entering ? { sidebarVisible: false, panelVisible: false } : {}),
-    });
+    if (entering) {
+      // Save current state before entering zen mode, then hide everything
+      set({
+        zenMode: true,
+        _zenSnapshot: {
+          sidebarVisible: s.sidebarVisible,
+          panelVisible: s.panelVisible,
+          activityBarVisible: s.activityBarVisible,
+          statusBarVisible: s.statusBarVisible,
+        },
+        sidebarVisible: false,
+        panelVisible: false,
+        activityBarVisible: false,
+        statusBarVisible: false,
+      });
+    } else {
+      // Restore state from before zen mode
+      const snap = s._zenSnapshot;
+      set({
+        zenMode: false,
+        _zenSnapshot: null,
+        sidebarVisible: snap?.sidebarVisible ?? true,
+        panelVisible: snap?.panelVisible ?? false,
+        activityBarVisible: snap?.activityBarVisible ?? true,
+        statusBarVisible: snap?.statusBarVisible ?? true,
+      });
+    }
   },
   toggleWordWrap: () =>
     set((s) => ({ wordWrap: s.wordWrap === 'off' ? 'on' : 'off' })),

@@ -36,7 +36,7 @@ const App: React.FC = () => {
     setStatusMessage,
     toggleActivityBar, toggleStatusBar, toggleBreadcrumbs,
     toggleZenMode, toggleWordWrap, toggleMinimap, toggleLineNumbers,
-    toggleStickyScroll, activityBarVisible, statusBarVisible,
+    toggleStickyScroll, activityBarVisible, statusBarVisible, zenMode,
   } = useAppStore();
   const { openTab, tabs, activeTabId, setTabDirty, updateTab, closeTab } = useEditorStore();
   const settings = useSettingsStore((s) => s.settings);
@@ -862,7 +862,7 @@ const App: React.FC = () => {
   // ── Main layout ─────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden select-none" style={{ background: 'var(--theme-bg)' }}>
-      <TitleBar
+      {!zenMode && <TitleBar
         onNewFile={handleNewFile}
         onOpenFile={handleOpenFile}
         onOpenFolder={handleOpenFolder}
@@ -873,7 +873,7 @@ const App: React.FC = () => {
         onOpenSettings={() => setShowSettings(true)}
         onOpenDocs={() => setShowDocs(true)}
         onOpenShortcuts={() => setShowShortcuts(true)}
-      />
+      />}
       <div className="flex flex-1 overflow-hidden">
         {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} onOpenRestClient={openRestClientTab} onOpenDatabase={openDatabaseTab} onOpenBrowser={openBrowserTab} />}
         {sidebarVisible && (
