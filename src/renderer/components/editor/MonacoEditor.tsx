@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Monaco Editor Component - Core editor with full feature support.
  */
 import React, { useRef, useEffect, useCallback, useState } from 'react';
@@ -15,6 +15,8 @@ import * as prettierCss from 'prettier/plugins/postcss';
 import * as prettierMarkdown from 'prettier/plugins/markdown';
 import { useEditorStore } from '../../stores/editorStore';
 import type { EditorTab } from '../../../shared/types';
+import { AIInlineEditWidget } from './AIInlineEditWidget';
+import * as ReactDOM from 'react-dom/client';
 
 interface MonacoEditorProps {
   tab: EditorTab;
@@ -70,6 +72,43 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
   const { wordWrap, minimapVisible, lineNumbers, stickyScroll, breadcrumbsVisible } = useAppStore();
   const { settings } = useSettingsStore();
   const [isReady, setIsReady] = useState(false);
+  const aiWidgetRootRef = useRef<ReactDOM.Root | null>(null);
+  const aiWidgetContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const openAIInlineEdit = useCallback((ed: monaco.editor.IStandaloneCodeEditor) => {
+    // Close any existing widget
+    if (aiWidgetRootRef.current) {
+      aiWidgetRootRef.current.unmount();
+      aiWidgetRootRef.current = null;
+    }
+    if (aiWidgetContainerRef.current) {
+      aiWidgetContainerRef.current.remove();
+      aiWidgetContainerRef.current = null;
+    }
+
+    const selections = ed.getSelections() ?? [];
+    const hasSelection = selections.some(s => !s.isEmpty());
+    if (!hasSelection) return;
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    aiWidgetContainerRef.current = container;
+
+    const root = ReactDOM.createRoot(container);
+    aiWidgetRootRef.current = root;
+
+    const close = () => {
+      root.unmount();
+      container.remove();
+      aiWidgetRootRef.current = null;
+      aiWidgetContainerRef.current = null;
+      ed.focus();
+    };
+
+    root.render(
+      React.createElement(AIInlineEditWidget, { editor: ed, onClose: close })
+    );
+  }, []);
 
   // Create editor
   useEffect(() => {
@@ -334,8 +373,21 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       },
     });
 
+    // AI Inline Edit — Ctrl+K Ctrl+K
     editor.addAction({
-      id: 'duplicate-line',
+      id: 'hypothesis.action.aiInlineEdit',
+      label: 'AI Edit Selection',
+      keybindings: [
+        monaco.KeyMod.chord(
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK,
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK,
+        ),
+      ],
+      run: () => openAIInlineEdit(editor),
+    });
+
+    editor.addAction({
+      id: 'duplicate-line-real',
       label: 'Duplicate Line',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyK],
       run: (ed) => {
@@ -593,19 +645,15 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         'separator',
         { label: 'Go to Definition', shortcut: 'F12', action: () => { editor.trigger('menu', 'editor.action.revealDefinition', undefined); } },
         { label: 'Peek Definition', shortcut: 'Alt+F12', action: () => { editor.trigger('menu', 'editor.action.peekDefinition', undefined); } },
-        ...(hasSelection ? [
+      ...(hasSelection ? [
           'separator',
           { label: 'Ask AI Agent', action: () => {
             const sel = editor.getSelection();
             const selectedText = sel && !sel.isEmpty() ? editor.getModel()?.getValueInRange(sel) || '' : '';
             window.dispatchEvent(new CustomEvent('hypothesis:open-agent-tab', { detail: { code: selectedText, mode: 'ask' } }));
           }},
-          { label: 'Fix With AI Agent', action: () => {
-            const sel = editor.getSelection();
-            const selectedText = sel && !sel.isEmpty() ? editor.getModel()?.getValueInRange(sel) || '' : '';
-            window.dispatchEvent(new CustomEvent('hypothesis:open-agent-tab', { detail: { code: selectedText, mode: 'fix' } }));
-          }},
-        ] as const : []),
+          { label: 'AI Edit (Multi-Cursor)', shortcut: 'Ctrl+K Ctrl+K', action: () => openAIInlineEdit(editor) },
+      ] as const : []),
         'separator',
         { label: 'Command Palette', shortcut: 'Ctrl+Shift+P', action: () => { useAppStore.getState().toggleCommandPalette(); } },
       ];

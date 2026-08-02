@@ -54,6 +54,21 @@
   - Also catches the `no changes added to commit` git error as a friendly fallback for any edge cases
   - Smart Commit path unchanged: still auto-stages all unstaged/untracked files when enabled
 - **Source Control — action buttons redesign**
+- **Multi-Cursor AI Edit** — select multiple code blocks and edit all of them simultaneously with AI
+  - Trigger via context menu **"AI Edit (Multi-Cursor)"** or keyboard shortcut `Ctrl+K Ctrl+K`
+  - Robot icon (matches AI Agent activity bar icon) used consistently across widget header, Run button, Apply All button
+  - Shortcut `Ctrl+K Ctrl+K` now registered in keyboard shortcut store (customizable via Settings → Keyboard Shortcuts)
+  - Shortcut hint shown in widget header, reads from store so it reflects user customizations
+  - Collects all active selections from Monaco (`editor.getSelections()`) at once
+  - Single prompt applies to all selections — AI returns one edited version per selection
+  - Review phase: per-selection diff preview (Show diff / Hide diff toggle), Apply or Reject individually
+  - **Apply All** / **Reject All** buttons for batch actions
+  - Selections applied in reverse document order to preserve range positions
+  - Widget positions near the first selection, escape or close button to dismiss
+  - Falls back to the configured Source Control agent or first available agent
+  - New file: `src/renderer/components/editor/AIInlineEditWidget.tsx`
+- **Source Control — AI commit message button icon** updated to robot icon (consistent with AI Agent activity bar)
+- **Editor context menu** — removed "Fix With AI Agent" item; replaced by "AI Edit (Multi-Cursor)" which handles both ask and fix workflows with multi-selection support
   - Commit button is now full-width for easier access
   - Secondary row below: **Add** (stage all), **Discard** (discard all), **Push**, **Pull** — each with an inline icon and label
   - Buttons are automatically disabled when their action is not applicable (e.g. Discard disabled when no unstaged changes)
