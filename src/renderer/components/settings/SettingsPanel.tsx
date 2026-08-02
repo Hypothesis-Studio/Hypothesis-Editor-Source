@@ -8,6 +8,7 @@ import { useAppStore } from '../../stores/appStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { DropdownSelect } from '../common/DropdownSelect';
 import { AgentSettingsPanel } from './AgentSettingsPanel';
+import { KeyboardShortcutsSettings } from './KeyboardShortcutsSettings';
 import { Icon } from '../common/Icon';
 
 interface SettingItem {
@@ -178,9 +179,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ initialCategory })
     loadSettings();
   }, [loadSettings]);
 
+  const EXTRA_CATEGORIES = ['Keyboard Shortcuts'];
   const categories = useMemo(() => {
     const cats = new Set(SETTINGS_SCHEMA.map((s) => s.category));
-    return Array.from(cats);
+    return [...Array.from(cats), ...EXTRA_CATEGORIES];
   }, []);
 
   const filteredSettings = useMemo(() => {
@@ -380,7 +382,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ initialCategory })
 
         {/* Settings list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-          {selectedCategory === 'AI Agent' ? (
+          {selectedCategory === 'Keyboard Shortcuts' ? (
+            <KeyboardShortcutsSettings />
+          ) : selectedCategory === 'AI Agent' ? (
             <AgentSettingsPanel />
           ) : isJsonMode ? (
             <textarea

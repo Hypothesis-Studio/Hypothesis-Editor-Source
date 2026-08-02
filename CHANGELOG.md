@@ -3,6 +3,13 @@
 ## [0.2.8] - 2026-08-02
 
 ### Added
+- **Keyboard Shortcut Customization** — sistem shortcut terpusat yang dapat dikustomisasi penuh
+  - `keyboardShortcutStore.ts` — Zustand store dengan 40+ shortcut terdefinisi, persist via localStorage
+  - Settings → Keyboard Shortcuts — panel baru untuk edit, record, reset shortcut individual atau semua sekaligus
+  - Conflict detection — warning otomatis jika shortcut baru konflik dengan shortcut lain
+  - Recording mode — klik Edit lalu tekan kombinasi tombol yang diinginkan, langsung tersimpan
+  - `KeyboardShortcutsPage` kini dynamic — membaca dari store, menampilkan badge "custom" jika diubah
+  - Hint di halaman shortcuts: "Shortcuts can be customized in Settings → Keyboard Shortcuts"
 - **Zen Mode** — sembunyikan semua panel dan sidebar, hanya editor yang tersisa. Toggle via `Ctrl+Shift+Z`, Command Palette, atau menu View
   - Menyembunyikan: TitleBar, ActivityBar, Sidebar, Panel (terminal/output), StatusBar
   - Saat keluar zen mode, semua panel dikembalikan ke state sebelum masuk (bukan default)
@@ -13,8 +20,15 @@
   - Workers are now served from `dist/renderer/workers/` in production builds
 
 ### Fixed
+- **Keyboard shortcut conflicts resolved:**
+  - `Ctrl+Shift+O` — konflik antara Open Folder (menu) dan Go to Symbol; Go to Symbol dipindah ke `Ctrl+Shift+M`
+  - Zen Mode — inkonsistensi antara menu (`CmdOrCtrl+K Z`) dan App.tsx (`Ctrl+Shift+Z`); distandarisasi ke `Ctrl+Shift+Z`
+  - `Ctrl+J` — Toggle Panel sudah ada di App.tsx tapi tidak di menu; sekarang ditambahkan ke View menu
+  - `Ctrl+Shift+R`, `Ctrl+W`, `Ctrl+F`, `Alt+←/→` — dikonfirmasi scoped (browser-only vs global), tidak konflik
+- **App.tsx keydown handler** — refactor dari 50+ if/else menjadi `switch(actionId)` via `matchShortcut()` dari store; lebih maintainable dan respects user overrides
+- **menu/index.ts** — accelerator `Go to Symbol` diupdate ke `CmdOrCtrl+Shift+M`, Zen Mode ke `CmdOrCtrl+Shift+Z`, Panel `CmdOrCtrl+J` ditambahkan
 
-- **Universal Sticky Scroll language support** — Sticky Scroll now works across all languages supported by Monaco (PHP, Python, Ruby, Go, Rust, etc.), not just TypeScript/JavaScript.
+ — Sticky Scroll now works across all languages supported by Monaco (PHP, Python, Ruby, Go, Rust, etc.), not just TypeScript/JavaScript.
   - Set `defaultModel: 'foldingProviderModel'` so Monaco uses folding ranges as a fallback for languages without a dedicated language worker
   - Monaco language workers (`ts.worker`, `css.worker`, `html.worker`, `json.worker`, `editor.worker`) are now bundled as self-contained files using a separate Vite build (`vite.workers.config.mts`); previously, they were raw ESM sources that could not run as standalone Web Workers
   - Changed worker paths from absolute (`/workers/...`) to relative (`./workers/...`) so they resolve correctly under Electron's `file://` protocol

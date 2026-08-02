@@ -1,9 +1,11 @@
 /**
- * KeyboardShortcutsPage - Complete keyboard shortcuts reference.
+ * KeyboardShortcutsPage - Dynamic keyboard shortcuts reference.
+ * Reads current key bindings from keyboardShortcutStore (respects customizations).
  */
 import React from 'react';
 import { APP_NAME } from '../../../shared/utils/appMeta';
 import { WindowControls } from '../common/WindowControls';
+import { useKeyboardShortcutStore, type ShortcutDef } from '../../stores/keyboardShortcutStore';
 
 interface PageProps {
   onClose: () => void;
@@ -11,7 +13,11 @@ interface PageProps {
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div style={{ marginBottom: 28 }}>
-    <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-fg)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+    <h3 style={{
+      fontSize: 13, fontWeight: 600, color: 'var(--theme-fg)', marginBottom: 10,
+      display: 'flex', alignItems: 'center', gap: 8,
+      textTransform: 'uppercase', letterSpacing: 0.6,
+    }}>
       <span style={{ width: 3, height: 14, background: 'var(--theme-accent)', borderRadius: 2, flexShrink: 0 }} />
       {title}
     </h3>
@@ -19,17 +25,39 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
   </div>
 );
 
-const Row: React.FC<{ keys: string | string[]; desc: string; muted?: boolean }> = ({ keys, desc, muted }) => {
-  const keyList = Array.isArray(keys) ? keys : keys.split(' ');
+const Row: React.FC<{ shortcut: ShortcutDef; muted?: boolean }> = ({ shortcut, muted }) => {
+  const keyParts = shortcut.currentKeys.split('+').filter(Boolean);
+  const isModified = shortcut.currentKeys !== shortcut.defaultKeys;
+
   return (
     <div
-      style={{ display: 'grid', gridTemplateColumns: '1fr 160px', alignItems: 'center', padding: '4px 10px', borderRadius: 4, gap: 12 }}
+      style={{
+        display: 'grid', gridTemplateColumns: '1fr 200px',
+        alignItems: 'center', padding: '4px 10px', borderRadius: 4, gap: 12,
+      }}
       onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-bg-hover, var(--theme-bg-secondary))'; }}
       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
     >
-      <span style={{ fontSize: 12, color: muted ? 'var(--theme-fg-muted)' : 'var(--theme-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
-      <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
-        {keyList.map((k, i) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+        <span style={{
+          fontSize: 12,
+          color: muted ? 'var(--theme-fg-muted)' : 'var(--theme-fg)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {shortcut.label}
+        </span>
+        {isModified && (
+          <span style={{
+            fontSize: 9, color: 'var(--theme-accent)',
+            background: 'var(--theme-accent)22',
+            borderRadius: 3, padding: '1px 5px', flexShrink: 0,
+          }}>
+            custom
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end', flexWrap: 'nowrap', alignItems: 'center' }}>
+        {keyParts.map((k, i) => (
           <kbd key={i} style={{
             background: 'var(--theme-bg-tertiary, var(--theme-bg-secondary))',
             border: '1px solid var(--theme-border)',
@@ -44,144 +72,194 @@ const Row: React.FC<{ keys: string | string[]; desc: string; muted?: boolean }> 
   );
 };
 
+const SlashRow: React.FC<{ cmd: string; desc: string }> = ({ cmd, desc }) => (
+  <div
+    style={{
+      display: 'grid', gridTemplateColumns: '1fr 200px',
+      alignItems: 'center', padding: '4px 10px', borderRadius: 4, gap: 12,
+    }}
+    onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-bg-hover, var(--theme-bg-secondary))'; }}
+    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+  >
+    <span style={{ fontSize: 12, color: 'var(--theme-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{desc}</span>
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <kbd style={{
+        background: 'var(--theme-bg-tertiary)',
+        border: '1px solid var(--theme-border)',
+        borderBottom: '2px solid var(--theme-border)',
+        borderRadius: 4, padding: '2px 10px', fontSize: 10,
+        color: 'var(--theme-fg-muted)', fontFamily: "'JetBrains Mono', monospace",
+        whiteSpace: 'nowrap',
+      }}>{cmd}</kbd>
+    </div>
+  </div>
+);
+
 const Divider: React.FC = () => (
   <div style={{ height: 1, background: 'var(--theme-border)', margin: '4px 10px' }} />
 );
 
+const CATEGORY_ORDER = ['General', 'Sidebar', 'Editing', 'Search & Navigation'];
+
+// Shortcut ids to show in each column section
+const LEFT_SECTIONS: { category: string; ids: string[] }[] = [
+  {
+    category: 'General',
+    ids: ['command-palette', 'new-file', 'open-file', 'save', 'save-as', 'close-tab', 'toggle-sidebar', 'toggle-panel', 'fullscreen', 'settings'],
+  },
+  {
+    category: 'Editing',
+    ids: ['undo', 'redo', 'cut', 'copy', 'paste', 'select-all', 'toggle-comment', 'toggle-word-wrap', 'format-document', 'run-file', 'stop-process'],
+  },
+  {
+    category: 'Multi-Cursor & Folding',
+    ids: [], // static entries below
+  },
+];
+
+const RIGHT_SECTIONS: { category: string; ids: string[] }[] = [
+  {
+    category: 'Sidebar / Views',
+    ids: ['view-explorer', 'view-search', 'view-git', 'view-agent', 'view-rest-client', 'view-browser', 'view-extensions', 'zen-mode'],
+  },
+  {
+    category: 'Search & Navigation',
+    ids: ['find', 'replace', 'quick-open', 'go-to-line', 'go-to-symbol', 'go-to-definition', 'peek-definition', 'navigate-back', 'navigate-forward'],
+  },
+];
+
 export const KeyboardShortcutsPage: React.FC<PageProps> = ({ onClose }) => {
+  const shortcuts = useKeyboardShortcutStore(s => s.shortcuts);
+  const byId = React.useMemo(() => {
+    const m = new Map<string, ShortcutDef>();
+    shortcuts.forEach(s => m.set(s.id, s));
+    return m;
+  }, [shortcuts]);
+
+  const renderIds = (ids: string[]) =>
+    ids
+      .map(id => byId.get(id))
+      .filter((s): s is ShortcutDef => Boolean(s))
+      .map(s => <Row key={s.id} shortcut={s} />);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--theme-bg)', color: 'var(--theme-fg)' }}>
       {/* Title bar */}
-      <div style={{ display: 'flex', alignItems: 'center', height: 36, background: 'var(--theme-bg-tertiary)', borderBottom: '1px solid var(--theme-border)', flexShrink: 0 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', height: 36,
+        background: 'var(--theme-bg-tertiary)', borderBottom: '1px solid var(--theme-border)', flexShrink: 0,
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 16, gap: 8 }}>
-          <button onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-fg-muted)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--theme-fg-muted)', fontSize: 12,
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--theme-fg-muted)'; }}
           >
-            <svg width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <svg width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
             Back to Editor
           </button>
         </div>
-        <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--theme-fg)' }}>Keyboard Shortcuts — {APP_NAME}</div>
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 11, color: 'var(--theme-fg)' }}>
+          Keyboard Shortcuts — {APP_NAME}
+        </div>
         <WindowControls />
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '28px 40px' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-fg)', marginBottom: 4 }}>Keyboard Shortcuts</h1>
-        <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 32 }}>Complete reference for all keyboard shortcuts in {APP_NAME}.</p>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--theme-fg)', marginBottom: 4 }}>
+          Keyboard Shortcuts
+        </h1>
+        <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 8 }}>
+          Complete reference for all keyboard shortcuts in {APP_NAME}.
+        </p>
+        <p style={{
+          fontSize: 11, color: 'var(--theme-accent)', marginBottom: 28,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <svg width={12} height={12} fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+          Shortcuts can be customized in <strong>Settings → Keyboard Shortcuts</strong>
+        </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 40px' }}>
           {/* Left column */}
           <div>
             <Section title="General">
-              <Row keys="Ctrl+Shift+P" desc="Command Palette" />
-              <Row keys="Ctrl+N" desc="New File" />
-              <Row keys="Ctrl+O" desc="Open File" />
-              <Row keys="Ctrl+S" desc="Save" />
-              <Row keys="Ctrl+Shift+S" desc="Save As" />
-              <Row keys="Ctrl+W" desc="Close Tab" />
-              <Row keys="Ctrl+B" desc="Toggle Sidebar" />
-              <Row keys="Ctrl+J" desc="Toggle Panel" />
-              <Row keys="F11" desc="Full Screen" />
-              <Row keys="Ctrl+," desc="Settings" />
+              {renderIds(LEFT_SECTIONS[0].ids)}
             </Section>
 
             <Section title="Editing">
-              <Row keys="Ctrl+Z" desc="Undo" />
-              <Row keys="Ctrl+Y" desc="Redo" />
-              <Row keys="Ctrl+X" desc="Cut" />
-              <Row keys="Ctrl+C" desc="Copy" />
-              <Row keys="Ctrl+V" desc="Paste" />
-              <Row keys="Ctrl+A" desc="Select All" />
-              <Row keys="Ctrl+D" desc="Select Next Match" />
-              <Row keys="Ctrl+Shift+K" desc="Delete Line" />
-              <Row keys="Alt+↑" desc="Move Line Up" />
-              <Row keys="Alt+↓" desc="Move Line Down" />
-              <Row keys="Ctrl+/" desc="Toggle Comment" />
-              <Row keys="Tab" desc="Indent" />
-              <Row keys="Shift+Tab" desc="Outdent" />
+              {renderIds(LEFT_SECTIONS[1].ids)}
             </Section>
 
             <Section title="Multi-Cursor">
-              <Row keys="Alt+Click" desc="Add Cursor" />
-              <Row keys="Ctrl+Alt+↑" desc="Add Cursor Above" />
-              <Row keys="Ctrl+Alt+↓" desc="Add Cursor Below" />
-              <Row keys="Ctrl+Shift+L" desc="Select All Occurrences" />
-              <Row keys="Ctrl+U" desc="Undo Last Cursor" />
+              <Row shortcut={{ id: 'alt-click', label: 'Add Cursor', category: 'Editing', description: '', defaultKeys: 'Alt+Click', currentKeys: 'Alt+Click' }} />
+              <Row shortcut={{ id: 'cursor-above', label: 'Add Cursor Above', category: 'Editing', description: '', defaultKeys: 'Ctrl+Alt+Up', currentKeys: 'Ctrl+Alt+Up' }} />
+              <Row shortcut={{ id: 'cursor-below', label: 'Add Cursor Below', category: 'Editing', description: '', defaultKeys: 'Ctrl+Alt+Down', currentKeys: 'Ctrl+Alt+Down' }} />
+              <Row shortcut={{ id: 'select-all-occ', label: 'Select All Occurrences', category: 'Editing', description: '', defaultKeys: 'Ctrl+Shift+L', currentKeys: 'Ctrl+Shift+L' }} />
+              <Row shortcut={{ id: 'undo-cursor', label: 'Undo Last Cursor', category: 'Editing', description: '', defaultKeys: 'Ctrl+U', currentKeys: 'Ctrl+U' }} />
             </Section>
 
             <Section title="Code Folding">
-              <Row keys="Ctrl+Shift+[" desc="Fold Block" />
-              <Row keys="Ctrl+Shift+]" desc="Unfold Block" />
-              <Row keys={['Ctrl+K', 'Ctrl+0']} desc="Fold All" />
-              <Row keys={['Ctrl+K', 'Ctrl+J']} desc="Unfold All" />
+              <Row shortcut={{ id: 'fold', label: 'Fold Block', category: 'Editing', description: '', defaultKeys: 'Ctrl+Shift+[', currentKeys: 'Ctrl+Shift+[' }} />
+              <Row shortcut={{ id: 'unfold', label: 'Unfold Block', category: 'Editing', description: '', defaultKeys: 'Ctrl+Shift+]', currentKeys: 'Ctrl+Shift+]' }} />
+              <Row shortcut={{ id: 'fold-all', label: 'Fold All', category: 'Editing', description: '', defaultKeys: 'Ctrl+K+0', currentKeys: 'Ctrl+K+0' }} />
+              <Row shortcut={{ id: 'unfold-all', label: 'Unfold All', category: 'Editing', description: '', defaultKeys: 'Ctrl+K+J', currentKeys: 'Ctrl+K+J' }} />
             </Section>
 
             <Section title="Terminal">
-              <Row keys="Ctrl+`" desc="Toggle Terminal" />
-              <Row keys="Ctrl+Shift+`" desc="New Terminal" />
-              <Row keys="Ctrl+F5" desc="Run Current File" />
-              <Row keys="Shift+F5" desc="Stop Running Process" />
+              {renderIds(['toggle-terminal', 'new-terminal', 'run-file', 'stop-process'])}
             </Section>
           </div>
 
           {/* Right column */}
           <div>
-            <Section title="Views">
-              <Row keys="Ctrl+Shift+E" desc="Explorer" />
-              <Row keys="Ctrl+Shift+F" desc="Search (Find in Files)" />
-              <Row keys="Ctrl+Shift+G" desc="Source Control (Git)" />
-              <Row keys="Ctrl+Shift+A" desc="AI Agent" />
-              <Row keys="Ctrl+Shift+R" desc="REST Client" />
-              <Row keys="Ctrl+Shift+B" desc="Web Browser" />
-              <Row keys="Ctrl+Shift+X" desc="Extensions" />
-              <Row keys="Ctrl+Shift+Z" desc="Zen Mode" />
+            <Section title="Sidebar / Views">
+              {renderIds(RIGHT_SECTIONS[0].ids)}
             </Section>
 
             <Section title="Search & Navigation">
-              <Row keys="Ctrl+F" desc="Find in File" />
-              <Row keys="Ctrl+H" desc="Find & Replace" />
-              <Row keys="Ctrl+P" desc="Go to File (Quick Open)" />
-              <Row keys="Ctrl+G" desc="Go to Line" />
-              <Row keys="Ctrl+Shift+O" desc="Go to Symbol" />
-              <Row keys="F12" desc="Go to Definition" />
-              <Row keys="Alt+F12" desc="Peek Definition" />
-              <Row keys="Alt+←" desc="Navigate Back" />
-              <Row keys="Alt+→" desc="Navigate Forward" />
-              <Row keys="Alt+Z" desc="Toggle Word Wrap" />
+              {renderIds(RIGHT_SECTIONS[1].ids)}
             </Section>
 
             <Section title="REST Client">
-              <Row keys="Ctrl+Shift+R" desc="Open REST Client" />
-              <Row keys="Ctrl+Enter" desc="Send Request" />
-              <Row keys="Escape" desc="Cancel Request" />
+              {renderIds(['view-rest-client'])}
+              <Row shortcut={{ id: 'rest-send', label: 'Send Request', category: 'Sidebar', description: '', defaultKeys: 'Ctrl+Enter', currentKeys: 'Ctrl+Enter', scope: 'browser' }} />
+              <Row shortcut={{ id: 'rest-cancel', label: 'Cancel Request', category: 'Sidebar', description: '', defaultKeys: 'Escape', currentKeys: 'Escape', scope: 'browser' }} />
             </Section>
 
             <Section title="AI Agent">
-              <Row keys="Ctrl+Shift+A" desc="Open AI Agent" />
+              {renderIds(['view-agent'])}
               <Divider />
-              <Row keys="/clear" desc="Clear chat messages" muted />
-              <Row keys="/reset" desc="Full reset — chat + memory" muted />
-              <Row keys="/context" desc="Reset context only" muted />
-              <Row keys="/new" desc="New session" muted />
-              <Row keys="/help" desc="Show all commands" muted />
-              <Row keys="/model" desc="Show current model" muted />
-              <Row keys="/tools" desc="List available tools" muted />
-              <Row keys="/status" desc="System health" muted />
-              <Row keys="/export" desc="Export chat as JSON" muted />
-              <Row keys="/settings" desc="Open agent settings" muted />
+              <SlashRow cmd="/clear"    desc="Clear chat messages" />
+              <SlashRow cmd="/reset"    desc="Full reset — chat + memory" />
+              <SlashRow cmd="/context"  desc="Reset context only" />
+              <SlashRow cmd="/new"      desc="New session" />
+              <SlashRow cmd="/help"     desc="Show all commands" />
+              <SlashRow cmd="/model"    desc="Show current model" />
+              <SlashRow cmd="/tools"    desc="List available tools" />
+              <SlashRow cmd="/status"   desc="System health" />
+              <SlashRow cmd="/export"   desc="Export chat as JSON" />
+              <SlashRow cmd="/settings" desc="Open agent settings" />
             </Section>
 
             <Section title="Web Browser">
-              <Row keys="Ctrl+Shift+B" desc="Open Web Browser" />
-              <Row keys="Ctrl+T" desc="New Tab" />
-              <Row keys="Ctrl+W" desc="Close Tab" />
-              <Row keys="Ctrl+L" desc="Focus Address Bar" />
-              <Row keys="Ctrl+R" desc="Reload Page" />
-              <Row keys="Alt+←" desc="Go Back" />
-              <Row keys="Alt+→" desc="Go Forward" />
-              <Row keys="Ctrl+F" desc="Find in Page" />
+              {renderIds(['view-browser'])}
+              <Row shortcut={{ id: 'browser-new-tab',  label: 'New Tab',           category: 'Sidebar', description: '', defaultKeys: 'Ctrl+T',   currentKeys: 'Ctrl+T',   scope: 'browser' }} />
+              <Row shortcut={{ id: 'browser-close-tab',label: 'Close Tab',          category: 'Sidebar', description: '', defaultKeys: 'Ctrl+W',   currentKeys: 'Ctrl+W',   scope: 'browser' }} />
+              <Row shortcut={{ id: 'browser-address',  label: 'Focus Address Bar',  category: 'Sidebar', description: '', defaultKeys: 'Ctrl+L',   currentKeys: 'Ctrl+L',   scope: 'browser' }} />
+              <Row shortcut={{ id: 'browser-reload',   label: 'Reload Page',        category: 'Sidebar', description: '', defaultKeys: 'Ctrl+R',   currentKeys: 'Ctrl+R',   scope: 'browser' }} />
+              <Row shortcut={{ id: 'browser-back',     label: 'Go Back',            category: 'Sidebar', description: '', defaultKeys: 'Alt+Left', currentKeys: 'Alt+Left', scope: 'browser' }} />
+              <Row shortcut={{ id: 'browser-forward',  label: 'Go Forward',         category: 'Sidebar', description: '', defaultKeys: 'Alt+Right',currentKeys: 'Alt+Right',scope: 'browser' }} />
+              <Row shortcut={{ id: 'browser-find',     label: 'Find in Page',       category: 'Sidebar', description: '', defaultKeys: 'Ctrl+F',   currentKeys: 'Ctrl+F',   scope: 'browser' }} />
             </Section>
           </div>
         </div>

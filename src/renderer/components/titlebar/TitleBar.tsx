@@ -113,6 +113,30 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
     // Quick access
     { label: 'Terminal', keybinding: 'Ctrl+`', action: () => { togglePanel(); setActivePanel('terminal'); } },
     { separator: true, label: '' },
+    { label: 'AI Agent', keybinding: 'Ctrl+Shift+A', action: () => window.dispatchEvent(new CustomEvent('hypothesis:open-agent-tab')) },
+    { label: 'REST Client', keybinding: 'Ctrl+Shift+R', action: () => {
+      const id = 'rest-client-tab';
+      const s = useEditorStore.getState();
+      if (s.tabs.find(t => t.id === id)) { s.setActiveTab(id); } else {
+        s.openTab({ id, filePath: null, fileName: 'REST Client', language: 'rest-client', content: '', isDirty: false, isPinned: true, isPreview: false, viewState: null, scrollTop: 0, scrollLeft: 0, cursorPosition: { line: 1, column: 1 }, encoding: 'UTF-8', lineEnding: 'LF', savedContent: '', createdAt: Date.now(), modifiedAt: Date.now() });
+      }
+    }},
+    { label: 'Database Explorer', keybinding: 'Ctrl+Shift+D', action: () => {
+      const id = 'database-tab';
+      const s = useEditorStore.getState();
+      if (s.tabs.find(t => t.id === id)) { s.setActiveTab(id); } else {
+        s.openTab({ id, filePath: null, fileName: 'Database Explorer', language: 'database', content: '', isDirty: false, isPinned: true, isPreview: false, viewState: null, scrollTop: 0, scrollLeft: 0, cursorPosition: { line: 1, column: 1 }, encoding: 'UTF-8', lineEnding: 'LF', savedContent: '', createdAt: Date.now(), modifiedAt: Date.now() });
+      }
+    }},
+    { label: 'Web Browser', keybinding: 'Ctrl+Shift+B', action: () => {
+      const id = 'browser-tab';
+      const s = useEditorStore.getState();
+      if (s.tabs.find(t => t.id === id)) { s.setActiveTab(id); } else {
+        s.openTab({ id, filePath: null, fileName: 'Web Browser', language: 'browser', content: '', isDirty: false, isPinned: true, isPreview: false, viewState: null, scrollTop: 0, scrollLeft: 0, cursorPosition: { line: 1, column: 1 }, encoding: 'UTF-8', lineEnding: 'LF', savedContent: '', createdAt: Date.now(), modifiedAt: Date.now() });
+      }
+    }},
+    { label: 'Extensions', keybinding: 'Ctrl+Shift+X', action: () => setActiveSidebarView('extensions') },
+    { separator: true, label: '' },
     { label: 'Project Insights', action: () => {
       const insightsTabId = 'insights-tab';
       const existing = useEditorStore.getState().tabs.find(t => t.id === insightsTabId);
@@ -129,13 +153,15 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
       }
     }},
     { separator: true, label: '' },
+    { label: 'Zen Mode', keybinding: 'Ctrl+Shift+Z', action: toggleZenMode },
+    { separator: true, label: '' },
     { label: 'Full Screen', keybinding: 'F11', action: () => window.api.window.maximize() },
   ];
 
   const goMenu: MenuItem[] = [
     { label: 'Go to File', keybinding: 'Ctrl+P', action: toggleCommandPalette },
     { label: 'Go to Line/Column', keybinding: 'Ctrl+G', action: () => useEditorStore.getState().triggerGoToLine() },
-    { label: 'Go to Symbol', keybinding: 'Ctrl+Shift+O', action: () => useEditorStore.getState().triggerGoToSymbol() },
+    { label: 'Go to Symbol', keybinding: 'Ctrl+Shift+M', action: () => useEditorStore.getState().triggerGoToSymbol() },
     { separator: true, label: '' },
     { label: 'Go to Definition', keybinding: 'F12', action: () => useEditorStore.getState().triggerGoToDefinition() },
     { label: 'Peek Definition', keybinding: 'Alt+F12', action: () => useEditorStore.getState().triggerPeekDefinition() },
@@ -169,38 +195,52 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
     { label: 'Run File', keybinding: 'Ctrl+F5', action: () => {
       const cmd = getRunCommand();
       if (cmd) {
-        togglePanel();
+        if (!panelVisible) togglePanel();
         setActivePanel('output');
         setTimeout(() => runCommand(cmd), 100);
+      } else {
+        useDialogStore.getState().showDialog({
+          title: 'Cannot Run',
+          message: 'No active file or unsupported file type.',
+          type: 'alert',
+          buttons: [{ label: 'OK', variant: 'primary' }],
+        });
       }
     }},
     { separator: true, label: '' },
     { label: 'Stop', keybinding: 'Shift+F5', action: async () => {
-      // Kill active run process
-      const runs = await (window as any).api?.run?.list?.();
-      if (runs && runs.length > 0) {
-        await (window as any).api?.run?.kill?.(runs[runs.length - 1].runId);
-      } else {
-        // Fallback: send Ctrl+C to terminal
+      try {
+        const api = (window as any).api;
+        const runs = await api?.run?.list?.();
+        if (Array.isArray(runs) && runs.length > 0) {
+          await api?.run?.kill?.(runs[runs.length - 1].runId);
+        } else {
+          const terminalId = useAppStore.getState().activeTerminalId;
+          if (terminalId) window.api.terminal.write(terminalId, '\x03');
+        }
+      } catch {
         const terminalId = useAppStore.getState().activeTerminalId;
         if (terminalId) window.api.terminal.write(terminalId, '\x03');
       }
     }},
     { label: 'Stop All', action: async () => {
-      await (window as any).api?.run?.killAll?.();
+      try {
+        const api = (window as any).api;
+        await api?.run?.killAll?.();
+      } catch { /* no active runs */ }
     }},
     { separator: true, label: '' },
     { label: 'Restart', keybinding: 'Ctrl+Shift+F5', action: () => {
       const cmd = getRunCommand();
       if (cmd) {
-        togglePanel();
+        if (!panelVisible) togglePanel();
         setActivePanel('output');
         runCommand(cmd);
       }
     }},
     { separator: true, label: '' },
-    { label: 'Run Build Task', keybinding: 'Ctrl+Shift+B', action: () => {
-      togglePanel();
+    { label: 'Run Build Task', action: () => {
+      if (!panelVisible) togglePanel();
       setActivePanel('output');
       setTimeout(() => runCommand('npm run build'), 100);
     }},
@@ -208,17 +248,45 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
 
   const terminalMenu: MenuItem[] = [
     { label: 'New Terminal', keybinding: 'Ctrl+Shift+`', action: () => {
-      togglePanel();
+      if (!panelVisible) togglePanel();
       setActivePanel('terminal');
-      setTimeout(() => (window as any).__terminalPanel?.createTerminal(), 300);
+      // Try global ref first, fall back to IPC
+      setTimeout(() => {
+        const panel = (window as any).__terminalPanel;
+        if (panel?.createTerminal) {
+          panel.createTerminal();
+        } else {
+          window.api.menu?.onChannel?.('menu:new-terminal', () => {});
+          const win = (window as any);
+          win.dispatchEvent(new CustomEvent('hypothesis:new-terminal'));
+        }
+      }, 150);
     }},
     { separator: true, label: '' },
-    { label: 'Kill Terminal', action: () => (window as any).__terminalPanel?.killTerminal() },
-    { label: 'Clear Terminal', action: () => (window as any).__terminalPanel?.clearTerminal() },
+    { label: 'Kill Terminal', keybinding: 'Ctrl+Shift+Delete', action: () => {
+      const panel = (window as any).__terminalPanel;
+      if (panel?.killTerminal) {
+        panel.killTerminal();
+      } else {
+        const terminalId = useAppStore.getState().activeTerminalId;
+        if (terminalId) window.api.terminal.write(terminalId, '\x03');
+      }
+    }},
+    { label: 'Clear Terminal', action: () => {
+      const panel = (window as any).__terminalPanel;
+      if (panel?.clearTerminal) {
+        panel.clearTerminal();
+      } else {
+        const terminalId = useAppStore.getState().activeTerminalId;
+        if (terminalId) window.api.terminal.write(terminalId, '\x0C');
+      }
+    }},
   ];
 
   const helpMenu: MenuItem[] = [
-    { label: 'Welcome', action: () => useEditorStore.setState({ tabs: [], activeTabId: null }) },
+    { label: 'Welcome', action: () => {
+      window.dispatchEvent(new CustomEvent('hypothesis:open-welcome'));
+    }},
     { label: 'Documentation', keybinding: 'F1', action: () => onOpenDocs?.() },
     { label: 'Keyboard Shortcuts', keybinding: 'Ctrl+K Ctrl+S', action: () => onOpenShortcuts?.() },
     { separator: true, label: '' },
@@ -235,10 +303,12 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
         return;
       }
       if (info.hasUpdate) {
-        const pubDate = info.publishedAt ? new Date(info.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+        const pubDate = info.publishedAt
+          ? new Date(info.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+          : '';
         const btnIndex = await useDialogStore.getState().showDialog({
           title: 'Update Available',
-          message: `A new version of ${APP_NAME} is available!\n\nCurrent: v${info.currentVersion}\nLatest: v${info.latestVersion}${pubDate ? '\nPublished: ' + pubDate : ''}\n\nCompared against GitHub Releases tag (v${info.latestVersion}).\n\nWould you like to download the update?`,
+          message: `A new version of ${APP_NAME} is available!\n\nCurrent: v${info.currentVersion}\nLatest: v${info.latestVersion}${pubDate ? '\nPublished: ' + pubDate : ''}\n\nWould you like to download the update?`,
           type: 'confirm',
           buttons: [
             { label: 'Later', variant: 'secondary' },
@@ -256,10 +326,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
       }
     }},
     { separator: true, label: '' },
-    { label: `About ${APP_NAME}`, action: () => {
-      const v = (typeof process !== 'undefined' && process.versions) ? process.versions : {} as any;
-      showAbout(`Version: ${APP_VERSION}`);
-    }},
+    { label: `About ${APP_NAME}`, action: () => showAbout(`Version: ${APP_VERSION}`) },
   ];
 
   const menus: Record<string, { label: string; items: MenuItem[] }> = {

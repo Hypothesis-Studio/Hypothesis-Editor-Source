@@ -92,7 +92,7 @@ export function createApplicationMenu(): Menu {
           label: 'Appearance',
           submenu: [
             { label: 'Full Screen', accelerator: 'F11', click: () => send('menu:toggle-fullscreen') },
-            { label: 'Zen Mode', accelerator: 'CmdOrCtrl+K Z', click: () => send('menu:toggle-zen-mode') },
+            { label: 'Zen Mode', accelerator: 'CmdOrCtrl+Shift+Z', click: () => send('menu:toggle-zen-mode') },
           ],
         },
         { type: 'separator' },
@@ -119,7 +119,7 @@ export function createApplicationMenu(): Menu {
       label: 'Go',
       submenu: [
         { label: 'Go to Line', accelerator: 'CmdOrCtrl+G', click: () => send('menu:go-to-line') },
-        { label: 'Go to Symbol', accelerator: 'CmdOrCtrl+Shift+O', click: () => send('menu:go-to-symbol') },
+        { label: 'Go to Symbol', accelerator: 'CmdOrCtrl+Shift+M', click: () => send('menu:go-to-symbol') },
         { type: 'separator' },
         { label: 'Go to Definition', accelerator: 'F12', click: () => send('menu:go-to-definition') },
         { label: 'Peek Definition', accelerator: 'Alt+F12', click: () => send('menu:peek-definition') },

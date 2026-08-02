@@ -25,6 +25,7 @@ import { useWorkspaceStore } from './stores/workspaceStore';
 import { initRunListeners } from './stores/runStore';
 import { useBrowserStore } from './stores/browserStore';
 import { pluginManager } from './plugins/PluginManager';
+import { useKeyboardShortcutStore } from './stores/keyboardShortcutStore';
 import { WelcomePage } from './components/pages/WelcomePage';
 import { AboutDialog } from './components/docs/AboutDialog';
 
@@ -382,85 +383,282 @@ const App: React.FC = () => {
   }, []);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────
+  const matchShortcut = useKeyboardShortcutStore(s => s.matchShortcut);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
       const shift = e.shiftKey;
 
       // Skip editor shortcuts when focus is inside the agent panel
-      // (textarea, buttons, selects, or any child of [data-agent-panel])
       const agentPanel = document.querySelector('[data-agent-panel]');
       const isInAgentPanel = agentPanel?.contains(document.activeElement);
+      const AGENT_PANEL_ALLOWLIST = new Set([
+        'command-palette', 'view-agent', 'view-browser', 'view-rest-client',
+        'view-database', 'settings', 'fullscreen', 'documentation',
+      ]);
       if (isInAgentPanel) {
-        // Only allow global shortcuts that make sense outside the editor
-        const allowList = [
-          ctrl && shift && e.key === 'P', // command palette
-          ctrl && !shift && e.key === 'p', // command palette
-          ctrl && shift && e.key === 'A', // open agent
-          ctrl && shift && e.key === 'B', // open browser
-          ctrl && shift && e.key === 'R', // open rest client
-          ctrl && shift && e.key === 'D', // open database
-          ctrl && e.key === ',',           // settings
-          e.key === 'F11',
-          e.key === 'F1',
-        ];
-        if (!allowList.some(Boolean)) return;
+        // Also allow Ctrl+P (command palette lowercase)
+        if (!(ctrl && !shift && e.key === 'p')) {
+          const id = matchShortcut(e);
+          if (!id || !AGENT_PANEL_ALLOWLIST.has(id)) return;
+        }
       }
 
-      if (ctrl && shift && e.key === 'P') { e.preventDefault(); commandPaletteVisible ? hideCommandPalette() : showCommandPalette(); }
-      else if (ctrl && !shift && e.key === 'p') { e.preventDefault(); showCommandPalette(); }
-      else if (ctrl && !shift && e.key === 'z') { e.preventDefault(); useEditorStore.getState().triggerUndo(); }
-      else if (ctrl && !shift && e.key === 'y') { e.preventDefault(); useEditorStore.getState().triggerRedo(); }
-      else if (ctrl && !shift && e.key === 'c') { /* let Monaco handle copy */ }
-      else if (ctrl && !shift && e.key === 'v') { /* let Monaco handle paste */ }
-      else if (ctrl && !shift && e.key === 'f') { e.preventDefault(); useEditorStore.getState().triggerFind(); }
-      else if (ctrl && !shift && e.key === 'h') { e.preventDefault(); useEditorStore.getState().triggerReplace(); }
-      else if (ctrl && shift && e.key === 'F') { e.preventDefault(); setActiveSidebarView('search'); }
-      else if (ctrl && !shift && e.key === 'a') { /* let Monaco handle select all */ }
-      else if (ctrl && e.key === '/') { e.preventDefault(); useEditorStore.getState().triggerComment(); }
-      else if (ctrl && !shift && e.key === 'b') { e.preventDefault(); toggleSidebar(); }
-      else if (ctrl && e.key === '`') { e.preventDefault(); togglePanel(); setActivePanel('terminal'); }
-      else if (ctrl && !shift && e.key === 'j') { e.preventDefault(); togglePanel(); setActivePanel('terminal'); }
-      else if (ctrl && !shift && e.key === 'n') { e.preventDefault(); handleNewFile(); }
-      else if (ctrl && !shift && e.key === 'o') { e.preventDefault(); handleOpenFile(); }
-      else if (ctrl && shift && e.key === 'O') { e.preventDefault(); useEditorStore.getState().triggerGoToSymbol(); }
-      else if (ctrl && !shift && e.key === 's') { e.preventDefault(); handleSave(); }
-      else if (ctrl && shift && e.key === 'S') { e.preventDefault(); handleSaveAs(); }
-      else if (ctrl && !shift && e.key === 'w') { e.preventDefault(); if (activeTabId) useEditorStore.getState().closeTab(activeTabId); }
-      else if (ctrl && e.key === ',') { e.preventDefault(); setShowSettings(v => !v); }
-      else if (ctrl && shift && e.key === 'E') { e.preventDefault(); setActiveSidebarView('explorer'); }
-      else if (ctrl && shift && e.key === 'G') { e.preventDefault(); setActiveSidebarView('git'); }
-      else if (ctrl && shift && e.key === 'X') { e.preventDefault(); setActiveSidebarView('extensions'); }
-      else if (ctrl && shift && e.key === 'A') { e.preventDefault(); openAgentTab(); }
-      else if (ctrl && shift && e.key === 'R') { e.preventDefault(); openRestClientTab(); }
-      else if (ctrl && shift && e.key === 'D') { e.preventDefault(); openDatabaseTab(); }
-        else if (ctrl && shift && e.key === 'B') { e.preventDefault(); openBrowserTab(); }
-      else if (ctrl && shift && e.key === 'Delete') { e.preventDefault(); togglePanel(); setActivePanel('problems'); }
-      else if (e.key === 'F11') { e.preventDefault(); window.api.window.maximize(); }
-      else if (ctrl && shift && e.key === 'Z') { e.preventDefault(); useAppStore.getState().toggleZenMode(); }
-      else if (ctrl && !shift && e.key === 'g') { e.preventDefault(); useEditorStore.getState().triggerGoToLine(); }
-      else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); useEditorStore.getState().triggerGoBack(); }
-      else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); useEditorStore.getState().triggerGoForward(); }
-      else if (e.key === 'F12' && !ctrl && !shift) { e.preventDefault(); useEditorStore.getState().triggerGoToDefinition(); }
-      else if (e.altKey && e.key === 'F12') { e.preventDefault(); useEditorStore.getState().triggerPeekDefinition(); }
-      else if (e.altKey && e.key === 'z') { e.preventDefault(); useAppStore.getState().toggleWordWrap(); }
-      else if (e.key === 'F1' && !ctrl && !shift) { e.preventDefault(); setShowDocs(true); }
-      else if (ctrl && e.key === 'k' && !shift) {
-        // Ctrl+K then wait for next key
+      // ── Chord: Ctrl+K sequences ────────────────────────────────
+      if (ctrl && !shift && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
         const onSecond = (e2: KeyboardEvent) => {
           window.removeEventListener('keydown', onSecond, true);
-          if (e2.key === 's' || e2.key === 'S') { e2.preventDefault(); setShowShortcuts(true); }
+          const k = e2.key.toLowerCase();
+          const ctrl2 = e2.ctrlKey || e2.metaKey;
+          if (k === 's') {
+            e2.preventDefault();
+            if (ctrl2) {
+              // Ctrl+K Ctrl+S → Open Keyboard Shortcuts page
+              setShowShortcuts(true);
+            } else {
+              // Ctrl+K S → Save All
+              const { tabs } = useEditorStore.getState();
+              tabs.filter(t => t.isDirty && t.filePath).forEach(t => {
+                window.api.file.save(t.filePath!, t.content).then(() => {
+                  useEditorStore.getState().setTabDirty(t.id, false);
+                  useEditorStore.getState().updateTab(t.id, { savedContent: t.content });
+                }).catch(() => {});
+              });
+            }
+          } else if (k === 'z' && ctrl2) {
+            // Ctrl+K Ctrl+Z → Zen Mode (chord alternative)
+            e2.preventDefault();
+            useAppStore.getState().toggleZenMode();
+          } else if (k === '0' && ctrl2) {
+            // Ctrl+K Ctrl+0 → Fold All
+            e2.preventDefault();
+            useEditorStore.getState().triggerFoldAll?.();
+          } else if (k === 'j' && ctrl2) {
+            // Ctrl+K Ctrl+J → Unfold All
+            e2.preventDefault();
+            useEditorStore.getState().triggerUnfoldAll?.();
+          }
         };
         window.addEventListener('keydown', onSecond, true);
+        return;
       }
-      // F2: rename selected file in explorer
-      else if (e.key === 'F2') { /* handled by FileExplorer */ }
-      // Del: delete selected file
-      else if (e.key === 'Delete') { /* handled by FileExplorer */ }
+
+      const actionId = matchShortcut(e);
+      if (!actionId) return;
+
+      switch (actionId) {
+        case 'command-palette':
+          e.preventDefault();
+          commandPaletteVisible ? hideCommandPalette() : showCommandPalette();
+          break;
+        case 'new-file':
+          e.preventDefault();
+          handleNewFile();
+          break;
+        case 'open-file':
+          e.preventDefault();
+          handleOpenFile();
+          break;
+        case 'save':
+          e.preventDefault();
+          handleSave();
+          break;
+        case 'save-as':
+          e.preventDefault();
+          handleSaveAs();
+          break;
+        case 'close-tab':
+          e.preventDefault();
+          if (activeTabId) useEditorStore.getState().closeTab(activeTabId);
+          break;
+        case 'settings':
+          e.preventDefault();
+          setShowSettings(v => !v);
+          break;
+        case 'fullscreen':
+          e.preventDefault();
+          window.api.window.maximize();
+          break;
+        case 'documentation':
+          e.preventDefault();
+          setShowDocs(true);
+          break;
+        case 'toggle-sidebar':
+          e.preventDefault();
+          toggleSidebar();
+          break;
+        case 'toggle-panel':
+          e.preventDefault();
+          togglePanel();
+          setActivePanel('terminal');
+          break;
+        case 'toggle-terminal':
+          e.preventDefault();
+          togglePanel();
+          setActivePanel('terminal');
+          break;
+        case 'view-explorer':
+          e.preventDefault();
+          setActiveSidebarView('explorer');
+          break;
+        case 'view-search':
+          e.preventDefault();
+          setActiveSidebarView('search');
+          break;
+        case 'view-git':
+          e.preventDefault();
+          setActiveSidebarView('git');
+          break;
+        case 'view-agent':
+          e.preventDefault();
+          openAgentTab();
+          break;
+        case 'view-rest-client':
+          e.preventDefault();
+          openRestClientTab();
+          break;
+        case 'view-database':
+          e.preventDefault();
+          openDatabaseTab();
+          break;
+        case 'view-browser':
+          e.preventDefault();
+          openBrowserTab();
+          break;
+        case 'view-extensions':
+          e.preventDefault();
+          setActiveSidebarView('extensions');
+          break;
+        case 'zen-mode':
+          e.preventDefault();
+          useAppStore.getState().toggleZenMode();
+          break;
+        case 'undo':
+          e.preventDefault();
+          useEditorStore.getState().triggerUndo();
+          break;
+        case 'redo':
+          e.preventDefault();
+          useEditorStore.getState().triggerRedo();
+          break;
+        case 'toggle-comment':
+          e.preventDefault();
+          useEditorStore.getState().triggerComment();
+          break;
+        case 'toggle-word-wrap':
+          e.preventDefault();
+          useAppStore.getState().toggleWordWrap();
+          break;
+        case 'format-document':
+          e.preventDefault();
+          useEditorStore.getState().triggerFormat();
+          break;
+        case 'find':
+          e.preventDefault();
+          useEditorStore.getState().triggerFind();
+          break;
+        case 'replace':
+          e.preventDefault();
+          useEditorStore.getState().triggerReplace();
+          break;
+        case 'quick-open':
+          e.preventDefault();
+          showCommandPalette();
+          break;
+        case 'go-to-line':
+          e.preventDefault();
+          useEditorStore.getState().triggerGoToLine();
+          break;
+        case 'go-to-symbol':
+          e.preventDefault();
+          useEditorStore.getState().triggerGoToSymbol();
+          break;
+        case 'go-to-definition':
+          e.preventDefault();
+          useEditorStore.getState().triggerGoToDefinition();
+          break;
+        case 'peek-definition':
+          e.preventDefault();
+          useEditorStore.getState().triggerPeekDefinition();
+          break;
+        case 'navigate-back':
+          e.preventDefault();
+          useEditorStore.getState().triggerGoBack();
+          break;
+        case 'navigate-forward':
+          e.preventDefault();
+          useEditorStore.getState().triggerGoForward();
+          break;
+        case 'run-file': {
+          e.preventDefault();
+          const tab = useEditorStore.getState().tabs.find(t => t.id === useEditorStore.getState().activeTabId);
+          if (tab?.filePath) {
+            const ext = tab.fileName.split('.').pop()?.toLowerCase() || '';
+            const cmds: Record<string, string> = {
+              js: `node "${tab.filePath}"`, ts: `npx ts-node "${tab.filePath}"`,
+              py: `python "${tab.filePath}"`, rb: `ruby "${tab.filePath}"`,
+              go: `go run "${tab.filePath}"`, rs: 'cargo run',
+              sh: `bash "${tab.filePath}"`, php: `php "${tab.filePath}"`,
+            };
+            const cmd = cmds[ext];
+            if (cmd) {
+              if (!useAppStore.getState().panelVisible) useAppStore.getState().togglePanel();
+              useAppStore.getState().setActivePanel('output');
+              setTimeout(() => useAppStore.getState().runCommand(cmd), 100);
+            }
+          }
+          break;
+        }
+        case 'restart-process': {
+          e.preventDefault();
+          const tab2 = useEditorStore.getState().tabs.find(t => t.id === useEditorStore.getState().activeTabId);
+          if (tab2?.filePath) {
+            const ext2 = tab2.fileName.split('.').pop()?.toLowerCase() || '';
+            const cmds2: Record<string, string> = {
+              js: `node "${tab2.filePath}"`, ts: `npx ts-node "${tab2.filePath}"`,
+              py: `python "${tab2.filePath}"`, rb: `ruby "${tab2.filePath}"`,
+              go: `go run "${tab2.filePath}"`, rs: 'cargo run',
+              sh: `bash "${tab2.filePath}"`, php: `php "${tab2.filePath}"`,
+            };
+            const cmd2 = cmds2[ext2];
+            if (cmd2) {
+              if (!useAppStore.getState().panelVisible) useAppStore.getState().togglePanel();
+              useAppStore.getState().setActivePanel('output');
+              useAppStore.getState().runCommand(cmd2);
+            }
+          }
+          break;
+        }
+        case 'kill-terminal':
+          e.preventDefault();
+          (window as any).__terminalPanel?.killTerminal?.() ??
+            (() => { const tid = useAppStore.getState().activeTerminalId; if (tid) window.api.terminal.write(tid, '\x03'); })();
+          break;
+          e.preventDefault();
+          (async () => {
+            try {
+              const api = (window as any).api;
+              const runs = await api?.run?.list?.();
+              if (Array.isArray(runs) && runs.length > 0) {
+                await api?.run?.kill?.(runs[runs.length - 1].runId);
+              } else {
+                const tid = useAppStore.getState().activeTerminalId;
+                if (tid) window.api.terminal.write(tid, '\x03');
+              }
+            } catch {
+              const tid = useAppStore.getState().activeTerminalId;
+              if (tid) window.api.terminal.write(tid, '\x03');
+            }
+          })();
+          break;
+        default:
+          break;
+      }
     };
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [commandPaletteVisible, showCommandPalette, hideCommandPalette, toggleSidebar, togglePanel, setActivePanel, setActiveSidebarView, activeTabId]);
+  }, [commandPaletteVisible, showCommandPalette, hideCommandPalette, toggleSidebar, togglePanel, setActivePanel, setActiveSidebarView, activeTabId, matchShortcut]);
 
   // ── Drag & drop files ───────────────────────────────────────────
   useEffect(() => {
@@ -511,6 +709,13 @@ const App: React.FC = () => {
       }
     });
     return () => cleanup?.();
+  }, []);
+
+  // Listen for open-welcome event from TitleBar Help menu
+  useEffect(() => {
+    const handler = () => setShowWelcome(true);
+    window.addEventListener('hypothesis:open-welcome', handler);
+    return () => window.removeEventListener('hypothesis:open-welcome', handler);
   }, []);
 
   // ── Open AI Agent as editor tab ──────────────────────────────────
