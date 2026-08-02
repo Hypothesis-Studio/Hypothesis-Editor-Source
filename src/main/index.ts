@@ -31,6 +31,7 @@ import { DatabaseService } from './services/database/DatabaseService';
 import { BrowserService } from './services/browser/BrowserService';
 import { TunnelService } from './services/tunnel/TunnelService';
 import { LiveServerService } from './services/live-server/LiveServerService';
+import { MockServerService } from './services/mock-server/MockServerService';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -80,6 +81,7 @@ if (!gotTheLock) {
   let browserService: BrowserService | undefined;
   let tunnelService: TunnelService | undefined;
   let liveServerService: LiveServerService | undefined;
+  let mockServerService: MockServerService | undefined;
 
   app.whenReady().then(async () => {
     logger.info(`${APP_NAME} starting...`, {
@@ -153,6 +155,10 @@ if (!gotTheLock) {
     // Initialize Live Server service
     liveServerService = new LiveServerService();
 
+    // Initialize Mock Server service
+    mockServerService = new MockServerService();
+    mockServerService.setMainWindow(() => BrowserWindow.getAllWindows()[0] ?? null);
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -202,6 +208,7 @@ if (!gotTheLock) {
       browserService: browserService!,
       tunnelService: tunnelService!,
       liveServerService: liveServerService!,
+      mockServerService: mockServerService!,
     });
 
     // Create application menu
@@ -248,6 +255,7 @@ if (!gotTheLock) {
     browserService?.dispose();
     tunnelService?.dispose();
     liveServerService?.dispose();
+    await mockServerService?.dispose();
     if (appStore) {
       await appStore.save();
     }

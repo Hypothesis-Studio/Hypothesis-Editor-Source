@@ -99,6 +99,14 @@
   - Monaco language workers (`ts.worker`, `css.worker`, `html.worker`, `json.worker`, `editor.worker`) are now bundled as self-contained files using a separate Vite build (`vite.workers.config.mts`); previously, they were raw ESM sources that could not run as standalone Web Workers
   - Changed worker paths from absolute (`/workers/...`) to relative (`./workers/...`) so they resolve correctly under Electron's `file://` protocol
   - Added a `build:workers` script to `package.json` that runs `vite build --config vite.workers.config.mts`
+- **REST Client — Mock Server icon removed from sidebar** — the Mock Server tab has been removed from the REST Client sidebar; the Mock Server panel is now accessible exclusively via the server icon button in the main toolbar
+- **REST Client — Mock Server panel layout** — refined visual design for a cleaner, more professional appearance
+  - Column headers increased to 40px with consistent 12px padding
+  - Status dot now shows a green glow when server is running
+  - Spacing, border-radius, and typography improvements throughout
+  - Empty states updated with better copy and feature highlight hints
+  - Endpoint list shows delay and body type metadata more clearly
+  - Error messages in server detail rendered with a styled badge instead of plain text
 
 ## [0.2.7] - 2026-07-26
 

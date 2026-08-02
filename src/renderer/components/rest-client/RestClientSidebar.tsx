@@ -15,11 +15,15 @@ interface Props {
   onSelectCollection: (id: string | null) => void; onSelectRequest: (id: string | null) => void;
   onNewRequest: (templateId?: string) => void; onOpenImport: () => void; onOpenExport: () => void;
   onOpenCurlImport: () => void; onOpenEnvironmentManager: () => void; onToggleRunner: () => void;
+  onViewChange?: (view: View) => void;
+  activeView?: View;
 }
 
 export const RestClientSidebar: React.FC<Props> = (props) => {
-  const { collections, activeCollectionId, activeRequestId, onSelectCollection, onSelectRequest, onNewRequest, onOpenImport, onOpenExport, onOpenCurlImport, onToggleRunner } = props;
-  const [view, setView] = useState<View>('collections');
+  const { collections, activeCollectionId, activeRequestId, onSelectCollection, onSelectRequest, onNewRequest, onOpenImport, onOpenExport, onOpenCurlImport, onToggleRunner, onViewChange, activeView: controlledView } = props;
+  const [internalView, setInternalView] = useState<View>('collections');
+  const view = controlledView ?? internalView;
+  const handleSetView = (v: View) => { setInternalView(v); onViewChange?.(v); };
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [ctx, setCtx] = useState<{ x: number; y: number; type: string; id: string; cid?: string } | null>(null);
@@ -42,7 +46,7 @@ export const RestClientSidebar: React.FC<Props> = (props) => {
       <div style={{ padding: '8px 8px 4px', borderBottom: '1px solid var(--theme-border)' }}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
           {(['collections', 'history', 'templates'] as const).map(v => (
-            <button key={v} onClick={() => setView(v)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: 'none', borderRadius: 4, background: view === v ? 'var(--theme-bg-active)' : 'transparent', color: view === v ? 'var(--theme-fg)' : 'var(--theme-fg-muted)', cursor: 'pointer', fontSize: 11, fontWeight: view === v ? 500 : 400 }}>
+            <button key={v} onClick={() => handleSetView(v)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: 'none', borderRadius: 4, background: view === v ? 'var(--theme-bg-active)' : 'transparent', color: view === v ? 'var(--theme-fg)' : 'var(--theme-fg-muted)', cursor: 'pointer', fontSize: 11, fontWeight: view === v ? 500 : 400 }}>
               <Icon name={v === 'collections' ? 'folder-library' : v === 'history' ? 'history' : 'library'} size={13} />
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>

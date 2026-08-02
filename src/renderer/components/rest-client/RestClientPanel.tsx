@@ -12,6 +12,7 @@ import { EnvironmentManager } from './EnvironmentManager';
 import { ImportDialog } from './ImportDialog';
 import { ExportDialog } from './ExportDialog';
 import { CurlImportDialog } from './CurlImportDialog';
+import { MockServerPanel } from './MockServerPanel';
 import { Icon } from '../common/Icon';
 
 // ── Styles ───────────────────────────────────────────────────────────
@@ -92,6 +93,7 @@ export const RestClientPanel: React.FC = () => {
   const [isResizing, setIsResizing] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [envOpen, setEnvOpen] = useState(false);
+  const [sidebarView, setSidebarView] = useState<'collections' | 'history' | 'templates' | 'mock'>('collections');
 
   const environments = useRestClientStore(s => s.environments);
   const activeEnvironmentId = useRestClientStore(s => s.activeEnvironmentId);
@@ -168,6 +170,8 @@ export const RestClientPanel: React.FC = () => {
           onOpenCurlImport={() => setShowCurlImport(true)}
           onOpenEnvironmentManager={() => setShowEnvironmentManager(true)}
           onToggleRunner={toggleRunner}
+          onViewChange={v => setSidebarView(v)}
+          activeView={sidebarView === 'mock' ? 'collections' : sidebarView}
         />
       </div>
 
@@ -223,11 +227,20 @@ export const RestClientPanel: React.FC = () => {
             <button onClick={() => setShowVariableViewer(true)} style={S.iconBtn} title="View Variables">
               <Icon name="symbol-variable" size={14} />
             </button>
+            <button
+              onClick={() => setSidebarView(sidebarView === 'mock' ? 'collections' : 'mock')}
+              style={{ ...S.iconBtn, color: sidebarView === 'mock' ? 'var(--theme-accent)' : 'var(--theme-fg-muted)' }}
+              title="Mock Server"
+            >
+              <Icon name="server" size={14} />
+            </button>
           </div>
         </div>
 
         {/* Content */}
-        {showRunner ? (
+        {sidebarView === 'mock' ? (
+          <MockServerPanel />
+        ) : showRunner ? (
           <RunnerPanel />
         ) : (
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>

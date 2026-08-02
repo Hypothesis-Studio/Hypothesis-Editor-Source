@@ -856,6 +856,36 @@ const api = {
     },
   },
 
+  // Mock Server
+  mockServer: {
+    create: (options: { name: string; port?: number; cors?: boolean }) => ipcRenderer.invoke('mock-server:create', options),
+    delete: (id: string) => ipcRenderer.invoke('mock-server:delete', id),
+    list: () => ipcRenderer.invoke('mock-server:list'),
+    get: (id: string) => ipcRenderer.invoke('mock-server:get', id),
+    update: (id: string, updates: Record<string, unknown>) => ipcRenderer.invoke('mock-server:update', id, updates),
+    start: (id: string) => ipcRenderer.invoke('mock-server:start', id),
+    stop: (id: string) => ipcRenderer.invoke('mock-server:stop', id),
+    stopAll: () => ipcRenderer.invoke('mock-server:stop-all'),
+    endpointAdd: (serverId: string, endpoint: Record<string, unknown>) => ipcRenderer.invoke('mock-server:endpoint:add', serverId, endpoint),
+    endpointUpdate: (serverId: string, endpointId: string, updates: Record<string, unknown>) => ipcRenderer.invoke('mock-server:endpoint:update', serverId, endpointId, updates),
+    endpointDelete: (serverId: string, endpointId: string) => ipcRenderer.invoke('mock-server:endpoint:delete', serverId, endpointId),
+    endpointReorder: (serverId: string, orderedIds: string[]) => ipcRenderer.invoke('mock-server:endpoint:reorder', serverId, orderedIds),
+    logsGet: (serverId: string) => ipcRenderer.invoke('mock-server:logs:get', serverId),
+    logsClear: (serverId: string) => ipcRenderer.invoke('mock-server:logs:clear', serverId),
+    findFreePort: (preferred?: number) => ipcRenderer.invoke('mock-server:find-free-port', preferred),
+    copyUrl: (serverId: string) => ipcRenderer.invoke('mock-server:copy-url', serverId),
+    onStatusChanged: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('mock-server:evt:status', handler);
+      return () => ipcRenderer.removeListener('mock-server:evt:status', handler);
+    },
+    onRequest: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('mock-server:evt:request', handler);
+      return () => ipcRenderer.removeListener('mock-server:evt:request', handler);
+    },
+  },
+
   // Log
   log: {
     info: (message: string, ...args: unknown[]) => ipcRenderer.send(CH.LOG_INFO, message, ...args),

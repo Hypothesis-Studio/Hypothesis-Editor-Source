@@ -40,6 +40,9 @@ export { TunnelService };
 import { registerLiveServerIPC } from './live-server.ipc';
 import { LiveServerService } from '../services/live-server/LiveServerService';
 export { LiveServerService };
+import { registerMockServerIPC } from './mock-server.ipc';
+import { MockServerService } from '../services/mock-server/MockServerService';
+export { MockServerService };
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -57,6 +60,7 @@ interface IPCDependencies {
   browserService: BrowserService;
   tunnelService: TunnelService;
   liveServerService: LiveServerService;
+  mockServerService: MockServerService;
 }
 
 export function registerIPC(deps: IPCDependencies): void {
@@ -86,6 +90,7 @@ export function registerIPC(deps: IPCDependencies): void {
   registerBrowserIPC(deps.browserService, () => require('electron').BrowserWindow.getAllWindows()[0] ?? null);
   registerTunnelIPC(deps.tunnelService);
   registerLiveServerIPC(deps.liveServerService);
+  registerMockServerIPC(deps.mockServerService);
 }
 
 /** Kill all run processes on app quit */
