@@ -2,7 +2,7 @@
  * ActivityBar - Left icon bar with grouped layout:
  *
  * Group 1 (top):    Explorer, Search, Source Control, Extensions
- * Group 2 (middle): AI Agent, REST Client, Database Explorer, Project Insights
+ * Group 2 (middle): AI Agent, REST Client, Database Explorer, Project Insights, Chat
  * Group 3 (bottom): Terminal, Problems, Output, Settings
  */
 import React, { useState } from 'react';
@@ -17,6 +17,7 @@ interface ActivityBarProps {
   onOpenRestClient?: () => void;
   onOpenDatabase?: () => void;
   onOpenBrowser?: () => void;
+  onOpenChat?: () => void;
 }
 
 // ── Single icon button ─────────────────────────────────────────────
@@ -60,6 +61,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
   onOpenRestClient,
   onOpenDatabase,
   onOpenBrowser,
+  onOpenChat,
 }) => {
   const { activeSidebarView, setActiveSidebarView, panelVisible, activePanel } = useAppStore();
   const agentEnabled = useSettingsStore(s => s.settings['agent.enabled'] !== false);
@@ -94,12 +96,13 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
       {/* ── Group 2: center ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {agentEnabled && (
-          <Item icon="robot"     label="AI Agent"        onClick={onOpenAgent} />
+          <Item icon="robot"              label="AI Agent"          onClick={onOpenAgent} />
         )}
-        <Item icon="plug"      label="REST Client"       onClick={onOpenRestClient} />
-        <Item icon="database"  label="Database Explorer" onClick={onOpenDatabase} />
-        <Item icon="browser"   label="Web Browser"       onClick={onOpenBrowser} />
-        <Item icon="dashboard" label="Project Insights"  onClick={onOpenInsights} />
+        <Item icon="plug"                 label="REST Client"       onClick={onOpenRestClient} />
+        <Item icon="database"             label="Database Explorer" onClick={onOpenDatabase} />
+        <Item icon="browser"              label="Web Browser"       onClick={onOpenBrowser} />
+        <Item icon="dashboard"            label="Project Insights"  onClick={onOpenInsights} />
+        <Item icon="comment-discussion"   label="Chat"              onClick={onOpenChat} />
       </div>
 
       {/* ── Group 3: bottom ── */}

@@ -1,6 +1,6 @@
 {
   "name": "hypothesis",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Every Great Solution Begins with a Hypothesis.",
   "author": "Hypothesis Team <team@hypothesis.dev>",
   "license": "MIT",
@@ -57,6 +57,7 @@
     "react-virtuoso": "^4.12.3",
     "sql.js": "^1.14.1",
     "uuid": "^14.0.1",
+    "ws": "8.18.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -70,6 +71,7 @@
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/ws": "8.5.14",
     "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.19.0",
     "@vitejs/plugin-react": "^4.3.4",

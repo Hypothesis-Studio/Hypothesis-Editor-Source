@@ -63,7 +63,7 @@ export class ToolRegistry {
       dangerous: false,
       enabled: true,
     }, async (args, ctx) => {
-      const filePath = this.resolvePath(args.path as string, ctx.workspacePath);
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
       const content = await fs.readFile(filePath, 'utf-8');
       if (args.startLine || args.endLine) {
         const lines = content.split('\n');
@@ -88,7 +88,7 @@ export class ToolRegistry {
       dangerous: true,
       enabled: true,
     }, async (args, ctx) => {
-      const filePath = this.resolvePath((args.path ?? args.filePath ?? args.file_path ?? args.filename ?? args.file) as string, ctx.workspacePath);
+      const filePath = this.resolvePath((args.path ?? args.filePath ?? args.file_path ?? args.filename ?? args.file) as string, ctx.workspacePath, ctx.workspaceFolders);
       const content = (args.content ?? args.text ?? args.data ?? args.body) as string;
       if (!filePath || content === undefined) {
         return { success: false, output: '', error: 'Missing path or content parameter', executionTimeMs: 0 };
@@ -113,7 +113,7 @@ export class ToolRegistry {
       dangerous: false,
       enabled: true,
     }, async (args, ctx) => {
-      const dirPath = this.resolvePath(args.path as string, ctx.workspacePath);
+      const dirPath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
       const recursive = args.recursive === true;
       const entries: string[] = [];
 
@@ -153,7 +153,7 @@ export class ToolRegistry {
       dangerous: false,
       enabled: true,
     }, async (args, ctx) => {
-      const searchPath = this.resolvePath((args.path as string) || '.', ctx.workspacePath);
+      const searchPath = this.resolvePath((args.path as string) || ".", ctx.workspacePath, ctx.workspaceFolders);
       const query = args.query as string;
       const isRegex = args.isRegex === true;
       const maxResults = (args.maxResults as number) || 50;
@@ -218,7 +218,7 @@ export class ToolRegistry {
       dangerous: true,
       enabled: true,
     }, async (args, ctx) => {
-      const filePath = this.resolvePath(args.path as string, ctx.workspacePath);
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
       // Accept multiple param name variants for robustness
       const oldText = (args.oldText ?? args.old_text ?? args.search ?? args.find ?? args.from) as string;
       const newText = (args.newText ?? args.new_text ?? args.replace ?? args.to ?? args.replacement ?? args.with) as string;
@@ -250,7 +250,7 @@ export class ToolRegistry {
       dangerous: true,
       enabled: true,
     }, async (args, ctx) => {
-      const cwd = args.cwd ? this.resolvePath(args.cwd as string, ctx.workspacePath) : ctx.workspacePath || process.cwd();
+      const cwd = args.cwd ? this.resolvePath(args.cwd as string, ctx.workspacePath, ctx.workspaceFolders) : ctx.workspacePath || process.cwd();
       const timeout = (args.timeout as number) || 30000;
       try {
         const output = execSync(args.command as string, {
@@ -284,7 +284,7 @@ export class ToolRegistry {
       dangerous: false,
       enabled: true,
     }, async (args, ctx) => {
-      const repoPath = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath);
+      const repoPath = this.resolvePath((args.repoPath as string) || ".", ctx.workspacePath, ctx.workspaceFolders);
       try {
         const status = await this.gitService.getStatus(repoPath);
         const output = [
@@ -313,7 +313,7 @@ export class ToolRegistry {
       dangerous: false,
       enabled: true,
     }, async (args, ctx) => {
-      const repoPath = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath);
+      const repoPath = this.resolvePath((args.repoPath as string) || ".", ctx.workspacePath, ctx.workspaceFolders);
       try {
         const commits = await this.gitService.log(repoPath, (args.maxCount as number) || 10);
         const output = commits.map(c =>
@@ -338,7 +338,7 @@ export class ToolRegistry {
       dangerous: false,
       enabled: true,
     }, async (args, ctx) => {
-      const repoPath = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath);
+      const repoPath = this.resolvePath((args.repoPath as string) || ".", ctx.workspacePath, ctx.workspaceFolders);
       try {
         const diff = await this.gitService.diff(repoPath, args.file as string) as any;
         const output = diff.hunks ? diff.hunks.map((h: any) =>
@@ -508,9 +508,26 @@ export class ToolRegistry {
     }
   }
 
-  private resolvePath(p: string, workspacePath?: string): string {
+  private resolvePath(p: string, workspacePath?: string, workspaceFolders?: string[]): string {
     if (path.isAbsolute(p)) return p;
-    return path.resolve(workspacePath || process.cwd(), p);
+    // Try primary workspace first
+    const primary = workspacePath || process.cwd();
+    const primaryResolved = path.resolve(primary, p);
+    // If no multi-root folders, return primary
+    if (!workspaceFolders || workspaceFolders.length === 0) return primaryResolved;
+    // For write/create operations, always use primary
+    // For read operations, try each folder and return first that exists
+    try {
+      const fsSync = require('fs');
+      if (fsSync.existsSync(primaryResolved)) return primaryResolved;
+      for (const folder of workspaceFolders) {
+        if (folder === primary) continue;
+        const candidate = path.resolve(folder, p);
+        if (fsSync.existsSync(candidate)) return candidate;
+      }
+    } catch { /* fall through */ }
+    // Default: primary workspace
+    return primaryResolved;
   }
 
   /**

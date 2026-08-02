@@ -485,8 +485,8 @@ const api = {
   // Agent
   agent: {
     chat: {
-      send: (sessionId: string, content: string, agentId?: string, workspacePath?: string) => ipcRenderer.invoke('agent:chat:send', sessionId, content, agentId, workspacePath),
-      stream: (sessionId: string, content: string, agentId?: string, workspacePath?: string) => ipcRenderer.invoke('agent:chat:stream', sessionId, content, agentId, workspacePath),
+      send: (sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[]) => ipcRenderer.invoke('agent:chat:send', sessionId, content, agentId, workspacePath, workspaceFolders),
+      stream: (sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[]) => ipcRenderer.invoke('agent:chat:stream', sessionId, content, agentId, workspacePath, workspaceFolders),
       cancel: (sessionId: string) => ipcRenderer.invoke('agent:chat:cancel', sessionId),
       history: (sessionId: string) => ipcRenderer.invoke('agent:chat:history', sessionId),
     },
@@ -853,6 +853,49 @@ const api = {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
       ipcRenderer.on('live-server:evt:file-changed', handler);
       return () => ipcRenderer.removeListener('live-server:evt:file-changed', handler);
+    },
+  },
+
+  // Chat Collaboration
+  chat: {
+    create: (options: { name: string; userName: string; localPort?: number; openJoin?: boolean; tunnelId?: string | null }) =>
+      ipcRenderer.invoke('chat:create', options),
+    join: (options: { url: string; userName: string }) =>
+      ipcRenderer.invoke('chat:join', options),
+    leave: (roomId: string) => ipcRenderer.invoke('chat:leave', roomId),
+    close: (roomId: string) => ipcRenderer.invoke('chat:close', roomId),
+    list: () => ipcRenderer.invoke('chat:list'),
+    get: (roomId: string) => ipcRenderer.invoke('chat:get', roomId),
+    send: (roomId: string, content: string) => ipcRenderer.invoke('chat:send', roomId, content),
+    updateName: (roomId: string, name: string) => ipcRenderer.invoke('chat:update-name', roomId, name),
+    copyUrl: (roomId: string) => ipcRenderer.invoke('chat:copy-url', roomId),
+    findFreePort: (preferred?: number) => ipcRenderer.invoke('chat:find-free-port', preferred),
+    updatePublicUrl: (roomId: string, publicUrl: string, tunnelId: string) => ipcRenderer.invoke('chat:update-public-url', roomId, publicUrl, tunnelId),
+    kick: (roomId: string, userId: string) => ipcRenderer.invoke('chat:kick', roomId, userId),
+    onMessage: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:message', handler);
+      return () => ipcRenderer.removeListener('chat:evt:message', handler);
+    },
+    onUserJoined: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:user-joined', handler);
+      return () => ipcRenderer.removeListener('chat:evt:user-joined', handler);
+    },
+    onUserLeft: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:user-left', handler);
+      return () => ipcRenderer.removeListener('chat:evt:user-left', handler);
+    },
+    onStatus: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:status', handler);
+      return () => ipcRenderer.removeListener('chat:evt:status', handler);
+    },
+    onRoomClosed: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:room-closed', handler);
+      return () => ipcRenderer.removeListener('chat:evt:room-closed', handler);
     },
   },
 

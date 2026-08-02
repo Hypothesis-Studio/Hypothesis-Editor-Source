@@ -228,6 +228,7 @@ export interface ToolExecutionContext {
   sessionId: string;
   agentId: string;
   workspacePath?: string;
+  workspaceFolders?: string[];
   currentFilePath?: string;
   selectedText?: string;
   cursorPosition?: { line: number; column: number };

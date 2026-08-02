@@ -209,6 +209,7 @@ export const useAgentStore = create<AgentState>((set, get) => {
       const { activeSessionId, activeAgentId, isStreaming } = get();
       if (isStreaming) return;
 
+      const workspaceFolders: string[] = (window as any).__hypothesis_workspaceFolders || [];
       const rootPath = (window as any).__hypothesis_rootPath || null;
       const workspacePath = rootPath || undefined;
 
@@ -229,13 +230,14 @@ export const useAgentStore = create<AgentState>((set, get) => {
       set((s) => ({ messages: [...s.messages, userMsg], isStreaming: true, streamingContent: '' }));
       _streamBuffer = '';
 
-      await window.api.agent.chat.stream(sessionId, content, activeAgentId || undefined, workspacePath);
+      await window.api.agent.chat.stream(sessionId, content, activeAgentId || undefined, workspacePath, workspaceFolders);
     },
 
     sendWithContext: async (selectedCode: string, userMessage: string) => {
       const { activeSessionId, activeAgentId, isStreaming } = get();
       if (isStreaming) return;
 
+      const workspaceFolders: string[] = (window as any).__hypothesis_workspaceFolders || [];
       const rootPath = (window as any).__hypothesis_rootPath || null;
       const workspacePath = rootPath || undefined;
 
@@ -260,7 +262,7 @@ export const useAgentStore = create<AgentState>((set, get) => {
       set((s) => ({ messages: [...s.messages, userMsg], isStreaming: true, streamingContent: '' }));
       _streamBuffer = '';
 
-      await window.api.agent.chat.stream(sessionId, fullMessage, activeAgentId || undefined, workspacePath);
+      await window.api.agent.chat.stream(sessionId, fullMessage, activeAgentId || undefined, workspacePath, workspaceFolders);
     },
 
     cancelStream: () => {

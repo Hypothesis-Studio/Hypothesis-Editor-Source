@@ -132,11 +132,12 @@ export class AgentService {
   // ── Chat (Non-streaming) ───────────────────────────────────────
 
   async sendMessage(
-    sessionId: string, content: string, agentId?: string, workspacePath?: string,
+    sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[],
   ): Promise<ChatMessage> {
     const agent = this.getAgentForSession(agentId);
     const session = this.sessions.getSession(sessionId) ?? this.sessions.createSession(agent.id);
     if (workspacePath) session.metadata = { ...session.metadata, workspacePath };
+    if (workspaceFolders && workspaceFolders.length > 0) session.metadata = { ...session.metadata, workspaceFolders };
 
     const userMessage: ChatMessage = {
       id: nanoid(), role: 'user', content, status: 'completed', timestamp: Date.now(),
@@ -199,9 +200,11 @@ export class AgentService {
 
       // Execute each tool
       const wsPath = (session.metadata?.workspacePath as string) || '';
+      const wsFolders = (session.metadata?.workspaceFolders as string[]) || [];
       const toolContext: ToolExecutionContext = {
         sessionId: session.id, agentId: agent.id,
         permissions: agent.permissions, workspacePath: wsPath || undefined,
+        workspaceFolders: wsFolders.length > 0 ? wsFolders : (wsPath ? [wsPath] : undefined),
       };
 
       for (const tc of response.toolCalls) {
@@ -250,11 +253,12 @@ export class AgentService {
   // ── Chat (Streaming) ───────────────────────────────────────────
 
   async *streamMessage(
-    sessionId: string, content: string, agentId?: string, workspacePath?: string,
+    sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[],
   ): AsyncGenerator<StreamEvent> {
     const agent = this.getAgentForSession(agentId);
     const session = this.sessions.getSession(sessionId) ?? this.sessions.createSession(agent.id);
     if (workspacePath) session.metadata = { ...session.metadata, workspacePath };
+    if (workspaceFolders && workspaceFolders.length > 0) session.metadata = { ...session.metadata, workspaceFolders };
     const abortController = new AbortController();
     this.activeAbortControllers.set(session.id, abortController);
 
@@ -390,9 +394,11 @@ export class AgentService {
 
         // Execute each tool
         const wsPath = (session.metadata?.workspacePath as string) || '';
+        const wsFolders = (session.metadata?.workspaceFolders as string[]) || [];
         const toolContext: ToolExecutionContext = {
           sessionId: session.id, agentId: agent.id,
           permissions: agent.permissions, workspacePath: wsPath || undefined,
+          workspaceFolders: wsFolders.length > 0 ? wsFolders : (wsPath ? [wsPath] : undefined),
           abortSignal: abortController.signal,
         };
 
@@ -520,8 +526,11 @@ export class AgentService {
       systemPrompt += `\n\nRelevant context from memory:\n${memoryContext}`;
     }
     const wsPath = (session.metadata?.workspacePath as string) || '';
+    const wsFolders = (session.metadata?.workspaceFolders as string[]) || [];
     if (wsPath) {
-      systemPrompt += `\n\nWorkspace: ${wsPath}\nAll file operations and terminal commands should use this workspace directory as the working directory.`;
+      const folderList = wsFolders.length > 0 ? wsFolders : [wsPath];
+      const folderLines = folderList.map((f, i) => `  ${i + 1}. ${f}`).join('\n');
+      systemPrompt += `\n\nWorkspace folders (${folderList.length} open):\n${folderLines}\n\nPrimary workspace: ${wsPath}\nAll file operations and terminal commands should use these workspace directories. When a relative path is given, try the primary workspace first, then the other folders.`;
     }
 
     // Inform AI about disabled tools so it doesn't output raw JSON

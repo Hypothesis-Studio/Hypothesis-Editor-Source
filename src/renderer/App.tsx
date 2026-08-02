@@ -288,6 +288,7 @@ const App: React.FC = () => {
       }
       // Expose rootPath globally for agent workspace detection
       (window as any).__hypothesis_rootPath = rootPath;
+      (window as any).__hypothesis_workspaceFolders = workspace.folders;
     }
   }, [rootPath, sessionRestored]);
 
@@ -298,8 +299,9 @@ const App: React.FC = () => {
     } else if (!workspace.folders.includes(rootPath || '')) {
       setRootPath(workspace.folders[0]);
     }
-    // Keep global rootPath in sync for agent
+    // Keep global rootPath + all folders in sync for agent
     (window as any).__hypothesis_rootPath = workspace.folders.length > 0 ? workspace.folders[0] : null;
+    (window as any).__hypothesis_workspaceFolders = [...workspace.folders];
   }, [workspace.folders.join('|')]);
 
   // ── Persist rootPath changes ────────────────────────────────────
@@ -849,6 +851,34 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const openChatTab = useCallback(() => {
+    const tabId = 'chat-tab';
+    const existing = useEditorStore.getState().tabs.find(t => t.id === tabId);
+    if (existing) {
+      useEditorStore.getState().setActiveTab(tabId);
+    } else {
+      useEditorStore.getState().openTab({
+        id: tabId,
+        filePath: null,
+        fileName: 'Chat',
+        language: 'chat',
+        content: '',
+        isDirty: false,
+        isPinned: true,
+        isPreview: false,
+        viewState: null,
+        scrollTop: 0,
+        scrollLeft: 0,
+        cursorPosition: { line: 1, column: 1 },
+        encoding: 'UTF-8',
+        lineEnding: 'LF',
+        savedContent: '',
+        createdAt: Date.now(),
+        modifiedAt: Date.now(),
+      });
+    }
+  }, []);
+
   const openBrowserTab = useCallback(() => {
     const tabId = 'browser-tab';
     const existing = useEditorStore.getState().tabs.find(t => t.id === tabId);
@@ -1080,7 +1110,7 @@ const App: React.FC = () => {
         onOpenShortcuts={() => setShowShortcuts(true)}
       />}
       <div className="flex flex-1 overflow-hidden">
-        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} onOpenRestClient={openRestClientTab} onOpenDatabase={openDatabaseTab} onOpenBrowser={openBrowserTab} />}
+        {activityBarVisible && <ActivityBar onOpenSettings={() => setShowSettings(true)} onOpenAgent={agentEnabled ? openAgentTab : undefined} onOpenInsights={openInsightsTab} onOpenRestClient={openRestClientTab} onOpenDatabase={openDatabaseTab} onOpenBrowser={openBrowserTab} onOpenChat={openChatTab} />}
         {sidebarVisible && (
           <Sidebar
             activeView={activeSidebarView}

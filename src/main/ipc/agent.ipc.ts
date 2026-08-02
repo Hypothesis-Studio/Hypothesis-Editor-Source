@@ -28,10 +28,12 @@ export function registerAgentIPC(agentService: AgentService): void {
   const CH = AGENT_IPC_CHANNELS;
 
   // ── Chat ──────────────────────────────────────────────────────
-  ipcMain.handle(CH.AGENT_CHAT_SEND, async (_event, sessionId: string, content: string, agentId?: string, workspacePath?: string) => {
+  ipcMain.handle(CH.AGENT_CHAT_SEND, async (_event, sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[]) => {
     try {
       const resolvedWs = resolveWorkspace(workspacePath);
-      const message = await agentService.sendMessage(sessionId, content, agentId, resolvedWs);
+      const resolvedFolders = (workspaceFolders ?? []).filter(f => fs.existsSync(f));
+      if (resolvedWs && !resolvedFolders.includes(resolvedWs)) resolvedFolders.unshift(resolvedWs);
+      const message = await agentService.sendMessage(sessionId, content, agentId, resolvedWs, resolvedFolders);
       return { success: true, data: message };
     } catch (err) {
       log.error('Chat send failed', err);
@@ -58,11 +60,13 @@ export function registerAgentIPC(agentService: AgentService): void {
   });
 
   // ── Streaming (uses webContents.send for push events) ─────────
-  ipcMain.handle(CH.AGENT_CHAT_STREAM, async (event, sessionId: string, content: string, agentId?: string, workspacePath?: string) => {
+  ipcMain.handle(CH.AGENT_CHAT_STREAM, async (event, sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[]) => {
     try {
       const webContents = event.sender;
       const resolvedWs = resolveWorkspace(workspacePath);
-      const stream = agentService.streamMessage(sessionId, content, agentId, resolvedWs);
+      const resolvedFolders = (workspaceFolders ?? []).filter(f => fs.existsSync(f));
+      if (resolvedWs && !resolvedFolders.includes(resolvedWs)) resolvedFolders.unshift(resolvedWs);
+      const stream = agentService.streamMessage(sessionId, content, agentId, resolvedWs, resolvedFolders);
 
       (async () => {
         try {

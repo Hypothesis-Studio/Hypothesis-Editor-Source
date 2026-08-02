@@ -1,5 +1,16 @@
 ﻿# CHANGELOG
 
+## [0.2.9] - 2026-08-02
+
+### Added
+- **Realtime Chat Collaboration** — chat with others in real time directly inside the editor. Host a room on your local network (LAN/WebSocket) or share a public URL via the Tunnel feature. The chat opens as a dedicated editor tab so you can write code and chat at the same time.
+- **Public rooms via Tunnel** — when hosting a room, toggle Public mode to generate a shareable link anyone can join from outside your network, powered by the existing Tunnel feature.
+- **Kick participants** — room hosts can remove a participant from the room at any time.
+- **AI Agent now works across multiple open folders** — when you have more than one project folder open, the AI Agent now sees all of them, can read and edit files from any folder, and mentions all open workspaces in its context.
+
+### Fixed
+- AI Agent no longer ignores additional workspace folders when multiple projects are open simultaneously.
+
 ## [0.2.8] - 2026-08-02
 
 ### Added

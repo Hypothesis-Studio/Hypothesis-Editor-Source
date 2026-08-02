@@ -32,6 +32,7 @@ import { BrowserService } from './services/browser/BrowserService';
 import { TunnelService } from './services/tunnel/TunnelService';
 import { LiveServerService } from './services/live-server/LiveServerService';
 import { MockServerService } from './services/mock-server/MockServerService';
+import { ChatService } from './services/chat/ChatService';
 import { createApplicationMenu } from './menu';
 
 // ── Security hardening ────────────────────────────────────────────
@@ -82,6 +83,7 @@ if (!gotTheLock) {
   let tunnelService: TunnelService | undefined;
   let liveServerService: LiveServerService | undefined;
   let mockServerService: MockServerService | undefined;
+  let chatService: ChatService | undefined;
 
   app.whenReady().then(async () => {
     logger.info(`${APP_NAME} starting...`, {
@@ -159,6 +161,9 @@ if (!gotTheLock) {
     mockServerService = new MockServerService();
     mockServerService.setMainWindow(() => BrowserWindow.getAllWindows()[0] ?? null);
 
+    // Initialize Chat Collaboration service
+    chatService = new ChatService();
+
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {
       const { autoUpdater } = await import('electron-updater');
@@ -209,6 +214,7 @@ if (!gotTheLock) {
       tunnelService: tunnelService!,
       liveServerService: liveServerService!,
       mockServerService: mockServerService!,
+      chatService: chatService!,
     });
 
     // Create application menu
@@ -256,6 +262,7 @@ if (!gotTheLock) {
     tunnelService?.dispose();
     liveServerService?.dispose();
     await mockServerService?.dispose();
+    chatService?.dispose();
     if (appStore) {
       await appStore.save();
     }
