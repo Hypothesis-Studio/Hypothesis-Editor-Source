@@ -90,6 +90,10 @@ export function registerGitIPC(gitService: GitService): void {
     return gitService.init(repoPath);
   });
 
+  ipcMain.handle('git:stagedDiff', async (_event, repoPath: string) => {
+    return gitService.getStagedDiff(repoPath);
+  });
+
   ipcMain.handle('git:discardFile', async (_event, repoPath: string, file: string) => {
     return gitService.discardFile(repoPath, file);
   });

@@ -147,6 +147,10 @@ export class GitService {
     return this.exec(['merge', branch], repoPath);
   }
 
+  async getStagedDiff(repoPath: string): Promise<string> {
+    return this.exec(['diff', '--cached', '--unified=3'], repoPath);
+  }
+
   async diff(repoPath: string, file?: string): Promise<string> {
     const args = ['diff'];
     if (file) args.push(file);

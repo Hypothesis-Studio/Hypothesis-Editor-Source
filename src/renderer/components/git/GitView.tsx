@@ -1,5 +1,6 @@
 /**
  * Git View Component - Source control sidebar panel.
+ * Supports multi-root workspace: user can pick which folder to operate on.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import type { GitStatus, GitBranch } from '../../../shared/types';
@@ -7,6 +8,7 @@ import { Icon } from '../common/Icon';
 import { useEditorStore } from '../../stores/editorStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useAppStore } from '../../stores/appStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { DropdownSelect } from '../common/DropdownSelect';
 import { showConfirm } from '../../stores/dialogStore';
 
@@ -21,9 +23,31 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
   const [repoPath, setRepoPath] = useState<string | null>(propRepoPath || null);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetched, setLastFetched] = useState<number>(0);
+  const [isGenerating, setIsGenerating] = useState(false);
   const { openTab } = useEditorStore();
   const settings = useSettingsStore((s) => s.settings);
   const { setStatusMessage } = useAppStore();
+
+  // Multi-workspace
+  const folders = useWorkspaceStore((s) => s.folders);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(propRepoPath || null);
+
+  // Sync selectedFolder → repoPath; auto-pick first valid git repo when folders change
+  useEffect(() => {
+    if (propRepoPath) { setSelectedFolder(propRepoPath); setRepoPath(propRepoPath); return; }
+    if (selectedFolder && folders.includes(selectedFolder)) { setRepoPath(selectedFolder); return; }
+    // Auto-pick first folder
+    if (folders.length > 0) { setSelectedFolder(folders[0]); setRepoPath(folders[0]); }
+    else { setSelectedFolder(null); setRepoPath(null); }
+  }, [folders, propRepoPath]);
+
+  const handleFolderSelect = (path: string) => {
+    setSelectedFolder(path);
+    setRepoPath(path);
+    setStatus(null);
+    setBranches([]);
+    setCommitMessage('');
+  };
 
   const loadStatus = useCallback(async () => {
     if (!repoPath) return;
@@ -47,34 +71,10 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
     }
   }, [repoPath]);
 
-  // Auto-detect repo from prop
+  // Auto-detect repo from prop (propRepoPath overrides workspace selection)
   useEffect(() => {
-    if (propRepoPath) setRepoPath(propRepoPath);
+    if (propRepoPath) { setSelectedFolder(propRepoPath); setRepoPath(propRepoPath); }
   }, [propRepoPath]);
-
-  // Auto-detect git repo on mount
-  useEffect(() => {
-    if (!repoPath) return;
-    const gitEnabled = settings['git.enabled'] !== false;
-    if (!gitEnabled) return;
-    const check = async () => {
-      try {
-        const isRepo = await window.api.git.isGitRepo(repoPath);
-        if (!isRepo) {
-          // Try parent directories
-          let path = repoPath;
-          for (let i = 0; i < 5; i++) {
-            const parent = path.replace(/[\\/][^\\/]+$/, '');
-            if (parent === path) break;
-            const parentIsRepo = await window.api.git.isGitRepo(parent);
-            if (parentIsRepo) { setRepoPath(parent); return; }
-            path = parent;
-          }
-        }
-      } catch {}
-    };
-    check();
-  }, [repoPath, settings]);
 
   // Auto-fetch
   useEffect(() => {
@@ -99,24 +99,124 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
     }
   }, [repoPath, loadStatus, loadBranches]);
 
+  const handleGenerateCommitMessage = async () => {
+    if (!repoPath || !status) return;
+    const hasStagedChanges = status.staged.length > 0;
+    if (!hasStagedChanges && status.unstaged.length === 0 && status.untracked.length === 0) {
+      setStatusMessage('No changes to generate commit message from', 'warning');
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      // Get staged diff (or fall back to full diff if nothing staged)
+      let diff = '';
+      if (hasStagedChanges) {
+        diff = await (window.api.git as any).stagedDiff(repoPath);
+      }
+      if (!diff) {
+        diff = await window.api.git.diff(repoPath) as unknown as string;
+      }
+
+      // Truncate diff to ~4000 chars to stay within context limits
+      const diffTrimmed = diff.length > 4000 ? diff.slice(0, 4000) + '\n...(truncated)' : diff;
+
+      // Build file summary from status
+      const stagedSummary = status.staged.map(f => `${f.status[0].toUpperCase()} ${f.path}`).join('\n');
+      const unstagedSummary = !hasStagedChanges
+        ? [...status.unstaged.map(f => `${f.status[0].toUpperCase()} ${f.path}`), ...status.untracked.map(f => `U ${f}`)].join('\n')
+        : '';
+      const fileSummary = stagedSummary || unstagedSummary;
+
+      const prompt = [
+        'Generate a concise git commit message in Conventional Commits format (e.g. feat:, fix:, refactor:, chore:, docs:, style:, test:).',
+        'Rules:',
+        '- First line: type(scope): short summary, max 72 chars, imperative mood, no period',
+        '- If needed, add a blank line then a short body (max 3 lines)',
+        '- Output ONLY the commit message, no explanation, no markdown, no quotes',
+        '',
+        'Changed files:',
+        fileSummary,
+        '',
+        diffTrimmed ? `Diff:\n${diffTrimmed}` : '',
+      ].filter(Boolean).join('\n');
+
+      // Use agent:chat:send with a throwaway session
+      const api = (window as any).api;
+
+      // Get first available agent config
+      const configsResult = await api.agent.config.list();
+      const configs: any[] = configsResult?.data ?? configsResult ?? [];
+      const preferredAgentId = settings['git.commitMessageAgentId'] as string | undefined;
+      const agentConfig = (preferredAgentId ? configs.find((c: any) => c.id === preferredAgentId) : null) ?? configs[0];
+      if (!agentConfig) {
+        setStatusMessage('No AI agent configured — add a provider in Settings → AI Agent', 'warning');
+        return;
+      }
+
+      // Create a throwaway session
+      const sessionResult = await api.agent.session.create(agentConfig.id, 'commit-msg-gen');
+      const sessionId = sessionResult?.data?.id ?? sessionResult?.id;
+      if (!sessionId) {
+        setStatusMessage('Failed to create AI session', 'error');
+        return;
+      }
+
+      const result = await api.agent.chat.send(sessionId, prompt, agentConfig.id);
+      const message: string = result?.data?.content ?? result?.content ?? '';
+
+      if (message.trim()) {
+        setCommitMessage(message.trim());
+        setStatusMessage('Commit message generated', 'success');
+      } else {
+        setStatusMessage('Could not generate commit message — check AI provider config', 'warning');
+      }
+
+      // Clean up throwaway session
+      api.agent.session.delete(sessionId).catch(() => {});
+    } catch (err: any) {
+      console.error('Generate commit message failed:', err);
+      setStatusMessage('Failed to generate commit message', 'error');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleCommit = async () => {
     if (!repoPath || !commitMessage.trim()) return;
     const smartCommit = settings['git.enableSmartCommit'];
+    const hasStagedFiles = status && status.staged.length > 0;
+    const hasUnstagedFiles = status && (status.unstaged.length > 0 || status.untracked.length > 0);
+
     try {
-      // If smart commit is enabled and no staged changes, stage all first
-      if (smartCommit && status && status.staged.length === 0) {
-        const files = [...status.unstaged.map(f => f.path), ...status.untracked];
-        if (files.length > 0) {
-          await window.api.git.add(repoPath, files);
+      if (smartCommit && !hasStagedFiles && hasUnstagedFiles) {
+        // Smart Commit: auto-stage all unstaged/untracked files before committing
+        const files = [
+          ...(status?.unstaged.map(f => f.path) ?? []),
+          ...(status?.untracked ?? []),
+        ];
+        await window.api.git.add(repoPath, files);
+      } else if (!hasStagedFiles) {
+        // No staged changes and Smart Commit is off — tell user to stage first
+        if (hasUnstagedFiles) {
+          setStatusMessage('No staged changes — use the + button to stage files before committing', 'warning');
+        } else {
+          setStatusMessage('Nothing to commit — working tree is clean', 'warning');
         }
+        return;
       }
       await window.api.git.commit(repoPath, commitMessage);
       setCommitMessage('');
       await loadStatus();
       setStatusMessage('Committed successfully', 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Commit failed:', error);
-      setStatusMessage('Commit failed', 'error');
+      // Surface a friendlier message for the "nothing staged" git error
+      const msg: string = error?.message ?? '';
+      if (msg.includes('no changes added to commit') || msg.includes('nothing to commit')) {
+        setStatusMessage('Nothing staged — stage your changes first before committing', 'warning');
+      } else {
+        setStatusMessage(`Commit failed: ${msg.split('\n')[0]}`, 'error');
+      }
     }
   };
 
@@ -160,63 +260,85 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
 
   const handleStage = async (file: string) => {
     if (!repoPath) return;
+    const fileName = file.split(/[/\\]/).pop() ?? file;
     try {
       await window.api.git.add(repoPath, [file]);
       await loadStatus();
-    } catch (error) {
+      setStatusMessage(`Staged: ${fileName}`, 'success');
+    } catch (error: any) {
       console.error('Stage failed:', error);
+      setStatusMessage(`Failed to stage ${fileName}: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
   const handleUnstage = async (file: string) => {
     if (!repoPath) return;
+    const fileName = file.split(/[/\\]/).pop() ?? file;
     try {
       await window.api.git.reset(repoPath, [file]);
       await loadStatus();
-    } catch (error) {
+      setStatusMessage(`Unstaged: ${fileName}`, 'success');
+    } catch (error: any) {
       console.error('Unstage failed:', error);
+      setStatusMessage(`Failed to unstage ${fileName}: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
   const handleStageAll = async () => {
     if (!repoPath || !status) return;
+    const count = status.unstaged.length + status.untracked.length;
     try {
       const files = [...status.unstaged.map(f => f.path), ...status.untracked];
       await window.api.git.add(repoPath, files);
       await loadStatus();
-    } catch (error) {
+      setStatusMessage(`Staged ${count} file${count !== 1 ? 's' : ''}`, 'success');
+    } catch (error: any) {
       console.error('Stage all failed:', error);
+      setStatusMessage(`Failed to stage all: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
   const handleUnstageAll = async () => {
     if (!repoPath || !status) return;
+    const count = status.staged.length;
     try {
       const files = status.staged.map(f => f.path);
       await window.api.git.reset(repoPath, files);
       await loadStatus();
-    } catch (error) {
+      setStatusMessage(`Unstaged ${count} file${count !== 1 ? 's' : ''}`, 'success');
+    } catch (error: any) {
       console.error('Unstage all failed:', error);
+      setStatusMessage(`Failed to unstage all: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
   const handleDiscard = async (file: string) => {
     if (!repoPath) return;
+    const fileName = file.split(/[/\\]/).pop() ?? file;
+    const confirmed = await showConfirm(`Discard changes to ${fileName}? This cannot be undone.`, 'Discard Changes');
+    if (!confirmed) return;
     try {
       await window.api.git.discardFile(repoPath, file);
       await loadStatus();
-    } catch (error) {
+      setStatusMessage(`Discarded changes: ${fileName}`, 'success');
+    } catch (error: any) {
       console.error('Discard failed:', error);
+      setStatusMessage(`Failed to discard ${fileName}: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
   const handleDiscardAll = async () => {
-    if (!repoPath) return;
+    if (!repoPath || !status) return;
+    const count = status.unstaged.length;
+    const confirmed = await showConfirm(`Discard all ${count} unstaged change${count !== 1 ? 's' : ''}? This cannot be undone.`, 'Discard All Changes');
+    if (!confirmed) return;
     try {
       await window.api.git.discardAll(repoPath);
       await loadStatus();
-    } catch (error) {
+      setStatusMessage('Discarded all unstaged changes', 'success');
+    } catch (error: any) {
       console.error('Discard all failed:', error);
+      setStatusMessage(`Failed to discard changes: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
@@ -226,19 +348,24 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
       await window.api.git.checkout(repoPath, branchName);
       await loadStatus();
       await loadBranches();
-    } catch (error) {
+      setStatusMessage(`Switched to branch: ${branchName}`, 'success');
+    } catch (error: any) {
       console.error('Branch switch failed:', error);
+      setStatusMessage(`Failed to switch branch: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
   const handleFetch = async () => {
     if (!repoPath) return;
+    setStatusMessage('Fetching from remote\u2026', 'info');
     try {
       await window.api.git.fetch(repoPath);
       await loadStatus();
       await loadBranches();
-    } catch (error) {
+      setStatusMessage('Fetch complete', 'success');
+    } catch (error: any) {
       console.error('Fetch failed:', error);
+      setStatusMessage(`Fetch failed: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
@@ -248,8 +375,10 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
       await window.api.git.init(repoPath);
       await loadStatus();
       await loadBranches();
-    } catch (error) {
+      setStatusMessage('Git repository initialized', 'success');
+    } catch (error: any) {
       console.error('Init failed:', error);
+      setStatusMessage(`Failed to initialize repository: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
@@ -258,8 +387,10 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
     try {
       await window.api.git.stash(repoPath);
       await loadStatus();
-    } catch (error) {
+      setStatusMessage('Changes stashed', 'success');
+    } catch (error: any) {
       console.error('Stash failed:', error);
+      setStatusMessage(`Stash failed: ${String(error?.message ?? error).split('\n')[0]}`, 'error');
     }
   };
 
@@ -324,6 +455,34 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
       </div>
 
       {/* Branch selector */}
+      {/* Workspace folder selector — only shown when multiple folders are open */}
+      {folders.length > 1 && (
+        <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-bg-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <Icon name="folder" size={11} style={{ color: 'var(--theme-fg-muted)', flexShrink: 0 }} />
+            <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Repository</span>
+          </div>
+          <DropdownSelect
+            value={selectedFolder || ''}
+            options={folders.map(f => ({
+              value: f,
+              label: f.split(/[/\\]/).pop() || f,
+            }))}
+            onChange={handleFolderSelect}
+            placeholder="Select repository..."
+            minWidth={160}
+            maxWidth={300}
+          />
+          {selectedFolder && (
+            <div style={{ marginTop: 3, fontSize: 10, color: 'var(--theme-fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={selectedFolder}>
+              {selectedFolder}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Branch selector */}
       <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--theme-border)' }}>
         <DropdownSelect
           value={currentBranch?.name || ''}
@@ -339,22 +498,152 @@ export const GitView: React.FC<GitViewProps> = ({ repoPath: propRepoPath }) => {
 
       {/* Commit message + actions */}
       <div className="px-3 py-2 space-y-2" style={{ borderBottom: '1px solid var(--theme-border)' }}>
-        <textarea
-          value={commitMessage}
-          onChange={(e) => setCommitMessage(e.target.value)}
-          placeholder="Commit message..."
-          className="w-full text-xs rounded px-2 py-1.5 resize-none outline-none"
-          style={{ background: 'var(--theme-bg-tertiary)', color: 'var(--theme-fg)', border: '1px solid var(--theme-border-light)', height: 56 }}
-        />
-        <div className="flex gap-1">
-          <button onClick={handleCommit} disabled={!commitMessage.trim() || totalChanges === 0}
-            className="btn btn-primary text-xs flex-1"
-            style={{ opacity: (!commitMessage.trim() || totalChanges === 0) ? 0.5 : 1 }}
+        <div style={{ position: 'relative' }}>
+          <textarea
+            value={commitMessage}
+            onChange={(e) => setCommitMessage(e.target.value)}
+            placeholder="Commit message..."
+            className="w-full text-xs rounded px-2 py-1.5 resize-none outline-none"
+            style={{ background: 'var(--theme-bg-tertiary)', color: 'var(--theme-fg)', border: '1px solid var(--theme-border-light)', height: 56, paddingRight: 30 }}
+          />
+          {/* AI generate button — inside textarea top-right */}
+          <button
+            onClick={handleGenerateCommitMessage}
+            disabled={isGenerating || !repoPath || totalChanges === 0}
+            title={isGenerating ? 'Generating...' : 'Generate commit message with AI'}
+            style={{
+              position: 'absolute', top: 4, right: 4,
+              width: 22, height: 22,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: isGenerating ? 'var(--theme-bg-hover)' : 'transparent',
+              border: 'none', borderRadius: 3, cursor: isGenerating || totalChanges === 0 ? 'not-allowed' : 'pointer',
+              color: isGenerating ? 'var(--theme-accent)' : 'var(--theme-fg-muted)',
+              opacity: (!repoPath || totalChanges === 0) ? 0.35 : 1,
+              transition: 'color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={e => { if (!isGenerating && totalChanges > 0) { e.currentTarget.style.color = 'var(--theme-accent)'; e.currentTarget.style.background = 'var(--theme-bg-hover)'; }}}
+            onMouseLeave={e => { if (!isGenerating) { e.currentTarget.style.color = 'var(--theme-fg-muted)'; e.currentTarget.style.background = 'transparent'; }}}
           >
-            Commit
+            {isGenerating
+              ? <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}><path d="M8 2a6 6 0 1 0 6 6" /></svg>
+              : <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l1.5 4.5H14l-3.7 2.7 1.4 4.3L8 10l-3.7 2.5 1.4-4.3L2 5.5h4.5z" opacity="0.85"/><circle cx="13" cy="3" r="1.2" opacity="0.6"/><circle cx="3" cy="13" r="1" opacity="0.5"/></svg>
+            }
           </button>
-          <button onClick={handlePush} className="btn btn-secondary text-xs">Push</button>
-          <button onClick={handlePull} className="btn btn-secondary text-xs">Pull</button>
+        </div>
+        {/* Primary: Commit button full width */}
+        <button
+          onClick={handleCommit}
+          disabled={!commitMessage.trim() || totalChanges === 0}
+          className="btn btn-primary text-xs w-full"
+          style={{ opacity: (!commitMessage.trim() || totalChanges === 0) ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+        >
+          {/* Commit icon: checkmark inside circle */}
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="8" r="6.5"/>
+            <polyline points="5,8.5 7,10.5 11,6"/>
+          </svg>
+          Commit
+        </button>
+
+        {/* Secondary row: Stage All · Discard All · Push · Pull · Sync */}
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {/* Stage All */}
+          <button
+            onClick={handleStageAll}
+            disabled={!status || (status.unstaged.length === 0 && status.untracked.length === 0)}
+            title="Stage All Changes"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              padding: '3px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
+              background: 'var(--theme-bg-tertiary)', border: '1px solid var(--theme-border)',
+              color: 'var(--theme-fg-muted)',
+              opacity: (!status || (status.unstaged.length === 0 && status.untracked.length === 0)) ? 0.4 : 1,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-bg-hover)'; e.currentTarget.style.color = 'var(--theme-fg)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-bg-tertiary)'; e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
+          >
+            {/* Add/Stage icon: plus in a box */}
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <rect x="2" y="2" width="12" height="12" rx="2"/>
+              <line x1="8" y1="5" x2="8" y2="11"/>
+              <line x1="5" y1="8" x2="11" y2="8"/>
+            </svg>
+            Add
+          </button>
+
+          {/* Discard All */}
+          <button
+            onClick={handleDiscardAll}
+            disabled={!status || status.unstaged.length === 0}
+            title="Discard All Changes"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              padding: '3px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
+              background: 'var(--theme-bg-tertiary)', border: '1px solid var(--theme-border)',
+              color: 'var(--theme-fg-muted)',
+              opacity: (!status || status.unstaged.length === 0) ? 0.4 : 1,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-bg-hover)'; e.currentTarget.style.color = 'var(--theme-error, #f87171)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-bg-tertiary)'; e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
+          >
+            {/* Discard icon: undo arrow */}
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3,7 3,3 7,3"/>
+              <path d="M3 3 a7 7 0 1 1 -1 5"/>
+            </svg>
+            Discard
+          </button>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 18, background: 'var(--theme-border)', flexShrink: 0 }} />
+
+          {/* Push */}
+          <button
+            onClick={handlePush}
+            disabled={!repoPath}
+            title="Push"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              padding: '3px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
+              background: 'var(--theme-bg-tertiary)', border: '1px solid var(--theme-border)',
+              color: 'var(--theme-fg-muted)',
+              opacity: !repoPath ? 0.4 : 1,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-bg-hover)'; e.currentTarget.style.color = 'var(--theme-fg)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-bg-tertiary)'; e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
+          >
+            {/* Push icon: arrow pointing up with line at bottom */}
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="8" y1="12" x2="8" y2="3"/>
+              <polyline points="4.5,6.5 8,3 11.5,6.5"/>
+              <line x1="3" y1="13" x2="13" y2="13"/>
+            </svg>
+            Push
+          </button>
+
+          {/* Pull */}
+          <button
+            onClick={handlePull}
+            disabled={!repoPath}
+            title="Pull"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              padding: '3px 6px', borderRadius: 4, fontSize: 11, cursor: 'pointer',
+              background: 'var(--theme-bg-tertiary)', border: '1px solid var(--theme-border)',
+              color: 'var(--theme-fg-muted)',
+              opacity: !repoPath ? 0.4 : 1,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-bg-hover)'; e.currentTarget.style.color = 'var(--theme-fg)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--theme-bg-tertiary)'; e.currentTarget.style.color = 'var(--theme-fg-muted)'; }}
+          >
+            {/* Pull icon: arrow pointing down with line at top */}
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="8" y1="3" x2="8" y2="12"/>
+              <polyline points="4.5,8.5 8,12 11.5,8.5"/>
+              <line x1="3" y1="2" x2="13" y2="2"/>
+            </svg>
+            Pull
+          </button>
         </div>
       </div>
 

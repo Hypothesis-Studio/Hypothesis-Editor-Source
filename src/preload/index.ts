@@ -155,6 +155,7 @@ const api = {
     discardFile: (repoPath: string, file: string) => ipcRenderer.invoke('git:discardFile', repoPath, file),
     discardAll: (repoPath: string) => ipcRenderer.invoke('git:discardAll', repoPath),
     isGitRepo: (repoPath: string) => ipcRenderer.invoke('git:isGitRepo', repoPath),
+    stagedDiff: (repoPath: string) => ipcRenderer.invoke('git:stagedDiff', repoPath),
     init: (repoPath: string) => ipcRenderer.invoke(CH.GIT_INIT, repoPath),
   },
 

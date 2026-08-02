@@ -1,43 +1,85 @@
-# CHANGELOG
+﻿# CHANGELOG
 
 ## [0.2.8] - 2026-08-02
 
 ### Added
-- **Preview Panel — Viewport Presets** — preset ukuran layar untuk HTML preview internal
-  - **Responsive** — iframe mengisi container (default)
+- **AI Commit Message Generator** — AI button (star icon) inside the commit message textarea in the Git panel
+  - Automatically fetches staged diff (`git diff --cached`); falls back to full diff if nothing is staged
+  - Sends diff + file summary to the active AI provider via AgentService
+  - Generates messages in **Conventional Commits** format (`feat:`, `fix:`, `refactor:`, etc.)
+  - Loading spinner while generating; result is inserted directly into the textarea
+  - Button is automatically disabled when there are no changes or no repository is detected
+  - `GitService.getStagedDiff()` — new method (`git diff --cached --unified=3`)
+  - `git:stagedDiff` IPC handler + preload exposure
+- **AI Agent — Source Control Settings**
+  - New "Source Control" tab in Settings → AI Agent
+  - Select a dedicated AI agent for Source Control features (commit message generator, etc.)
+  - Default: automatically uses the first available agent from Agent Profiles
+  - Clear warning when no agent or provider is configured
+  - `GitView.tsx` reads `git.commitMessageAgentId` from settings, falls back to the first agent
+- **Source Control — Multi-Workspace Repository Selector**
+  - Repository dropdown appears automatically in the Source Control panel when more than one workspace folder is open
+  - All git operations (commit, push, pull, fetch, stash, stage, discard) run against the selected repository
+  - Auto-selects the first folder on load; resets status/branch/commit message when switching repos
+  - Full path displayed below the dropdown as a hint
+  - Integrates with `workspaceStore.folders` — syncs in real-time when folders are added or removed
+- **Preview Panel — Viewport Presets** — screen size presets for the internal HTML preview
+  - **Responsive** — iframe fills the container (default)
   - **Mobile** — 375px (iPhone SE)
   - **Tablet** — 768px (iPad)
   - **Desktop** — 1280px
-  - **Custom** — input bebas 100–3840px
-  - Preset toolbar muncul otomatis hanya saat preview file HTML
-  - Viewport non-responsive ditampilkan sebagai device frame (shadow + border-radius) di atas background abu-abu
-  - `HtmlPreview.tsx` direfactor: support prop `viewportWidth`, centered device frame saat preset aktif
-- **Keyboard Shortcut Customization** — sistem shortcut terpusat yang dapat dikustomisasi penuh
-  - `keyboardShortcutStore.ts` — Zustand store dengan 40+ shortcut terdefinisi, persist via localStorage
-  - Settings → Keyboard Shortcuts — panel baru untuk edit, record, reset shortcut individual atau semua sekaligus
-  - Conflict detection — warning otomatis jika shortcut baru konflik dengan shortcut lain
-  - Recording mode — klik Edit lalu tekan kombinasi tombol yang diinginkan, langsung tersimpan
-  - `KeyboardShortcutsPage` kini dynamic — membaca dari store, menampilkan badge "custom" jika diubah
-  - Hint di halaman shortcuts: "Shortcuts can be customized in Settings → Keyboard Shortcuts"
-- **Zen Mode** — sembunyikan semua panel dan sidebar, hanya editor yang tersisa. Toggle via `Ctrl+Shift+Z`, Command Palette, atau menu View
-  - Menyembunyikan: TitleBar, ActivityBar, Sidebar, Panel (terminal/output), StatusBar
-  - Saat keluar zen mode, semua panel dikembalikan ke state sebelum masuk (bukan default)
-  - State disimpan di `_zenSnapshot` sebelum masuk zen, di-restore saat keluar
+  - **Custom** — free input 100–3840px
+  - Preset toolbar appears automatically only when previewing HTML files
+  - Non-responsive viewports are rendered as a device frame (shadow + border-radius) on a grey background
+  - `HtmlPreview.tsx` refactored: supports `viewportWidth` prop, centered device frame when a preset is active
+  - Switching presets re-renders the iframe content immediately without requiring a manual refresh
+- **Keyboard Shortcut Customization** — centralized shortcut system with full per-user customization
+  - `keyboardShortcutStore.ts` — Zustand store with 40+ defined shortcuts, persisted via localStorage
+  - Settings → Keyboard Shortcuts — new panel to edit, record, and reset individual shortcuts or all at once
+  - Conflict detection — automatic warning when a new shortcut conflicts with an existing one
+  - Recording mode — click Edit then press the desired key combination; saved immediately
+  - `KeyboardShortcutsPage` is now dynamic — reads from the store, shows a "custom" badge when overridden
+  - Hint on the shortcuts page: "Shortcuts can be customized in Settings → Keyboard Shortcuts"
+- **Zen Mode** — hides all panels and sidebars, leaving only the editor. Toggle via `Ctrl+Shift+Z`, Command Palette, or View menu
+  - Hides: TitleBar, ActivityBar, Sidebar, Panel (terminal/output), StatusBar
+  - On exit, all panels are restored to the state they were in before entering zen mode
+  - State is saved in `_zenSnapshot` before entering and restored on exit
 - **Sticky Scroll** — Monaco editor now correctly displays sticky function/class headers at the top of the editor while scrolling. The root cause was Monaco language workers (TypeScript, CSS, HTML, JSON) failing to load in Electron production builds because the previous `getWorker` setup used `new Worker(new URL('/monaco-editor/esm/...', import.meta.url))`, which only resolves correctly in the Vite development server and not under the `file://` protocol.
   - Pre-bundled worker files are copied to `public/workers/` (`ts.worker.js`, `css.worker.js`, `html.worker.js`, `json.worker.js`, `editor.worker.js`)
   - `setupMonacoWorkers()` now uses `getWorkerUrl` to return static `/workers/*.worker.js` paths that resolve correctly in both development and Electron production
   - Workers are now served from `dist/renderer/workers/` in production builds
 
 ### Fixed
+- **Source Control — commit with no staged changes** — previously threw an unhandled `git commit` error when no files were staged and Smart Commit was off; now shows a clear status bar warning: "No staged changes — use the + button to stage files before committing"
+  - Also catches the `no changes added to commit` git error as a friendly fallback for any edge cases
+  - Smart Commit path unchanged: still auto-stages all unstaged/untracked files when enabled
+- **Source Control — action buttons redesign**
+  - Commit button is now full-width for easier access
+  - Secondary row below: **Add** (stage all), **Discard** (discard all), **Push**, **Pull** — each with an inline icon and label
+  - Buttons are automatically disabled when their action is not applicable (e.g. Discard disabled when no unstaged changes)
+  - Discard button highlights red on hover as a visual warning
+- **Source Control — status feedback for all actions**
+  - Every git action now shows a status bar message on success and failure
+  - Stage file: "Staged: filename" / error with git message
+  - Unstage file: "Unstaged: filename" / error with git message
+  - Stage all: "Staged N files" / error
+  - Unstage all: "Unstaged N files" / error
+  - Discard file: confirmation dialog first, then "Discarded changes: filename" / error
+  - Discard all: confirmation dialog with count, then "Discarded all unstaged changes" / error
+  - Branch switch: "Switched to branch: name" / error
+  - Fetch: "Fetching from remote…" while in progress, then "Fetch complete" / error
+  - Stash: "Changes stashed" / error
+  - Init: "Git repository initialized" / error
+  - Push/Pull: already had feedback; error messages now include the first line of the git error output
 - **Keyboard shortcut conflicts resolved:**
-  - `Ctrl+Shift+O` — konflik antara Open Folder (menu) dan Go to Symbol; Go to Symbol dipindah ke `Ctrl+Shift+M`
-  - Zen Mode — inkonsistensi antara menu (`CmdOrCtrl+K Z`) dan App.tsx (`Ctrl+Shift+Z`); distandarisasi ke `Ctrl+Shift+Z`
-  - `Ctrl+J` — Toggle Panel sudah ada di App.tsx tapi tidak di menu; sekarang ditambahkan ke View menu
-  - `Ctrl+Shift+R`, `Ctrl+W`, `Ctrl+F`, `Alt+←/→` — dikonfirmasi scoped (browser-only vs global), tidak konflik
-- **App.tsx keydown handler** — refactor dari 50+ if/else menjadi `switch(actionId)` via `matchShortcut()` dari store; lebih maintainable dan respects user overrides
-- **menu/index.ts** — accelerator `Go to Symbol` diupdate ke `CmdOrCtrl+Shift+M`, Zen Mode ke `CmdOrCtrl+Shift+Z`, Panel `CmdOrCtrl+J` ditambahkan
+  - `Ctrl+Shift+O` — conflict between Open Folder (menu) and Go to Symbol; Go to Symbol moved to `Ctrl+Shift+M`
+  - Zen Mode — inconsistency between menu (`CmdOrCtrl+K Z`) and App.tsx (`Ctrl+Shift+Z`); standardized to `Ctrl+Shift+Z`
+  - `Ctrl+J` — Toggle Panel was already in App.tsx but missing from the menu; now added to View menu
+  - `Ctrl+Shift+R`, `Ctrl+W`, `Ctrl+F`, `Alt+Left/Right` — confirmed scoped (browser-only vs global), no conflicts
+- **App.tsx keydown handler** — refactored from 50+ if/else chains to `switch(actionId)` via `matchShortcut()` from the store; more maintainable and respects user overrides
+- **menu/index.ts** — `Go to Symbol` accelerator updated to `CmdOrCtrl+Shift+M`, Zen Mode to `CmdOrCtrl+Shift+Z`, Panel `CmdOrCtrl+J` added
 
- — Sticky Scroll now works across all languages supported by Monaco (PHP, Python, Ruby, Go, Rust, etc.), not just TypeScript/JavaScript.
+- **Sticky Scroll** — now works across all languages supported by Monaco (PHP, Python, Ruby, Go, Rust, etc.), not just TypeScript/JavaScript.
   - Set `defaultModel: 'foldingProviderModel'` so Monaco uses folding ranges as a fallback for languages without a dedicated language worker
   - Monaco language workers (`ts.worker`, `css.worker`, `html.worker`, `json.worker`, `editor.worker`) are now bundled as self-contained files using a separate Vite build (`vite.workers.config.mts`); previously, they were raw ESM sources that could not run as standalone Web Workers
   - Changed worker paths from absolute (`/workers/...`) to relative (`./workers/...`) so they resolve correctly under Electron's `file://` protocol

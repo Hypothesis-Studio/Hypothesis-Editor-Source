@@ -5,13 +5,14 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useAgentStore } from '../../stores/agentStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import type { AIProviderConfig, AgentConfig as AgentConfigType, AIProviderType } from '../../../shared/types/agent';
 
 // Load profile avatar SVGs eagerly
 const profileSvgs = import.meta.glob('/src/renderer/assets/icons/profile/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const PROFILE_AVATARS: string[] = Object.values(profileSvgs);
 
-type SettingsSection = 'providers' | 'agents' | 'tools' | 'system';
+type SettingsSection = 'providers' | 'agents' | 'tools' | 'source-control' | 'system';
 
 export const AgentSettingsPanel: React.FC = () => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('providers');
@@ -30,6 +31,7 @@ export const AgentSettingsPanel: React.FC = () => {
     { id: 'providers', label: 'Providers', count: providers.length },
     { id: 'agents', label: 'Agent Profiles', count: agentConfigs.length },
     { id: 'tools', label: 'Tools', count: tools.length },
+    { id: 'source-control', label: 'Source Control' },
     { id: 'system', label: 'System & Health' },
   ];
 
@@ -71,6 +73,7 @@ export const AgentSettingsPanel: React.FC = () => {
         {activeSection === 'providers' && <ProvidersSection />}
         {activeSection === 'agents' && <AgentsSection />}
         {activeSection === 'tools' && <ToolsSection />}
+        {activeSection === 'source-control' && <SourceControlSection />}
         {activeSection === 'system' && <SystemSection />}
       </div>
     </div>
@@ -78,6 +81,92 @@ export const AgentSettingsPanel: React.FC = () => {
 };
 
 // ── Providers Section ──────────────────────────────────────────
+// ── Source Control Section ────────────────────────────────────
+
+const SourceControlSection: React.FC = () => {
+  const { agentConfigs } = useAgentStore();
+  const { settings, setSetting } = useSettingsStore();
+  const currentAgentId = (settings['git.commitMessageAgentId'] as string) || '';
+
+  const selectedAgent = agentConfigs.find(a => a.id === currentAgentId) ?? agentConfigs[0] ?? null;
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-fg)', margin: '0 0 8px' }}>Source Control</h3>
+      <p style={{ fontSize: 11, color: 'var(--theme-fg-muted)', marginBottom: 16 }}>
+        Pilih AI agent yang digunakan untuk fitur Source Control seperti generate commit message otomatis.
+        Defaultnya menggunakan agent pertama yang tersedia.
+      </p>
+
+      {agentConfigs.length === 0 ? (
+        <div style={{
+          padding: '16px 20px', borderRadius: 6, border: '1px solid var(--theme-border)',
+          background: 'var(--theme-bg-secondary)', fontSize: 11, color: 'var(--theme-fg-muted)',
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <div style={{ color: 'var(--theme-warning, #f59e0b)', fontWeight: 500 }}>⚠ Belum ada AI agent yang dikonfigurasi</div>
+          <div>Buka tab <strong>Agent Profiles</strong> untuk membuat agent, lalu pilih provider dan model terlebih dahulu.</div>
+        </div>
+      ) : (
+        <div style={cardStyle}>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ ...labelStyle, fontSize: 11, marginBottom: 6 }}>Agent untuk Commit Message Generator</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {/* Default option */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 8px', borderRadius: 4,
+                background: !currentAgentId ? 'var(--theme-bg-active)' : 'transparent',
+                border: !currentAgentId ? '1px solid var(--theme-accent)' : '1px solid transparent',
+              }}>
+                <input type="radio" name="commitAgent" value=""
+                  checked={!currentAgentId}
+                  onChange={() => setSetting('git.commitMessageAgentId', '')}
+                  style={{ accentColor: 'var(--theme-accent)' }}
+                />
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500 }}>
+                    Auto (agent pertama) {agentConfigs[0] ? `— ${agentConfigs[0].name}` : ''}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>Selalu pakai agent pertama dari daftar Agent Profiles</div>
+                </div>
+              </label>
+
+              {/* Per-agent options */}
+              {agentConfigs.map(agent => (
+                <label key={agent.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 8px', borderRadius: 4,
+                  background: currentAgentId === agent.id ? 'var(--theme-bg-active)' : 'transparent',
+                  border: currentAgentId === agent.id ? '1px solid var(--theme-accent)' : '1px solid transparent',
+                }}>
+                  <input type="radio" name="commitAgent" value={agent.id}
+                    checked={currentAgentId === agent.id}
+                    onChange={() => setSetting('git.commitMessageAgentId', agent.id)}
+                    style={{ accentColor: 'var(--theme-accent)' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500 }}>{agent.name}</div>
+                    <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {agent.modelId || 'No model'} · temp={agent.temperature}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {selectedAgent && (
+            <div style={{ padding: '8px 10px', borderRadius: 4, background: 'var(--theme-bg-tertiary)', fontSize: 10, color: 'var(--theme-fg-muted)' }}>
+              <strong style={{ color: 'var(--theme-fg)' }}>Agent aktif:</strong> {selectedAgent.name}
+              {selectedAgent.modelId && <> · <span>{selectedAgent.modelId}</span></>}
+              {!selectedAgent.providerId && (
+                <span style={{ color: 'var(--theme-warning, #f59e0b)', marginLeft: 8 }}>⚠ Provider belum dikonfigurasi</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 const ProvidersSection: React.FC = () => {
   const { providers, addProvider, updateProvider, removeProvider, testProvider, fetchModels } = useAgentStore();
