@@ -22,6 +22,12 @@ import type {
   SavedQuery,
   TableDataRequest,
   TableDataResult,
+  RowUpdateRequest,
+  RowUpdateResult,
+  FKRowGetRequest,
+  FKRowGetResult,
+  ExportTableRequest,
+  ExportTableResult,
 } from '../../../shared/types/database';
 
 // Dynamic requires for optional drivers
@@ -730,6 +736,126 @@ export class DatabaseService extends EventEmitter {
     });
 
     return { connectionId, databaseName: db.name, tables, relations };
+  }
+
+  // ── Row Update (inline editing) ──────────────────────────────────
+
+  async updateRow(req: RowUpdateRequest): Promise<RowUpdateResult> {
+    const active = this.activeClients.get(req.connectionId);
+    if (!active) return { success: false, error: 'Not connected' };
+
+    const q = active.driver === 'mysql' || active.driver === 'mariadb' ? '`' : '"';
+
+    // Build WHERE from primary key map
+    const pkEntries = Object.entries(req.primaryKey);
+    if (pkEntries.length === 0) return { success: false, error: 'No primary key provided' };
+
+    try {
+      if (active.driver === 'sqlite') {
+        const whereClause = pkEntries.map(([col]) => `${q}${col}${q} = ?`).join(' AND ');
+        const sql = `UPDATE ${q}${req.table}${q} SET ${q}${req.column}${q} = ? WHERE ${whereClause}`;
+        const params = [req.value === '' ? null : req.value, ...pkEntries.map(([, v]) => v)];
+        const stmt = active.client.prepare(sql);
+        const info = await stmt.run(params);
+        return { success: true, affectedRows: info.changes };
+      } else if (active.driver === 'postgresql') {
+        const setParam = `$1`;
+        const whereParams = pkEntries.map((_, i) => `$${i + 2}`);
+        const whereClause = pkEntries.map(([col], i) => `${q}${col}${q} = ${whereParams[i]}`).join(' AND ');
+        const sql = `UPDATE ${q}${req.table}${q} SET ${q}${req.column}${q} = ${setParam} WHERE ${whereClause}`;
+        const values = [req.value === '' ? null : req.value, ...pkEntries.map(([, v]) => v)];
+        const res = await active.client.query(sql, values);
+        return { success: true, affectedRows: res.rowCount ?? 0 };
+      } else {
+        // mysql / mariadb
+        const whereClause = pkEntries.map(([col]) => `${q}${col}${q} = ?`).join(' AND ');
+        const sql = `UPDATE ${q}${req.table}${q} SET ${q}${req.column}${q} = ? WHERE ${whereClause}`;
+        const params = [req.value === '' ? null : req.value, ...pkEntries.map(([, v]) => v)];
+        const [result] = await active.client.query(sql, params);
+        return { success: true, affectedRows: (result as any).affectedRows };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // ── FK Row Lookup ─────────────────────────────────────────────────
+
+  async getFKRow(req: FKRowGetRequest): Promise<FKRowGetResult> {
+    const active = this.activeClients.get(req.connectionId);
+    if (!active) return { row: null, error: 'Not connected' };
+
+    const q = active.driver === 'mysql' || active.driver === 'mariadb' ? '`' : '"';
+    const sql = `SELECT * FROM ${q}${req.referencedTable}${q} WHERE ${q}${req.referencedColumn}${q} = ? LIMIT 1`;
+
+    try {
+      if (active.driver === 'sqlite') {
+        const rows = await active.client.prepare(sql).all([req.value]);
+        return { row: rows[0] ?? null };
+      } else if (active.driver === 'postgresql') {
+        const pgSql = `SELECT * FROM ${q}${req.referencedTable}${q} WHERE ${q}${req.referencedColumn}${q} = $1 LIMIT 1`;
+        const res = await active.client.query(pgSql, [req.value]);
+        return { row: res.rows[0] ?? null };
+      } else {
+        const [rows] = await active.client.query(sql, [req.value]);
+        return { row: (rows as any[])[0] ?? null };
+      }
+    } catch (err: any) {
+      return { row: null, error: err.message };
+    }
+  }
+
+  // ── Export Table ──────────────────────────────────────────────────
+
+  async exportTable(req: ExportTableRequest): Promise<ExportTableResult> {
+    const active = this.activeClients.get(req.connectionId);
+    if (!active) return { content: '', filename: '', error: 'Not connected' };
+
+    const q = active.driver === 'mysql' || active.driver === 'mariadb' ? '`' : '"';
+    const whereClause = req.filter ? ` WHERE ${req.filter}` : '';
+    const sql = `SELECT * FROM ${q}${req.table}${q}${whereClause}`;
+
+    try {
+      const result = await this.runQuery({ connectionId: req.connectionId, sql });
+      const rows = result.rows;
+      const columns = result.columns.map(c => c.name);
+      const ts = new Date().toISOString().slice(0, 10);
+
+      if (req.format === 'csv') {
+        const escape = (v: unknown) => {
+          if (v === null || v === undefined) return '';
+          const s = String(v);
+          return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? `"${s.replace(/"/g, '""')}"`
+            : s;
+        };
+        const header = columns.map(escape).join(',');
+        const body = rows.map(r => columns.map(c => escape(r[c])).join(',')).join('\n');
+        return { content: header + '\n' + body, filename: `${req.table}_${ts}.csv` };
+      }
+
+      if (req.format === 'json') {
+        return {
+          content: JSON.stringify(rows, null, 2),
+          filename: `${req.table}_${ts}.json`,
+        };
+      }
+
+      // sql — INSERT statements
+      const insertRows = rows.map(r => {
+        const vals = columns.map(c => {
+          const v = r[c];
+          if (v === null || v === undefined) return 'NULL';
+          if (typeof v === 'number') return String(v);
+          return `'${String(v).replace(/'/g, "''")}'`;
+        });
+        return `INSERT INTO ${q}${req.table}${q} (${columns.map(c => `${q}${c}${q}`).join(', ')}) VALUES (${vals.join(', ')});`;
+      });
+      const header = `-- Export of ${req.table} (${rows.length} rows) — ${new Date().toISOString()}\n`;
+      return { content: header + insertRows.join('\n'), filename: `${req.table}_${ts}.sql` };
+    } catch (err: any) {
+      return { content: '', filename: '', error: err.message };
+    }
   }
 
   // ── Cleanup ───────────────────────────────────────────────────────

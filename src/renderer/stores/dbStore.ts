@@ -12,6 +12,12 @@ import type {
   TableDataResult,
   TableInfo,
   ERDiagram,
+  RowUpdateRequest,
+  RowUpdateResult,
+  FKRowGetRequest,
+  FKRowGetResult,
+  ExportTableRequest,
+  ExportTableResult,
 } from '../../shared/types/database';
 
 interface DBState {
@@ -69,6 +75,9 @@ interface DBState {
   setActiveTable: (table: string | null) => void;
 
   loadERDiagram: (connectionId: string) => Promise<void>;
+  updateCell: (req: RowUpdateRequest) => Promise<RowUpdateResult>;
+  lookupFKRow: (req: FKRowGetRequest) => Promise<FKRowGetResult>;
+  exportTable: (req: ExportTableRequest) => Promise<ExportTableResult>;
 
   loadHistory: () => Promise<void>;
   clearHistory: () => Promise<void>;
@@ -292,6 +301,21 @@ export const useDBStore = create<DBState>((set, get) => ({
   },
 
   setActiveTable: (table) => set({ activeTable: table }),
+
+  updateCell: async (req) => {
+    const api = (window as any).api;
+    return api.db.row.update(req);
+  },
+
+  lookupFKRow: async (req) => {
+    const api = (window as any).api;
+    return api.db.fk.getRow(req);
+  },
+
+  exportTable: async (req) => {
+    const api = (window as any).api;
+    return api.db.table.export(req);
+  },
 
   loadERDiagram: async (connectionId: string) => {
     set({ erDiagramLoading: true, activeView: 'diagram' });

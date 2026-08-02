@@ -1,7 +1,8 @@
 /**
  * ERDiagramView — SVG-based Entity Relationship Diagram renderer.
  * No external dependencies. Reads ERDiagram from dbStore.
- * Supports pan, zoom, and highlights FK relations on hover.
+ * Supports pan, zoom, highlights FK relations on hover,
+ * minimap thumbnail navigation, and PNG/SVG export.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDBStore } from '../../stores/dbStore';
@@ -246,6 +247,154 @@ const RelationLine: React.FC<RelationLineProps> = ({ relation, fromTable, toTabl
   );
 };
 
+// ── Minimap ───────────────────────────────────────────────────────
+
+const MINIMAP_W = 140;
+const MINIMAP_H = 90;
+const MINIMAP_PAD = 6;
+
+interface MinimapProps {
+  tables: ERDiagramTable[];
+  relations: ERDiagramRelation[];
+  pan: { x: number; y: number };
+  zoom: number;
+  viewW: number;
+  viewH: number;
+  onPanTo: (x: number, y: number) => void;
+}
+
+const Minimap: React.FC<MinimapProps> = ({ tables, relations, pan, zoom, viewW, viewH, onPanTo }) => {
+  const mmRef = useRef<SVGSVGElement>(null);
+  if (tables.length === 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const t of tables) {
+    minX = Math.min(minX, t.x);
+    minY = Math.min(minY, t.y);
+    maxX = Math.max(maxX, t.x + CARD_WIDTH);
+    maxY = Math.max(maxY, t.y + tableHeight(t));
+  }
+  const diagramW = maxX - minX + 40;
+  const diagramH = maxY - minY + 40;
+  const scaleX = (MINIMAP_W - MINIMAP_PAD * 2) / diagramW;
+  const scaleY = (MINIMAP_H - MINIMAP_PAD * 2) / diagramH;
+  const mmScale = Math.min(scaleX, scaleY);
+
+  const toMM = (dx: number, dy: number) => ({
+    x: (dx - minX) * mmScale + MINIMAP_PAD,
+    y: (dy - minY) * mmScale + MINIMAP_PAD,
+  });
+
+  const vpX = -pan.x / zoom;
+  const vpY = -pan.y / zoom;
+  const vpMM = toMM(vpX, vpY);
+  const vpW_MM = (viewW / zoom) * mmScale;
+  const vpH_MM = (viewH / zoom) * mmScale;
+
+  const handleMMClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = mmRef.current!.getBoundingClientRect();
+    const diagX = (e.clientX - rect.left - MINIMAP_PAD) / mmScale + minX;
+    const diagY = (e.clientY - rect.top - MINIMAP_PAD) / mmScale + minY;
+    onPanTo(-(diagX * zoom - viewW / 2), -(diagY * zoom - viewH / 2));
+  };
+
+  return (
+    <div style={{
+      position: 'absolute', top: 8, right: 12,
+      background: 'var(--theme-bg-secondary)',
+      border: '1px solid var(--theme-border)',
+      borderRadius: 6, overflow: 'hidden',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+      pointerEvents: 'auto',
+      opacity: 0.92,
+    }}>
+      <svg ref={mmRef} width={MINIMAP_W} height={MINIMAP_H}
+        style={{ display: 'block', cursor: 'crosshair' }}
+        onClick={handleMMClick}
+      >
+        {tables.map(t => {
+          const { x, y } = toMM(t.x, t.y);
+          return (
+            <rect key={t.name} x={x} y={y}
+              width={CARD_WIDTH * mmScale} height={tableHeight(t) * mmScale}
+              rx={2} ry={2}
+              fill="var(--theme-bg-tertiary, rgba(255,255,255,0.08))"
+              stroke="var(--theme-border, #30363d)" strokeWidth={0.5}
+            />
+          );
+        })}
+        {relations.map(rel => {
+          const fromT = tables.find(t => t.name === rel.fromTable);
+          const toT = tables.find(t => t.name === rel.toTable);
+          if (!fromT || !toT) return null;
+          const f = toMM(fromT.x + CARD_WIDTH / 2, fromT.y + tableHeight(fromT) / 2);
+          const t2 = toMM(toT.x + CARD_WIDTH / 2, toT.y + tableHeight(toT) / 2);
+          return (
+            <line key={rel.constraintName + rel.fromColumn}
+              x1={f.x} y1={f.y} x2={t2.x} y2={t2.y}
+              stroke={FK_COLOR} strokeWidth={0.5} opacity={0.4}
+            />
+          );
+        })}
+        <rect
+          x={vpMM.x} y={vpMM.y}
+          width={Math.max(4, vpW_MM)} height={Math.max(4, vpH_MM)}
+          fill="rgba(88,166,255,0.08)" stroke={ACCENT} strokeWidth={1} rx={1}
+          style={{ pointerEvents: 'none' }}
+        />
+      </svg>
+    </div>
+  );
+};
+
+// ── Export helpers ────────────────────────────────────────────────────────────────────────────────────
+
+function exportAsSVG(svgEl: SVGSVGElement, filename: string) {
+  const svgStr = new XMLSerializer().serializeToString(svgEl);
+  (window as any).api.file.dialogSave({
+    defaultPath: filename,
+    filters: [{ name: 'SVG Image', extensions: ['svg'] }, { name: 'All Files', extensions: ['*'] }],
+  }).then((r: { canceled: boolean; filePath?: string }) => {
+    if (!r.canceled && r.filePath) {
+      (window as any).api.fs.writeFile(r.filePath, svgStr);
+    }
+  });
+}
+
+function exportAsPNG(svgEl: SVGSVGElement, filename: string) {
+  const svgStr = new XMLSerializer().serializeToString(svgEl);
+  const { width, height } = svgEl.getBoundingClientRect();
+  const scale = 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext('2d')!;
+  ctx.scale(scale, scale);
+  const url = URL.createObjectURL(new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' }));
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, width, height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        (window as any).api.file.dialogSave({
+          defaultPath: filename,
+          filters: [{ name: 'PNG Image', extensions: ['png'] }, { name: 'All Files', extensions: ['*'] }],
+        }).then((r: { canceled: boolean; filePath?: string }) => {
+          if (!r.canceled && r.filePath) {
+            (window as any).api.fs.writeFile(r.filePath, Buffer.from(base64, 'base64'));
+          }
+        });
+      };
+      reader.readAsDataURL(blob);
+    }, 'image/png');
+  };
+  img.src = url;
+}
+
 // ── Empty / loading states ────────────────────────────────────────
 
 const Spinner: React.FC = () => (
@@ -277,6 +426,14 @@ export const ERDiagramView: React.FC = () => {
 
   // Hover state for relation highlighting
   const [hoveredTable, setHoveredTable] = useState<string | null>(null);
+
+  // Minimap
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [viewSize, setViewSize] = useState({ w: 800, h: 600 });
+
+  // Export dropdown
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -415,6 +572,33 @@ export const ERDiagramView: React.FC = () => {
       setTimeout(handleFit, 50);
     }
   }, [erDiagram, erDiagramLoading]);
+
+  // Track container size for minimap viewport rect
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      const e = entries[0];
+      if (e) setViewSize({ w: e.contentRect.width, h: e.contentRect.height });
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node))
+        setShowExportMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showExportMenu]);
+
+  // Minimap pan callback
+  const handleMinimapPan = useCallback((x: number, y: number) => {
+    setPan({ x, y });
+  }, []);
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -564,6 +748,46 @@ export const ERDiagramView: React.FC = () => {
           &minus;
         </button>
         <button
+          style={{ ...S.toolbarBtn, background: showMinimap ? 'rgba(88,166,255,0.15)' : undefined }}
+          onClick={() => setShowMinimap(v => !v)}
+          title="Toggle minimap"
+        >
+          Map
+        </button>
+        {/* Export dropdown */}
+        <div ref={exportMenuRef} style={{ position: 'relative' }}>
+          <button
+            style={{ ...S.toolbarBtn, marginLeft: 4 }}
+            onClick={() => setShowExportMenu(v => !v)}
+            title="Export diagram"
+          >
+            Export ▾
+          </button>
+          {showExportMenu && (
+            <div style={{
+              position: 'absolute', top: '100%', right: 0, zIndex: 100,
+              background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)',
+              borderRadius: 6, padding: '4px 0', minWidth: 130,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            }}>
+              <button
+                style={{ display: 'block', width: '100%', padding: '6px 14px', fontSize: 12,
+                  background: 'none', border: 'none', textAlign: 'left', color: 'var(--theme-fg)', cursor: 'pointer' }}
+                onClick={() => { setShowExportMenu(false); if (svgRef.current) exportAsSVG(svgRef.current, `${erDiagram.databaseName}-erd.svg`); }}
+              >
+                Export as SVG
+              </button>
+              <button
+                style={{ display: 'block', width: '100%', padding: '6px 14px', fontSize: 12,
+                  background: 'none', border: 'none', textAlign: 'left', color: 'var(--theme-fg)', cursor: 'pointer' }}
+                onClick={() => { setShowExportMenu(false); if (svgRef.current) exportAsPNG(svgRef.current, `${erDiagram.databaseName}-erd.png`); }}
+              >
+                Export as PNG
+              </button>
+            </div>
+          )}
+        </div>
+        <button
           style={{ ...S.toolbarBtn, marginLeft: 4 }}
           onClick={() => activeConnectionId && loadERDiagram(activeConnectionId)}
           title="Refresh diagram"
@@ -644,6 +868,19 @@ export const ERDiagramView: React.FC = () => {
             })}
           </g>
         </svg>
+
+        {/* Minimap */}
+        {showMinimap && erDiagram && (
+          <Minimap
+            tables={resolvedTables}
+            relations={erDiagram.relations}
+            pan={pan}
+            zoom={zoom}
+            viewW={viewSize.w}
+            viewH={viewSize.h}
+            onPanTo={handleMinimapPan}
+          />
+        )}
 
         {/* Legend */}
         <div style={S.legend}>

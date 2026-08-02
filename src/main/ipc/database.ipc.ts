@@ -3,7 +3,7 @@
  */
 import { ipcMain, BrowserWindow } from 'electron';
 import type { DatabaseService } from '../services/database/DatabaseService';
-import type { DatabaseConnectionConfig, QueryRequest, TableDataRequest } from '../../shared/types/database';
+import type { DatabaseConnectionConfig, QueryRequest, TableDataRequest, RowUpdateRequest, FKRowGetRequest, ExportTableRequest } from '../../shared/types/database';
 import { DB_IPC } from '../../shared/types/database';
 
 export function registerDatabaseIPC(dbService: DatabaseService, getWindow: () => BrowserWindow | null): void {
@@ -82,4 +82,22 @@ export function registerDatabaseIPC(dbService: DatabaseService, getWindow: () =>
   });
 
   ipcMain.handle(DB_IPC.SAVED_QUERY_DELETE, (_e, id: string) => dbService.deleteSavedQuery(id));
+
+  // ── Row Update ──────────────────────────────────────────────────
+  ipcMain.handle(DB_IPC.ROW_UPDATE, async (_e, req: RowUpdateRequest) => {
+    try { return await dbService.updateRow(req); }
+    catch (err: any) { return { success: false, error: err.message }; }
+  });
+
+  // ── FK Row Lookup ───────────────────────────────────────────────
+  ipcMain.handle(DB_IPC.FK_ROW_GET, async (_e, req: FKRowGetRequest) => {
+    try { return await dbService.getFKRow(req); }
+    catch (err: any) { return { row: null, error: err.message }; }
+  });
+
+  // ── Export Table ────────────────────────────────────────────────
+  ipcMain.handle(DB_IPC.EXPORT_TABLE, async (_e, req: ExportTableRequest) => {
+    try { return await dbService.exportTable(req); }
+    catch (err: any) { return { content: '', filename: '', error: err.message }; }
+  });
 }

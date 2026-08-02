@@ -726,9 +726,6 @@ const api = {
     query: {
       execute: (req: unknown) => ipcRenderer.invoke('db:query-execute', req),
     },
-    table: {
-      data: (req: unknown) => ipcRenderer.invoke('db:table-data', req),
-    },
     history: {
       list: () => ipcRenderer.invoke('db:history-list'),
       clear: () => ipcRenderer.invoke('db:history-clear'),
@@ -738,6 +735,16 @@ const api = {
       create: (data: unknown) => ipcRenderer.invoke('db:saved-query-create', data),
       update: (id: string, updates: unknown) => ipcRenderer.invoke('db:saved-query-update', id, updates),
       delete: (id: string) => ipcRenderer.invoke('db:saved-query-delete', id),
+    },
+    row: {
+      update: (req: unknown) => ipcRenderer.invoke('db:row-update', req),
+    },
+    fk: {
+      getRow: (req: unknown) => ipcRenderer.invoke('db:fk-row-get', req),
+    },
+    table: {
+      data: (req: unknown) => ipcRenderer.invoke('db:table-data', req),
+      export: (req: unknown) => ipcRenderer.invoke('db:export-table', req),
     },
   },
 

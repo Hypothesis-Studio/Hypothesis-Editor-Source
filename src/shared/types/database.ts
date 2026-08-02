@@ -214,6 +214,59 @@ export interface ERDiagram {
 }
 
 // ============================================================================
+// Row Update (inline editing)
+// ============================================================================
+
+export interface RowUpdateRequest {
+  connectionId: string;
+  table: string;
+  primaryKey: Record<string, unknown>; // { colName: value } for WHERE clause
+  column: string;
+  value: unknown;
+}
+
+export interface RowUpdateResult {
+  success: boolean;
+  affectedRows?: number;
+  error?: string;
+}
+
+// ============================================================================
+// FK Row Lookup
+// ============================================================================
+
+export interface FKRowGetRequest {
+  connectionId: string;
+  referencedTable: string;
+  referencedColumn: string;
+  value: unknown;
+}
+
+export interface FKRowGetResult {
+  row: Record<string, unknown> | null;
+  error?: string;
+}
+
+// ============================================================================
+// Table Export
+// ============================================================================
+
+export type ExportFormat = 'csv' | 'json' | 'sql';
+
+export interface ExportTableRequest {
+  connectionId: string;
+  table: string;
+  format: ExportFormat;
+  filter?: string;
+}
+
+export interface ExportTableResult {
+  content: string;
+  filename: string;
+  error?: string;
+}
+
+// ============================================================================
 // IPC Channels
 // ============================================================================
 
@@ -250,6 +303,15 @@ export const DB_IPC = {
 
   // ER Diagram
   ER_DIAGRAM_GET: 'db:er-diagram-get',
+
+  // Cell editing
+  ROW_UPDATE: 'db:row-update',
+
+  // FK lookup
+  FK_ROW_GET: 'db:fk-row-get',
+
+  // Export
+  EXPORT_TABLE: 'db:export-table',
 
   // Events (main → renderer)
   CONNECTION_STATUS: 'db:connection-status',
