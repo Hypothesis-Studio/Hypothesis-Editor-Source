@@ -11,6 +11,13 @@ import type {
   ChatUserLeftEvent,
   ChatRoomStatusEvent,
   ChatRoomClosedEvent,
+  ChatTypingEvent,
+  ChatReactionEvent,
+  ChatReadReceiptEvent,
+  ChatPresenceEvent,
+  ChatJoinRequestEvent,
+  ChatMessageEditedEvent,
+  ChatMessageDeletedEvent,
 } from '../../../shared/types/chat';
 
 export const ChatPanel: React.FC = () => {
@@ -22,18 +29,32 @@ export const ChatPanel: React.FC = () => {
     handleUserLeft,
     handleStatus,
     handleRoomClosed,
+    handleTyping,
+    handleReaction,
+    handleReadReceipt,
+    handlePresence,
+    handleJoinRequest,
+    handleMessageEdited,
+    handleMessageDeleted,
   } = useChatStore();
 
   useEffect(() => {
     loadRooms();
     const api = (window as any).api;
     if (!api?.chat) return;
-    const unsubs = [
-      api.chat.onMessage((evt: ChatMessageEvent) => handleMessage(evt)),
-      api.chat.onUserJoined((evt: ChatUserJoinedEvent) => handleUserJoined(evt)),
-      api.chat.onUserLeft((evt: ChatUserLeftEvent) => handleUserLeft(evt)),
-      api.chat.onStatus((evt: ChatRoomStatusEvent & { participants?: any[]; name?: string }) => handleStatus(evt)),
-      api.chat.onRoomClosed((evt: ChatRoomClosedEvent) => handleRoomClosed(evt)),
+    const unsubs: Array<(() => void) | undefined> = [
+      api.chat.onMessage?.((evt: ChatMessageEvent) => handleMessage(evt)),
+      api.chat.onUserJoined?.((evt: ChatUserJoinedEvent) => handleUserJoined(evt)),
+      api.chat.onUserLeft?.((evt: ChatUserLeftEvent) => handleUserLeft(evt)),
+      api.chat.onStatus?.((evt: ChatRoomStatusEvent & { participants?: any[]; name?: string; pendingJoins?: any[]; aiEnabled?: boolean }) => handleStatus(evt)),
+      api.chat.onRoomClosed?.((evt: ChatRoomClosedEvent) => handleRoomClosed(evt)),
+      api.chat.onTyping?.((evt: ChatTypingEvent) => handleTyping(evt)),
+      api.chat.onReaction?.((evt: ChatReactionEvent) => handleReaction(evt)),
+      api.chat.onRead?.((evt: ChatReadReceiptEvent) => handleReadReceipt(evt)),
+      api.chat.onPresence?.((evt: ChatPresenceEvent) => handlePresence(evt)),
+      api.chat.onJoinRequest?.((evt: ChatJoinRequestEvent) => handleJoinRequest(evt)),
+      api.chat.onMessageEdited?.((evt: ChatMessageEditedEvent) => handleMessageEdited(evt)),
+      api.chat.onMessageDeleted?.((evt: ChatMessageDeletedEvent) => handleMessageDeleted(evt)),
     ];
     return () => unsubs.forEach((u) => u?.());
   }, []);

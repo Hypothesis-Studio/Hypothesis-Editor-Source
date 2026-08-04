@@ -868,7 +868,7 @@ const api = {
 
   // Chat Collaboration
   chat: {
-    create: (options: { name: string; userName: string; localPort?: number; openJoin?: boolean; tunnelId?: string | null }) =>
+    create: (options: { name: string; userName: string; localPort?: number; openJoin?: boolean; tunnelId?: string | null; aiEnabled?: boolean; aiAgentId?: string }) =>
       ipcRenderer.invoke('chat:create', options),
     join: (options: { url: string; userName: string }) =>
       ipcRenderer.invoke('chat:join', options),
@@ -876,12 +876,23 @@ const api = {
     close: (roomId: string) => ipcRenderer.invoke('chat:close', roomId),
     list: () => ipcRenderer.invoke('chat:list'),
     get: (roomId: string) => ipcRenderer.invoke('chat:get', roomId),
-    send: (roomId: string, content: string) => ipcRenderer.invoke('chat:send', roomId, content),
+    send: (roomId: string, content: string, replyToId?: string) => ipcRenderer.invoke('chat:send', roomId, content, replyToId),
+    sendCode: (roomId: string, code: string, language: string, replyToId?: string) => ipcRenderer.invoke('chat:send-code', roomId, code, language, replyToId),
+    sendFile: (roomId: string, fileName: string, fileData: string, fileMimeType: string) => ipcRenderer.invoke('chat:send-file', roomId, fileName, fileData, fileMimeType),
+    editMessage: (roomId: string, messageId: string, newContent: string, senderId: string) => ipcRenderer.invoke('chat:edit-message', roomId, messageId, newContent, senderId),
+    deleteMessage: (roomId: string, messageId: string, senderId: string) => ipcRenderer.invoke('chat:delete-message', roomId, messageId, senderId),
     updateName: (roomId: string, name: string) => ipcRenderer.invoke('chat:update-name', roomId, name),
     copyUrl: (roomId: string) => ipcRenderer.invoke('chat:copy-url', roomId),
     findFreePort: (preferred?: number) => ipcRenderer.invoke('chat:find-free-port', preferred),
     updatePublicUrl: (roomId: string, publicUrl: string, tunnelId: string) => ipcRenderer.invoke('chat:update-public-url', roomId, publicUrl, tunnelId),
     kick: (roomId: string, userId: string) => ipcRenderer.invoke('chat:kick', roomId, userId),
+    typing: (roomId: string, userId: string, userName: string, isTyping: boolean) => ipcRenderer.invoke('chat:typing', roomId, userId, userName, isTyping),
+    react: (roomId: string, messageId: string, emoji: string, userId: string, userName: string) => ipcRenderer.invoke('chat:react', roomId, messageId, emoji, userId, userName),
+    read: (roomId: string, messageId: string, userId: string) => ipcRenderer.invoke('chat:read', roomId, messageId, userId),
+    presence: (roomId: string, userId: string, activeFile?: string, activeLine?: number) => ipcRenderer.invoke('chat:presence', roomId, userId, activeFile, activeLine),
+    approveJoin: (roomId: string, requestId: string) => ipcRenderer.invoke('chat:approve-join', roomId, requestId),
+    denyJoin: (roomId: string, requestId: string) => ipcRenderer.invoke('chat:deny-join', roomId, requestId),
+    toggleAi: (roomId: string, enabled: boolean, agentId?: string) => ipcRenderer.invoke('chat:toggle-ai', roomId, enabled, agentId),
     onMessage: (callback: (event: unknown) => void) => {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
       ipcRenderer.on('chat:evt:message', handler);
@@ -906,6 +917,46 @@ const api = {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
       ipcRenderer.on('chat:evt:room-closed', handler);
       return () => ipcRenderer.removeListener('chat:evt:room-closed', handler);
+    },
+    onTyping: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:typing', handler);
+      return () => ipcRenderer.removeListener('chat:evt:typing', handler);
+    },
+    onReaction: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:reaction', handler);
+      return () => ipcRenderer.removeListener('chat:evt:reaction', handler);
+    },
+    onRead: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:read', handler);
+      return () => ipcRenderer.removeListener('chat:evt:read', handler);
+    },
+    onPresence: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:presence', handler);
+      return () => ipcRenderer.removeListener('chat:evt:presence', handler);
+    },
+    onJoinRequest: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:join-request', handler);
+      return () => ipcRenderer.removeListener('chat:evt:join-request', handler);
+    },
+    onJoinResponse: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:join-response', handler);
+      return () => ipcRenderer.removeListener('chat:evt:join-response', handler);
+    },
+    onMessageEdited: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:message-edited', handler);
+      return () => ipcRenderer.removeListener('chat:evt:message-edited', handler);
+    },
+    onMessageDeleted: (callback: (event: unknown) => void) => {
+      const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
+      ipcRenderer.on('chat:evt:message-deleted', handler);
+      return () => ipcRenderer.removeListener('chat:evt:message-deleted', handler);
     },
   },
 

@@ -39,7 +39,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
 
   const { tabs, activeTabId } = useEditorStore();
   const activeTab = tabs.find(t => t.id === activeTabId);
-  const activeFilePath = activeTab?.filePath || activeTab?.title || undefined;
+  const activeFilePath = activeTab?.filePath || activeTab?.fileName || undefined;
 
   const [input, setInput] = useState('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; selection: string } | null>(null);

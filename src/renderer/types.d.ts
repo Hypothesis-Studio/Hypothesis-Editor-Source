@@ -142,8 +142,8 @@ interface Window {
     };
     agent: {
       chat: {
-        send(sessionId: string, content: string, agentId?: string, workspacePath?: string): Promise<{ success: boolean; data?: unknown; error?: string }>;
-        stream(sessionId: string, content: string, agentId?: string, workspacePath?: string): Promise<{ success: boolean; error?: string }>;
+        send(sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[]): Promise<{ success: boolean; data?: unknown; error?: string }>;
+        stream(sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[]): Promise<{ success: boolean; error?: string }>;
         cancel(sessionId: string): Promise<{ success: boolean; error?: string }>;
         history(sessionId: string): Promise<{ success: boolean; data?: unknown[]; error?: string }>;
       };

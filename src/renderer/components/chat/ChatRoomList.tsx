@@ -29,19 +29,13 @@ export const ChatRoomList: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createName.trim() || !createUserName.trim()) return;
-    await createRoom({
-      name: createName.trim(),
-      userName: createUserName.trim(),
-      localPort: createPort ? parseInt(createPort, 10) : undefined,
-      openJoin: createOpenJoin,
-      tunnelId: createTunnelId || null,
-    });
+    await createRoom();
   };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinUrl.trim() || !joinUserName.trim()) return;
-    await joinRoom({ url: joinUrl.trim(), userName: joinUserName.trim() });
+    await joinRoom();
   };
 
   const handleFindPort = async () => {

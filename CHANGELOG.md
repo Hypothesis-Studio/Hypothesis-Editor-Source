@@ -3,25 +3,37 @@
 ## [0.2.9] - 2026-08-02
 
 ### Added
-- **Realtime Chat Collaboration** — chat with others in real time directly inside the editor. Host a room on your local network (LAN/WebSocket) or share a public URL via the Tunnel feature. The chat opens as a dedicated editor tab so you can write code and chat at the same time.
-- **Public rooms via Tunnel** — when hosting a room, toggle Public mode to generate a shareable link anyone can join from outside your network, powered by the existing Tunnel feature.
-- **Kick participants** — room hosts can remove a participant from the room at any time.
-- **AI Agent now works across multiple open folders** — when you have more than one project folder open, the AI Agent now sees all of them, can read and edit files from any folder, and mentions all open workspaces in its context.
-- **ER Diagram Auto Generator** — generate a high-level Entity Relationship diagram from any connected database schema in one click. Accessible via the diagram icon next to the database name in the Database Explorer sidebar. The diagram renders all tables, columns, primary keys, foreign keys, and relations as an interactive SVG canvas with pan, zoom, and draggable table cards. Hovering a table highlights all its foreign key relations and the connected columns on both ends.
-- **ER Diagram Minimap** — a thumbnail overview panel in the corner of the ER Diagram canvas. Shows all tables and relations at a glance and lets you click to navigate to any area of a large diagram. Toggle it with the Map button in the toolbar.
-- **Inline cell editing in Table Data viewer** — double-click any cell to edit its value directly in the table. Press Enter or Tab to save, Escape to cancel. Changes are written back to the database immediately using a parameterized UPDATE query keyed on the row's primary key.
-- **FK navigation in Table Data viewer** — foreign key columns now show a → button next to each value. Clicking it previews the referenced row in a popup and lets you jump straight to that table with one more click.
-- **Export Table Data** — export any table's full data as CSV, JSON, or SQL INSERT statements from the Export button in the Table Data viewer toolbar.
-- **Export ER Diagram** — export the current ER Diagram as a PNG or SVG file from the Export button in the diagram toolbar.
-- **Database Explorer sidebar tree redesigned** — replaced emoji icons with proper SVG icons and file-explorer-style tree connector lines, showing the full table/view/column hierarchy with accurate branch and continuation lines at every depth level.
+- **Real-time Chat Collaboration** — Chat with others directly in the editor while still writing code. You can host a room on your local network or share a public link via the Tunnel feature.
+- **Public Rooms via Tunnel** — Enable Public mode when creating a room to get a link that can be shared with anyone outside your local network.
+- **Invite AI to a Chat Room** — Hosts can activate an AI assistant in the room. Type `@ai` in the chat and the AI ​​will reply instantly as a separate bubble. This can be turned on and off at any time.
+- **Choose a dedicated AI agent for Chat** — In Settings → Chat Collaboration, you can choose which AI agent responds to `@ai` mentions in the chat room, separate from agents used elsewhere.
+- **Typing Indicator** — Animated moving dots appear when a participant is composing a message.
+- **Send Code Snippets** — Click the `<>` button in the compose bar, select a language, and your code will appear with syntax highlighting and a one-click copy button for all participants.
+- **Send files** — attach files up to 2 MB. Images appear directly in the chat; other files appear as download cards.
+- **Message reactions** — hover over a message and click an emoji to react. Reactions sync to all participants instantly.
+- **Reply to messages** — hover over a message and click the reply icon to quote the message as the context for your reply.
+- **Join approval queue** — hosts can enable approval mode so that every new participant needs to be approved before joining the room.
+- **Cursor / presence sharing** — the participant sidebar displays which files and lines each person is editing, updating in real time.
+- **Kick participants** — hosts can remove participants from the room at any time.
+- **Edit and delete messages** — hover over your own message to edit or delete it; changes are immediately visible to all participants.
+- **Message read receipts** — double-checkmark indicators appear after another participant has read your message.
+- **Saved message history** — Chat history (up to 500 messages per room) and active rooms are automatically saved and reappear the next time the app is opened.
+- **Auto-generator ER Diagram** — create Entity Relationship diagrams from connected database schemas with just one click. The interactive diagram displays all tables, columns, primary keys, foreign keys, and relationships between tables in a pan- and zoom-able SVG view with freely swiping table cards.
+- **Minimap ER Diagram** — a thumbnail panel in the corner of the ER Diagram canvas for quick navigation to any part of the large diagram.
+- **Edit cells directly in the Table Data viewer** — double-click any cell to edit its value directly in the table. Press Enter or Tab to save, Escape to cancel.
+- **Foreign key navigation in the Table Data viewer** — foreign key columns now display a → button next to each value to instantly jump to the referenced row.
+- **Export table data** — export table data as CSV, JSON, or SQL INSERT from the Table Data viewer toolbar.
+- **Export ER Diagram** — save the diagram as a PNG or SVG file from the diagram toolbar.
+- **Updated Database Explorer view** — icons replaced with cleaner SVGs and file explorer-like tree lines for easier navigation of tables, views, and columns.
+- **AI Agent now supports multiple folders** — when multiple project folders are open, AI Agent can read and edit files from all of them.
 
 ### Fixed
-- The AI ​​Agent now performs better when multiple projects are open simultaneously.
-- Fixed an issue where the AI ​​Agent would sometimes freeze or stop responding after responding.
+- AI Agent now performs better when multiple projects are open simultaneously.
+- Fixed a bug that sometimes caused AI Agent to stop responding mid-process.
 - Stopped or canceled AI responses are now saved and not lost.
-- Fixed an issue that could cause new join sessions to freeze when switching sessions while the AI ​​was working.
-- Improved AI connection stability so the Agent can continue to complete responses even if there are connection issues.
-- Improved AI Agent performance when using Anthropic and Gemini.
+- Fixed a bug that caused a new session to hang when switching sessions while AI was working.
+- Improved AI connection stability so that the Agent can complete responses even if there are connection interruptions.
+- Improved AI Agent performance with Anthropic and Gemini.
 
 ## [0.2.8] - 2026-08-02
 

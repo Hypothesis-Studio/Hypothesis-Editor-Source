@@ -163,6 +163,8 @@ if (!gotTheLock) {
 
     // Initialize Chat Collaboration service
     chatService = new ChatService();
+    chatService.setAgentService(agentService);
+    chatService.setAppStore(appStore);
 
     // Auto-updater (wrapped — fails silently for dev/portable builds)
     try {

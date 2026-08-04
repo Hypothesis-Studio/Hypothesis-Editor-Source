@@ -12,7 +12,7 @@ import type { AIProviderConfig, AgentConfig as AgentConfigType, AIProviderType }
 const profileSvgs = import.meta.glob('/src/renderer/assets/icons/profile/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const PROFILE_AVATARS: string[] = Object.values(profileSvgs);
 
-type SettingsSection = 'providers' | 'agents' | 'tools' | 'source-control' | 'system';
+type SettingsSection = 'providers' | 'agents' | 'tools' | 'source-control' | 'chat' | 'system';
 
 export const AgentSettingsPanel: React.FC = () => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('providers');
@@ -32,6 +32,7 @@ export const AgentSettingsPanel: React.FC = () => {
     { id: 'agents', label: 'Agent Profiles', count: agentConfigs.length },
     { id: 'tools', label: 'Tools', count: tools.length },
     { id: 'source-control', label: 'Source Control' },
+    { id: 'chat', label: 'Chat Collaboration' },
     { id: 'system', label: 'System & Health' },
   ];
 
@@ -74,6 +75,7 @@ export const AgentSettingsPanel: React.FC = () => {
         {activeSection === 'agents' && <AgentsSection />}
         {activeSection === 'tools' && <ToolsSection />}
         {activeSection === 'source-control' && <SourceControlSection />}
+        {activeSection === 'chat' && <ChatCollaborationSection />}
         {activeSection === 'system' && <SystemSection />}
       </div>
     </div>
@@ -81,6 +83,103 @@ export const AgentSettingsPanel: React.FC = () => {
 };
 
 // ── Providers Section ──────────────────────────────────────────
+// ── Chat Collaboration Section ───────────────────────────────
+
+const ChatCollaborationSection: React.FC = () => {
+  const { agentConfigs } = useAgentStore();
+  const { settings, setSetting } = useSettingsStore();
+  const currentAgentId = (settings['chat.aiAgentId'] as string) || '';
+  const selectedAgent = agentConfigs.find(a => a.id === currentAgentId) ?? agentConfigs[0] ?? null;
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-fg)', margin: '0 0 8px' }}>Chat Collaboration</h3>
+      <p style={{ fontSize: 11, color: 'var(--theme-fg-muted)', marginBottom: 16 }}>
+        Select the AI agent used when someone mentions <code style={{ background: 'var(--theme-bg-tertiary)', padding: '1px 5px', borderRadius: 3, fontSize: 10 }}>@ai</code> in a chat room.
+        The selected agent will respond to mentions in all hosted rooms.
+      </p>
+
+      {agentConfigs.length === 0 ? (
+        <div style={{
+          padding: '16px 20px', borderRadius: 6, border: '1px solid var(--theme-border)',
+          background: 'var(--theme-bg-secondary)', fontSize: 11, color: 'var(--theme-fg-muted)',
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <div style={{ color: 'var(--theme-warning, #f59e0b)', fontWeight: 500 }}>⚠ No AI agents configured yet</div>
+          <div>Open the <strong>Agent Profiles</strong> tab to create an agent first.</div>
+        </div>
+      ) : (
+        <div style={cardStyle}>
+          <label style={{ ...labelStyle, fontSize: 11, marginBottom: 8, display: 'block' }}>Agent for @ai mentions</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {/* Default option */}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 8px', borderRadius: 4,
+              background: !currentAgentId ? 'var(--theme-bg-active)' : 'transparent',
+              border: !currentAgentId ? '1px solid var(--theme-accent)' : '1px solid transparent',
+            }}>
+              <input type="radio" name="chatAgent" value=""
+                checked={!currentAgentId}
+                onChange={() => setSetting('chat.aiAgentId', '')}
+                style={{ accentColor: 'var(--theme-accent)' }}
+              />
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500 }}>
+                  Auto (first agent) {agentConfigs[0] ? `— ${agentConfigs[0].name}` : ''}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>Always use first agent from Agent Profiles list</div>
+              </div>
+            </label>
+
+            {/* Per-agent options */}
+            {agentConfigs.map(agent => {
+              const isSelected = currentAgentId === agent.id;
+              return (
+                <label key={agent.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 8px', borderRadius: 4,
+                  background: isSelected ? 'var(--theme-bg-active)' : 'transparent',
+                  border: isSelected ? '1px solid var(--theme-accent)' : '1px solid transparent',
+                }}>
+                  <input type="radio" name="chatAgent" value={agent.id}
+                    checked={isSelected}
+                    onChange={() => setSetting('chat.aiAgentId', agent.id)}
+                    style={{ accentColor: 'var(--theme-accent)' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500 }}>{agent.name}</div>
+                    <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {agent.modelId || 'No model'} · temp={agent.temperature}
+                    </div>
+                  </div>
+                  {/* Robot icon badge */}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--theme-fg-muted)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="8" width="18" height="12" rx="2" />
+                    <path d="M9 8V6a3 3 0 016 0v2" />
+                    <circle cx="9" cy="14" r="1.5" fill="var(--theme-fg-muted)" stroke="none" />
+                    <circle cx="15" cy="14" r="1.5" fill="var(--theme-fg-muted)" stroke="none" />
+                    <path d="M9 18h6" />
+                    <path d="M12 2v2" />
+                  </svg>
+                </label>
+              );
+            })}
+          </div>
+
+          {selectedAgent && (
+            <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 4, background: 'var(--theme-bg-tertiary)', fontSize: 10, color: 'var(--theme-fg-muted)' }}>
+              <strong style={{ color: 'var(--theme-fg)' }}>Agent aktif:</strong> {selectedAgent.name}
+              {selectedAgent.modelId && <> · <span>{selectedAgent.modelId}</span></>}
+              {!selectedAgent.providerId && (
+                <span style={{ color: 'var(--theme-warning, #f59e0b)', marginLeft: 8 }}>⚠ Provider not configured</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Source Control Section ────────────────────────────────────
 
 const SourceControlSection: React.FC = () => {
