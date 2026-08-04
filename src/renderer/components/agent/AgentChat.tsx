@@ -1,9 +1,9 @@
-/**
+﻿/**
  * AgentChat - Full-featured chat interface for the AI agent.
  * Supports streaming, markdown, tool display, slash commands with autocomplete, session management, clear.
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useAgentStore } from '../../stores/agentStore';
+import { useAgentStore, type ActiveToolCall, type PendingApproval } from '../../stores/agentStore';
 import { useEditorStore } from '../../stores/editorStore';
 import type { ChatMessage, StreamEvent, AgentTask } from '../../../shared/types/agent';
 import { executeSlashCommand, filterSlashCommands, type SlashCommand } from './SlashCommands';
@@ -29,11 +29,17 @@ interface AgentChatProps {
 export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
   const {
     messages, sessions, activeSessionId, isStreaming, streamingContent,
+    activeToolCalls, pendingApprovals,
     agentConfigs, activeAgentId, providers, tools, healthStatus, tasks,
     sendMessage, sendWithContext, cancelStream, createSession, setActiveSession, deleteSession,
     loadSessions, handleStreamEvent, setActiveAgent,
     loadAgentConfigs, loadProviders, clearMessages, clearMemory, searchMemory, loadHealthStatus,
+    approveToolCall, denyToolCall,
   } = useAgentStore();
+
+  const { tabs, activeTabId } = useEditorStore();
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  const activeFilePath = activeTab?.filePath || activeTab?.title || undefined;
 
   const [input, setInput] = useState('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; selection: string } | null>(null);
@@ -43,6 +49,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
   const [suggestions, setSuggestions] = useState<SlashCommand[]>([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [messageFeedback, setMessageFeedback] = useState<Map<string, 'up' | 'down'>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -169,11 +176,18 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
         tools,
         messages,
         onOpenSettings,
+        activeFilePath,
+        selectedCode: prefillCode || undefined,
       });
 
       if (result.handled) {
-        if (result.message) addSystemMessage(result.message);
-        result.action?.();
+        if (result.aiPrompt) {
+          // AI command — send the smart prompt to the agent
+          await sendMessage(result.aiPrompt);
+        } else {
+          if (result.message) addSystemMessage(result.message);
+          result.action?.();
+        }
         return;
       }
     }
@@ -439,14 +453,36 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
 
         <div style={{ flex: 1 }} />
 
-        {/* Provider/model info */}
+        {/* Active file context badge + Provider/model info */}
         {activeAgentId && (() => {
           const agent = agentConfigs.find(a => a.id === activeAgentId);
           if (!agent) return null;
           const provider = providers.find(p => p.id === agent.providerId);
           return (
-            <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>
-              {provider?.name || 'No provider'} · {agent.modelId || 'No model'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {activeFilePath && (
+                <button
+                  onClick={() => {
+                    const tab = tabs.find((t: any) => t.filePath === activeFilePath || t.title === activeFilePath);
+                    if (tab) useEditorStore.getState().setActiveTab(tab.id);
+                  }}
+                  title={`Context: ${activeFilePath}`}
+                  style={{
+                    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)',
+                    borderRadius: 4, padding: '2px 7px', fontSize: 9, color: 'var(--theme-accent)',
+                    cursor: 'pointer', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  <svg width={9} height={9} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {(activeFilePath.split('/').pop() || '').split('\\').pop() || activeFilePath}
+                </button>
+              )}
+              <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>
+                {provider?.name || 'No provider'} · {agent.modelId || 'No model'}
+              </div>
             </div>
           );
         })()}
@@ -492,10 +528,43 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
           </div>
         )}
 
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} agentAvatar={agentConfigs.find(a => a.id === activeAgentId)?.agentAvatar} userAvatar={agentConfigs.find(a => a.id === activeAgentId)?.userAvatar} />
+        {messages.map((msg, idx) => (
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            agentAvatar={agentConfigs.find(a => a.id === activeAgentId)?.agentAvatar}
+            userAvatar={agentConfigs.find(a => a.id === activeAgentId)?.userAvatar}
+            feedback={messageFeedback.get(msg.id)}
+            onFeedback={(v) => setMessageFeedback(prev => new Map(prev).set(msg.id, v))}
+            onRetry={msg.role === 'assistant' ? () => {
+              const prevUser = [...messages].slice(0, idx).reverse().find(m => m.role === 'user');
+              if (prevUser) {
+                useAgentStore.setState(s => ({ messages: s.messages.filter((_, i) => i < idx) }));
+                sendMessage(prevUser.content);
+              }
+            } : undefined}
+          />
         ))}
 
+
+        {/* Active tool calls - shown during streaming */}
+        {activeToolCalls.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            {activeToolCalls.map((tc) => (
+              <ToolCallCard key={tc.id} call={tc} />
+            ))}
+          </div>
+        )}
+
+        {/* Approval gates for dangerous operations */}
+        {pendingApprovals.map((approval) => (
+          <ApprovalGate
+            key={approval.id}
+            approval={approval}
+            onApprove={() => approveToolCall(approval.sessionId, approval.id)}
+            onDeny={() => denyToolCall(approval.sessionId, approval.id)}
+          />
+        ))}
         {/* Streaming content */}
         {isStreaming && streamingContent && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'flex-start' }}>
@@ -654,6 +723,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
@@ -661,7 +731,212 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
 
 // ── Message Bubble ─────────────────────────────────────────────
 
-const MessageBubble: React.FC<{ message: ChatMessage; agentAvatar?: string; userAvatar?: string }> = ({ message, agentAvatar, userAvatar }) => {
+// ── Tool Call Card ────────────────────────────────────────────────────────────
+
+const DANGEROUS_TOOLS = new Set(['deleteFile', 'terminalRun', 'writeFile', 'editFile', 'gitPush', 'gitCommit']);
+
+const TOOL_ICONS: Record<string, string> = {
+  file: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  terminal: 'M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+  git: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4',
+  search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+  web: 'M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9',
+  editor: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z',
+};
+
+function getToolIcon(toolName: string): string {
+  if (/file|read|write|edit|append|insert|replace|copy|move|delete|create|list|getFile|getProject/.test(toolName)) return TOOL_ICONS.file;
+  if (/terminal|run|exec|test/.test(toolName)) return TOOL_ICONS.terminal;
+  if (/git/.test(toolName)) return TOOL_ICONS.git;
+  if (/search|find/.test(toolName)) return TOOL_ICONS.search;
+  if (/fetch|web|url|http/.test(toolName)) return TOOL_ICONS.web;
+  return TOOL_ICONS.editor;
+}
+
+const ToolCallCard: React.FC<{ call: ActiveToolCall }> = React.memo(({ call }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isDangerous = DANGEROUS_TOOLS.has(call.name);
+  const isRunning = call.status === 'running';
+  const isError = call.status === 'error';
+  const durationMs = call.completedAt ? call.completedAt - call.startedAt : Date.now() - call.startedAt;
+
+  const accentColor = isError ? 'var(--theme-error)' : isDangerous ? '#f59e0b' : 'var(--theme-accent)';
+  const iconPath = getToolIcon(call.name);
+
+  const argSummary = call.args
+    ? Object.entries(call.args)
+        .slice(0, 2)
+        .map(([k, v]) => `${k}: ${String(v).substring(0, 40)}`)
+        .join(', ')
+    : '';
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 8,
+      padding: '5px 10px', marginBottom: 3,
+      background: 'var(--theme-bg-tertiary)', borderRadius: 5,
+      border: `1px solid ${isError ? 'var(--theme-error)' : isDangerous ? 'rgba(245,158,11,0.3)' : 'var(--theme-border)'}`,
+      borderLeft: `3px solid ${accentColor}`,
+      fontSize: 11,
+    }}>
+      {/* Icon */}
+      <div style={{ paddingTop: 1, flexShrink: 0 }}>
+        {isRunning ? (
+          <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${accentColor}`, borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+        ) : (
+          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke={accentColor} strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
+          </svg>
+        )}
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontWeight: 600, color: accentColor, fontFamily: 'monospace', fontSize: 11 }}>{call.name}</span>
+          {argSummary && <span style={{ color: 'var(--theme-fg-muted)', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{argSummary}</span>}
+          <span style={{ fontSize: 9, color: 'var(--theme-fg-muted)', flexShrink: 0 }}>
+            {isRunning ? 'running...' : `${durationMs}ms`}
+          </span>
+          {(call.output || call.error) && (
+            <button onClick={() => setExpanded(!expanded)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-fg-muted)', padding: 0, fontSize: 10 }}>
+              {expanded ? '▲' : '▼'}
+            </button>
+          )}
+        </div>
+        {isError && call.error && (
+          <div style={{ fontSize: 10, color: 'var(--theme-error)', marginTop: 2 }}>{call.error.substring(0, 120)}</div>
+        )}
+        {expanded && call.output && (
+          <pre style={{ margin: '4px 0 0', padding: '4px 6px', background: 'var(--theme-bg-secondary)', borderRadius: 3, fontSize: 10, fontFamily: 'monospace', maxHeight: 120, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {call.output.substring(0, 1000)}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+});
+
+// ── Approval Gate ─────────────────────────────────────────────────────────────
+
+const ApprovalGate: React.FC<{ approval: PendingApproval; onApprove: () => void; onDeny: () => void }> = React.memo(({ approval, onApprove, onDeny }) => {
+  const [secondsLeft, setSecondsLeft] = useState(60);
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setSecondsLeft(s => {
+        if (s <= 1) { clearInterval(iv); onDeny(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [onDeny]);
+
+  return (
+    <div style={{
+      background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.4)',
+      borderRadius: 8, padding: '12px 14px', marginBottom: 8,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <svg width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="#f59e0b" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>Confirm: {approval.toolName}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--theme-fg-muted)' }}>Auto-deny in {secondsLeft}s</span>
+      </div>
+      <pre style={{
+        background: 'var(--theme-bg-secondary)', borderRadius: 4,
+        padding: '6px 8px', fontSize: 10, fontFamily: 'monospace',
+        maxHeight: 120, overflow: 'auto', margin: '0 0 10px',
+        whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+        color: 'var(--theme-fg)',
+      }}>
+        {JSON.stringify(approval.args, null, 2)}
+      </pre>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={onApprove}
+          style={{ flex: 1, padding: '6px 12px', borderRadius: 5, border: 'none', background: '#22c55e', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+        >
+          ✓ Approve
+        </button>
+        <button
+          onClick={onDeny}
+          style={{ flex: 1, padding: '6px 12px', borderRadius: 5, border: 'none', background: 'var(--theme-error)', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+        >
+          ✗ Deny
+        </button>
+      </div>
+    </div>
+  );
+});
+
+// ── Diff Preview Card ─────────────────────────────────────────────────────────
+
+function computeUnifiedDiff(oldText: string, newText: string): Array<{ type: 'equal' | 'add' | 'remove'; line: string; lineNo: number }> {
+  const oldLines = oldText.split('\n');
+  const newLines = newText.split('\n');
+  const result: Array<{ type: 'equal' | 'add' | 'remove'; line: string; lineNo: number }> = [];
+
+  // Simple LCS-based diff
+  const m = oldLines.length, n = newLines.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--)
+    for (let j = n - 1; j >= 0; j--)
+      dp[i][j] = oldLines[i] === newLines[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+
+  let i = 0, j = 0, lineNo = 1;
+  while (i < m || j < n) {
+    if (i < m && j < n && oldLines[i] === newLines[j]) {
+      result.push({ type: 'equal', line: oldLines[i], lineNo: lineNo++ });
+      i++; j++;
+    } else if (j < n && (i >= m || dp[i + 1][j] <= dp[i][j + 1])) {
+      result.push({ type: 'add', line: newLines[j], lineNo: lineNo++ });
+      j++;
+    } else {
+      result.push({ type: 'remove', line: oldLines[i], lineNo });
+      i++;
+    }
+  }
+  return result;
+}
+
+const DiffPreviewCard: React.FC<{ filePath: string; oldContent: string; newContent: string; onAccept: () => void; onReject: () => void }> = React.memo(({ filePath, oldContent, newContent, onAccept, onReject }) => {
+  const diff = React.useMemo(() => computeUnifiedDiff(oldContent, newContent), [oldContent, newContent]);
+  const changes = diff.filter(d => d.type !== 'equal').length;
+
+  return (
+    <div style={{ background: 'var(--theme-bg-secondary)', border: '1px solid var(--theme-border)', borderRadius: 8, margin: '8px 0', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--theme-bg-tertiary)', borderBottom: '1px solid var(--theme-border)' }}>
+        <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--theme-fg)', flex: 1 }}>{filePath}</span>
+        <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>{changes} change{changes !== 1 ? 's' : ''}</span>
+      </div>
+      <div style={{ maxHeight: 280, overflow: 'auto', fontFamily: 'monospace', fontSize: 10 }}>
+        {diff.map((d, i) => (
+          <div key={i} style={{
+            display: 'flex', gap: 8, padding: '0 10px',
+            background: d.type === 'add' ? 'rgba(34,197,94,0.1)' : d.type === 'remove' ? 'rgba(239,68,68,0.1)' : 'transparent',
+            borderLeft: d.type === 'add' ? '3px solid #22c55e' : d.type === 'remove' ? '3px solid #ef4444' : '3px solid transparent',
+          }}>
+            <span style={{ color: 'var(--theme-fg-muted)', minWidth: 28, userSelect: 'none' }}>{d.type !== 'remove' ? d.lineNo : ''}</span>
+            <span style={{ color: d.type === 'add' ? '#22c55e' : d.type === 'remove' ? '#ef4444' : 'var(--theme-fg-muted)', minWidth: 12 }}>
+              {d.type === 'add' ? '+' : d.type === 'remove' ? '-' : ' '}
+            </span>
+            <span style={{ color: d.type === 'equal' ? 'var(--theme-fg-muted)' : 'var(--theme-fg)', flex: 1, whiteSpace: 'pre' }}>{d.line}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--theme-border)' }}>
+        <button onClick={onAccept} style={{ flex: 1, padding: '5px 10px', borderRadius: 4, border: 'none', background: '#22c55e', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Accept</button>
+        <button onClick={onReject} style={{ flex: 1, padding: '5px 10px', borderRadius: 4, border: 'none', background: 'var(--theme-error)', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Reject</button>
+      </div>
+    </div>
+  );
+});
+const MessageBubble: React.FC<{ message: ChatMessage; agentAvatar?: string; userAvatar?: string; onRetry?: () => void; feedback?: 'up' | 'down'; onFeedback?: (v: 'up' | 'down') => void }> = React.memo(({ message, agentAvatar, userAvatar, onRetry, feedback, onFeedback }) => {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const isError = message.status === 'error';
@@ -756,14 +1031,46 @@ const MessageBubble: React.FC<{ message: ChatMessage; agentAvatar?: string; user
           </div>
         )}
 
-        {/* Timestamp */}
-        <div style={{ fontSize: 9, color: 'var(--theme-fg-muted)', marginTop: 4, opacity: 0.6 }}>
-          {new Date(message.timestamp).toLocaleTimeString()}
+        {/* Timestamp + Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--theme-fg-muted)', opacity: 0.6, flex: 1 }}>
+            {new Date(message.timestamp).toLocaleTimeString()}
+          </div>
+          {!isUser && !isSystem && onRetry && (
+            <button
+              onClick={onRetry}
+              title="Retry"
+              aria-label="Retry this response"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-fg-muted)', padding: '1px 4px', borderRadius: 3, opacity: 0.5, transition: 'opacity 0.15s' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.5'; }}
+            >
+              <svg width={11} height={11} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          )}
+          {!isUser && !isSystem && onFeedback && (
+            <>
+              <button
+                onClick={() => onFeedback('up')}
+                title="Good response"
+                aria-label="Good response"
+                style={{ background: feedback === 'up' ? 'rgba(34,197,94,0.15)' : 'none', border: 'none', cursor: 'pointer', color: feedback === 'up' ? '#22c55e' : 'var(--theme-fg-muted)', padding: '1px 4px', borderRadius: 3, fontSize: 11, opacity: feedback === 'up' ? 1 : 0.5, transition: 'opacity 0.15s' }}
+              >👍</button>
+              <button
+                onClick={() => onFeedback('down')}
+                title="Poor response"
+                aria-label="Poor response"
+                style={{ background: feedback === 'down' ? 'rgba(239,68,68,0.15)' : 'none', border: 'none', cursor: 'pointer', color: feedback === 'down' ? '#ef4444' : 'var(--theme-fg-muted)', padding: '1px 4px', borderRadius: 3, fontSize: 11, opacity: feedback === 'down' ? 1 : 0.5, transition: 'opacity 0.15s' }}
+              >👎</button>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
-};
+});
 
 // ── Markdown Renderer ──────────────────────────────────────────
 

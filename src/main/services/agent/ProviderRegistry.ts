@@ -10,6 +10,8 @@ import type {
 import { AgentError } from '../../../shared/types/agent';
 import type { ProviderAdapter, ChatCompletionRequest, ChatCompletionResponse } from './ProviderAdapter';
 import { OpenAICompatibleProvider } from './providers/OpenAICompatibleProvider';
+import { AnthropicProvider } from './providers/AnthropicProvider';
+import { GeminiProvider } from './providers/GeminiProvider';
 import { logger } from '../../utils/logger';
 import type { AppStore } from '../AppStore';
 
@@ -70,6 +72,10 @@ export class ProviderRegistry {
       case 'openai-compatible':
       case 'custom':
         return new OpenAICompatibleProvider(config) as unknown as ProviderAdapter;
+      case 'anthropic':
+        return new AnthropicProvider(config) as unknown as ProviderAdapter;
+      case 'gemini':
+        return new GeminiProvider(config) as unknown as ProviderAdapter;
       default:
         throw new AgentError(`Unknown provider type: ${config.type}`, 'INVALID_CONFIG', 'config');
     }

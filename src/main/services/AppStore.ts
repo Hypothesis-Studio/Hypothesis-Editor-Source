@@ -42,6 +42,7 @@ export class AppStore {
         'agent.configs': [],
         'agent.sessions': [],
         'agent.memory': [],
+        'agent.memory.v2': { hot: [], warm: [], cold: [] },
         'agent.tasks': [],
         'agent.disabledTools': [],
       },

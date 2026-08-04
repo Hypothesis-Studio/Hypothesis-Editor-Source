@@ -16,7 +16,12 @@
 - **Database Explorer sidebar tree redesigned** — replaced emoji icons with proper SVG icons and file-explorer-style tree connector lines, showing the full table/view/column hierarchy with accurate branch and continuation lines at every depth level.
 
 ### Fixed
-- AI Agent no longer ignores additional workspace folders when multiple projects are open simultaneously.
+- The AI ​​Agent now performs better when multiple projects are open simultaneously.
+- Fixed an issue where the AI ​​Agent would sometimes freeze or stop responding after responding.
+- Stopped or canceled AI responses are now saved and not lost.
+- Fixed an issue that could cause new join sessions to freeze when switching sessions while the AI ​​was working.
+- Improved AI connection stability so the Agent can continue to complete responses even if there are connection issues.
+- Improved AI Agent performance when using Anthropic and Gemini.
 
 ## [0.2.8] - 2026-08-02
 

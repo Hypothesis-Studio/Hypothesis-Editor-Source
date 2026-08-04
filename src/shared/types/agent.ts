@@ -7,7 +7,7 @@
 // Provider & Model Types
 // ============================================================================
 
-export type AIProviderType = 'openrouter' | 'ninerouter' | 'openai-compatible' | 'custom';
+export type AIProviderType = 'openrouter' | 'ninerouter' | 'openai-compatible' | 'custom' | 'anthropic' | 'gemini';
 
 export interface AIProviderConfig {
   id: string;
@@ -133,7 +133,7 @@ Be concise in your explanations but thorough in your work.`,
   maxToolCalls: 10,
   toolCallTimeout: 30000,
   permissions: ['file:read', 'file:write', 'file:delete', 'terminal:read', 'terminal:execute', 'git:read', 'git:write'],
-  enabledTools: ['readFile', 'writeFile', 'editFile', 'listFiles', 'searchFiles', 'terminalRun', 'gitStatus', 'gitLog', 'gitDiff'],
+  enabledTools: ['readFile', 'writeFile', 'editFile', 'listFiles', 'searchFiles', 'terminalRun', 'gitStatus', 'gitLog', 'gitDiff', 'getOpenEditors', 'fetchWebPage', 'createDirectory', 'deleteFile', 'moveFile', 'copyFile', 'getFileInfo', 'insertAtLine', 'replaceLines', 'appendToFile', 'gitAdd', 'gitCommit', 'gitCheckout', 'gitBranch', 'gitPush', 'gitPull', 'openInEditor', 'runTests', 'getProjectInfo'],
   memoryEnabled: true,
   memoryMaxTokens: 4000,
   planningEnabled: true,

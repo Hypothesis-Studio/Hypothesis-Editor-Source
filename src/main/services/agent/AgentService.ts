@@ -403,7 +403,10 @@ export class AgentService {
         };
 
         for (const tc of turnToolCalls) {
-          if (abortController.signal.aborted) break;
+          if (abortController.signal.aborted) {
+            // Abort signalled mid-tool loop — break out cleanly
+            break;
+          }
 
           const resolvedId = this.tools.resolveToolId(tc.name) ?? tc.name;
           if (!this.tools.getTool(resolvedId)) {
@@ -466,9 +469,21 @@ export class AgentService {
           } as any);
         }
 
-        if (abortController.signal.aborted) break;
+        if (abortController.signal.aborted) {
+          // Aborted after tool execution — exit loop, yield content_done below
+          break;
+        }
 
         // Continue loop — next iteration will stream the AI's response to tool results
+      }
+
+      // MAX_TOOL_TURNS reached OR aborted mid-tool — always yield content_done to unblock UI
+      if (turn >= MAX_TOOL_TURNS) {
+        this.agentLogs.warn('agent', `MAX_TOOL_TURNS (${MAX_TOOL_TURNS}) reached — forcing stop`);
+        yield { type: 'content_done', data: { finishReason: 'max_turns' }, timestamp: Date.now() };
+      } else if (abortController.signal.aborted) {
+        // Stream was cancelled — flush any partial content and close cleanly
+        yield { type: 'content_done', data: { finishReason: 'cancelled' }, timestamp: Date.now() };
       }
 
       // Save final assistant message

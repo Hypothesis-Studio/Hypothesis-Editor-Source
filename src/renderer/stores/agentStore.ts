@@ -23,6 +23,25 @@ interface IPCResult<T = unknown> {
   error?: string;
 }
 
+export interface ActiveToolCall {
+  id: string;
+  name: string;
+  status: 'running' | 'completed' | 'error';
+  output?: string;
+  error?: string;
+  args?: Record<string, unknown>;
+  startedAt: number;
+  completedAt?: number;
+}
+
+export interface PendingApproval {
+  id: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  sessionId: string;
+  createdAt: number;
+}
+
 interface AgentState {
   agentConfigs: AgentConfig[];
   activeAgentId: string | null;
@@ -31,6 +50,8 @@ interface AgentState {
   messages: ChatMessage[];
   isStreaming: boolean;
   streamingContent: string;
+  activeToolCalls: ActiveToolCall[];
+  pendingApprovals: PendingApproval[];
   providers: AIProviderConfig[];
   providerStatuses: AIProviderStatus[];
   models: AIModelConfig[];
@@ -80,6 +101,9 @@ interface AgentState {
   clearMemory: (sessionId?: string) => Promise<void>;
   loadHealthStatus: () => Promise<void>;
   handleStreamEvent: (event: StreamEvent) => void;
+  clearActiveToolCalls: () => void;
+  approveToolCall: (sessionId: string, toolCallId: string) => Promise<void>;
+  denyToolCall: (sessionId: string, toolCallId: string) => Promise<void>;
 }
 
 // Streaming content buffer - accumulates deltas and flushes to store on RAF
@@ -88,9 +112,49 @@ let _rafId: number | null = null;
 let _storeRef: (() => AgentState) | null = null;
 let _setRef: ((partial: Partial<AgentState> | ((s: AgentState) => Partial<AgentState>)) => void) | null = null;
 let _pendingToolName: string | null = null;
+// Guards against isStreaming being stuck if the stream never sends content_done
+let _streamSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+const STREAM_SAFETY_TIMEOUT_MS = 90_000; // 90 s — longer than any provider timeout
+
+function cancelSafetyTimer() {
+  if (_streamSafetyTimer !== null) {
+    clearTimeout(_streamSafetyTimer);
+    _streamSafetyTimer = null;
+  }
+}
+
+function startSafetyTimer() {
+  cancelSafetyTimer();
+  _streamSafetyTimer = setTimeout(() => {
+    _streamSafetyTimer = null;
+    if (_setRef) {
+      flushStreamBuffer();
+      // Force-reset stuck streaming state
+      _setRef((s: AgentState) => {
+        if (!s.isStreaming) return {};
+        const extra: ChatMessage[] = [];
+        if (s.streamingContent) {
+          extra.push({
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content: s.streamingContent,
+            status: 'completed',
+            timestamp: Date.now(),
+          });
+        }
+        return {
+          messages: [...s.messages, ...extra],
+          isStreaming: false,
+          streamingContent: '',
+          activeToolCalls: [],
+        };
+      });
+    }
+  }, STREAM_SAFETY_TIMEOUT_MS);
+}
 
 function flushStreamBuffer() {
-  if (_rafId) {
+  if (_rafId !== null) {
     cancelAnimationFrame(_rafId);
     _rafId = null;
   }
@@ -102,12 +166,23 @@ function flushStreamBuffer() {
 
 function appendToBuffer(content: string) {
   _streamBuffer += content;
-  if (!_rafId) {
+  if (_rafId === null) {
     _rafId = requestAnimationFrame(() => {
       _rafId = null;
       flushStreamBuffer();
     });
   }
+}
+
+/** Hard-reset all module-level streaming state (call on session switch or store reset). */
+function resetStreamState() {
+  if (_rafId !== null) {
+    cancelAnimationFrame(_rafId);
+    _rafId = null;
+  }
+  cancelSafetyTimer();
+  _streamBuffer = '';
+  _pendingToolName = null;
 }
 
 export const useAgentStore = create<AgentState>((set, get) => {
@@ -122,6 +197,8 @@ export const useAgentStore = create<AgentState>((set, get) => {
     messages: [],
     isStreaming: false,
     streamingContent: '',
+    activeToolCalls: [],
+    pendingApprovals: [],
     providers: [],
     providerStatuses: [],
     models: [],
@@ -176,7 +253,9 @@ export const useAgentStore = create<AgentState>((set, get) => {
     },
 
     setActiveSession: (id) => {
-      set({ activeSessionId: id, messages: [], streamingContent: '' });
+      // Reset all streaming state when switching sessions to prevent stuck UI
+      resetStreamState();
+      set({ activeSessionId: id, messages: [], streamingContent: '', isStreaming: false, activeToolCalls: [] });
       if (id) get().loadMessages(id);
     },
 
@@ -227,8 +306,9 @@ export const useAgentStore = create<AgentState>((set, get) => {
         status: 'completed',
         timestamp: Date.now(),
       };
+      resetStreamState();
       set((s) => ({ messages: [...s.messages, userMsg], isStreaming: true, streamingContent: '' }));
-      _streamBuffer = '';
+      startSafetyTimer();
 
       await window.api.agent.chat.stream(sessionId, content, activeAgentId || undefined, workspacePath, workspaceFolders);
     },
@@ -259,8 +339,9 @@ export const useAgentStore = create<AgentState>((set, get) => {
         status: 'completed',
         timestamp: Date.now(),
       };
+      resetStreamState();
       set((s) => ({ messages: [...s.messages, userMsg], isStreaming: true, streamingContent: '' }));
-      _streamBuffer = '';
+      startSafetyTimer();
 
       await window.api.agent.chat.stream(sessionId, fullMessage, activeAgentId || undefined, workspacePath, workspaceFolders);
     },
@@ -269,8 +350,22 @@ export const useAgentStore = create<AgentState>((set, get) => {
       const { activeSessionId } = get();
       if (activeSessionId) {
         window.api.agent.chat.cancel(activeSessionId);
-        flushStreamBuffer();
-        set({ isStreaming: false });
+      }
+      // Always reset regardless of whether there's a session
+      cancelSafetyTimer();
+      flushStreamBuffer();
+      const { streamingContent, messages } = get();
+      if (streamingContent) {
+        const assistantMsg: ChatMessage = {
+          id: `msg-${Date.now()}`,
+          role: 'assistant',
+          content: streamingContent,
+          status: 'completed',
+          timestamp: Date.now(),
+        };
+        set({ messages: [...messages, assistantMsg], isStreaming: false, streamingContent: '', activeToolCalls: [] });
+      } else {
+        set({ isStreaming: false, streamingContent: '', activeToolCalls: [] });
       }
     },
 
@@ -287,6 +382,7 @@ export const useAgentStore = create<AgentState>((set, get) => {
           break;
         }
         case 'content_done': {
+          cancelSafetyTimer();
           flushStreamBuffer();
           const { streamingContent, messages } = get();
           if (streamingContent) {
@@ -297,49 +393,51 @@ export const useAgentStore = create<AgentState>((set, get) => {
               status: 'completed',
               timestamp: Date.now(),
             };
-            set({ messages: [...messages, assistantMsg], isStreaming: false, streamingContent: '' });
+            set({ messages: [...messages, assistantMsg], isStreaming: false, streamingContent: '', activeToolCalls: [] });
           } else {
-            set({ isStreaming: false, streamingContent: '' });
+            set({ isStreaming: false, streamingContent: '', activeToolCalls: [] });
           }
           break;
         }
         case 'tool_call_start': {
-          const tc = event.data as { toolCallId: string; name: string };
+          const tc = event.data as { toolCallId: string; name: string; args?: Record<string, unknown> };
           flushStreamBuffer();
           _pendingToolName = tc.name;
+          const newCall: ActiveToolCall = {
+            id: tc.toolCallId,
+            name: tc.name,
+            status: 'running',
+            args: tc.args,
+            startedAt: Date.now(),
+          };
+          set((s) => ({ activeToolCalls: [...s.activeToolCalls, newCall] }));
           break;
         }
         case 'tool_result': {
           const result = event.data as { toolCallId: string; status: string; output?: string; error?: string; name?: string; args?: Record<string, unknown> };
           flushStreamBuffer();
-          const toolName = _pendingToolName || result.name || 'tool';
           _pendingToolName = null;
-          // Extract file path from args for display
-          const filePath = (result.args?.path ?? result.args?.filePath ?? result.args?.file_path ?? result.args?.filename ?? result.args?.file ?? result.args?.repoPath ?? result.args?.command) as string | undefined;
-          const toolLabel = filePath ? `${toolName} ${filePath}` : toolName;
-          if (result.status === 'error' && result.error) {
-            set((s) => ({
-              streamingContent: s.streamingContent + `\n**${toolLabel}** — Error: ${result.error}\n`,
-            }));
-          } else if (result.output) {
-            const isCode = result.output.includes('\n') && (result.output.includes('{') || result.output.includes('<') || result.output.includes('function') || result.output.includes('import ') || result.output.includes('const ') || result.output.includes('def ') || result.output.includes('class '));
-            if (isCode && result.output.length > 100) {
-              set((s) => ({
-                streamingContent: s.streamingContent + `\n**${toolLabel}**\n\n\`\`\`\n${result.output}\n\`\`\`\n`,
-              }));
-            } else {
-              set((s) => ({
-                streamingContent: s.streamingContent + `\n**${toolLabel}**\n${result.output}\n`,
-              }));
-            }
-          }
+          set((s) => ({
+            activeToolCalls: s.activeToolCalls.map((tc) =>
+              tc.id === result.toolCallId
+                ? {
+                    ...tc,
+                    status: result.status === 'error' ? 'error' : 'completed',
+                    output: result.output,
+                    error: result.error,
+                    args: result.args ?? tc.args,
+                    completedAt: Date.now(),
+                  }
+                : tc
+            ),
+          }));
           break;
         }
         case 'error': {
+          cancelSafetyTimer();
           flushStreamBuffer();
           const err = event.data as { message: string };
           const { streamingContent, messages } = get();
-          // If there's streaming content, save it first
           const allMsgs = [...messages];
           if (streamingContent) {
             allMsgs.push({
@@ -358,13 +456,16 @@ export const useAgentStore = create<AgentState>((set, get) => {
             error: err.message,
             timestamp: Date.now(),
           });
-          set({ messages: allMsgs, isStreaming: false, streamingContent: '' });
+          set({ messages: allMsgs, isStreaming: false, streamingContent: '', activeToolCalls: [] });
           break;
         }
         case 'done': {
+          cancelSafetyTimer();
           flushStreamBuffer();
-          const { streamingContent, messages } = get();
-          if (streamingContent) {
+          const { streamingContent, messages, isStreaming } = get();
+          // Only commit partial content if we're still streaming
+          // (content_done may have already committed and reset isStreaming)
+          if (isStreaming && streamingContent) {
             const assistantMsg: ChatMessage = {
               id: `msg-${Date.now()}`,
               role: 'assistant',
@@ -372,9 +473,10 @@ export const useAgentStore = create<AgentState>((set, get) => {
               status: 'completed',
               timestamp: Date.now(),
             };
-            set({ messages: [...messages, assistantMsg], isStreaming: false, streamingContent: '' });
+            set({ messages: [...messages, assistantMsg], isStreaming: false, streamingContent: '', activeToolCalls: [] });
           } else {
-            set({ isStreaming: false });
+            // Always guarantee isStreaming=false on done
+            set({ isStreaming: false, streamingContent: '', activeToolCalls: [] });
           }
           break;
         }
@@ -383,6 +485,22 @@ export const useAgentStore = create<AgentState>((set, get) => {
         case 'task_step_update': break;
         case 'task_log': break;
       }
+    },
+
+    clearActiveToolCalls: () => set({ activeToolCalls: [] }),
+
+    approveToolCall: async (sessionId: string, toolCallId: string) => {
+      set((s) => ({ pendingApprovals: s.pendingApprovals.filter((a) => a.id !== toolCallId) }));
+      try {
+        await (window.api.agent.chat as any).approve?.(sessionId, toolCallId, true);
+      } catch { /* IPC not yet wired — approval stored locally */ }
+    },
+
+    denyToolCall: async (sessionId: string, toolCallId: string) => {
+      set((s) => ({ pendingApprovals: s.pendingApprovals.filter((a) => a.id !== toolCallId) }));
+      try {
+        await (window.api.agent.chat as any).approve?.(sessionId, toolCallId, false);
+      } catch { /* IPC not yet wired */ }
     },
 
     loadProviders: async () => {

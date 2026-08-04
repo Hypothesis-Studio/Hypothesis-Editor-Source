@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Agent Settings Panel - Dedicated AI Agent configuration within Settings.
  * Provides provider management, agent config, tools, and system health.
  * Aligned with the multi-turn tool execution architecture.
@@ -94,8 +94,8 @@ const SourceControlSection: React.FC = () => {
     <div>
       <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-fg)', margin: '0 0 8px' }}>Source Control</h3>
       <p style={{ fontSize: 11, color: 'var(--theme-fg-muted)', marginBottom: 16 }}>
-        Pilih AI agent yang digunakan untuk fitur Source Control seperti generate commit message otomatis.
-        Defaultnya menggunakan agent pertama yang tersedia.
+        Select the AI agent used for Source Control features like automatic commit message generation.
+        Defaults to using the first available agent.
       </p>
 
       {agentConfigs.length === 0 ? (
@@ -104,13 +104,13 @@ const SourceControlSection: React.FC = () => {
           background: 'var(--theme-bg-secondary)', fontSize: 11, color: 'var(--theme-fg-muted)',
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          <div style={{ color: 'var(--theme-warning, #f59e0b)', fontWeight: 500 }}>⚠ Belum ada AI agent yang dikonfigurasi</div>
-          <div>Buka tab <strong>Agent Profiles</strong> untuk membuat agent, lalu pilih provider dan model terlebih dahulu.</div>
+          <div style={{ color: 'var(--theme-warning, #f59e0b)', fontWeight: 500 }}>⚠ No AI agents configured yet</div>
+          <div>Open the <strong>Agent Profiles</strong> tab to create an agent, then select a provider and model first.</div>
         </div>
       ) : (
         <div style={cardStyle}>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ ...labelStyle, fontSize: 11, marginBottom: 6 }}>Agent untuk Commit Message Generator</label>
+            <label style={{ ...labelStyle, fontSize: 11, marginBottom: 6 }}>Agent for Commit Message Generator</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {/* Default option */}
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '6px 8px', borderRadius: 4,
@@ -124,9 +124,9 @@ const SourceControlSection: React.FC = () => {
                 />
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500 }}>
-                    Auto (agent pertama) {agentConfigs[0] ? `— ${agentConfigs[0].name}` : ''}
+                    Auto (first agent) {agentConfigs[0] ? `— ${agentConfigs[0].name}` : ''}
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>Selalu pakai agent pertama dari daftar Agent Profiles</div>
+                  <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>Always use first agent from Agent Profiles list</div>
                 </div>
               </label>
 
@@ -157,7 +157,7 @@ const SourceControlSection: React.FC = () => {
               <strong style={{ color: 'var(--theme-fg)' }}>Agent aktif:</strong> {selectedAgent.name}
               {selectedAgent.modelId && <> · <span>{selectedAgent.modelId}</span></>}
               {!selectedAgent.providerId && (
-                <span style={{ color: 'var(--theme-warning, #f59e0b)', marginLeft: 8 }}>⚠ Provider belum dikonfigurasi</span>
+                <span style={{ color: 'var(--theme-warning, #f59e0b)', marginLeft: 8 }}>⚠ Provider not configured</span>
               )}
             </div>
           )}

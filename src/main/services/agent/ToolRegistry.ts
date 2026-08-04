@@ -1,6 +1,6 @@
 /**
  * Tool Registry - Manages and executes agent tools.
- * Tools provide file system, terminal, git, search, and editor operations.
+ * Production-grade: 25+ tools covering file, terminal, git, web, editor, and project operations.
  */
 import type {
   ToolDefinition,
@@ -16,6 +16,9 @@ import type { AppStore } from '../AppStore';
 import path from 'path';
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
+import https from 'https';
+import http from 'http';
+import { IncomingMessage } from 'http';
 import { BrowserWindow } from 'electron';
 
 const log = logger.scope('ToolRegistry');
@@ -364,6 +367,478 @@ export class ToolRegistry {
       // This communicates via IPC in runtime; placeholder for tool definition
       return { success: true, output: 'Open editors retrieved via IPC', executionTimeMs: 0 };
     });
+
+
+    // -- Web Tools -------------------------------------------------------------
+    this.register({
+      id: 'fetchWebPage',
+      name: 'fetchWebPage',
+      description: 'Fetch and return the text content of a web page (strips HTML tags, max 50KB)',
+      category: 'web',
+      parameters: [
+        { name: 'url', type: 'string', description: 'Full URL to fetch (http or https)', required: true },
+      ],
+      requiredPermissions: ['web:fetch'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, _ctx) => {
+      const url = (args.url ?? args.href ?? args.link) as string;
+      if (!url) return { success: false, output: '', error: 'Missing url parameter', executionTimeMs: 0 };
+      const start = Date.now();
+      try {
+        const text = await this.fetchUrl(url);
+        return { success: true, output: text, executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: '', error: err.message, executionTimeMs: Date.now() - start };
+      }
+    });
+
+    // -- Extended File Tools ---------------------------------------------------
+    this.register({
+      id: 'createDirectory',
+      name: 'createDirectory',
+      description: 'Create a directory (and any missing parent directories)',
+      category: 'file',
+      parameters: [
+        { name: 'path', type: 'string', description: 'Directory path to create', required: true },
+      ],
+      requiredPermissions: ['file:write'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const dirPath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
+      await fs.mkdir(dirPath, { recursive: true });
+      return { success: true, output: `Created directory: ${dirPath}`, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'deleteFile',
+      name: 'deleteFile',
+      description: 'Delete a file. Cannot delete directories or files outside the workspace.',
+      category: 'file',
+      parameters: [
+        { name: 'path', type: 'string', description: 'File path to delete', required: true },
+      ],
+      requiredPermissions: ['file:delete'],
+      dangerous: true,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
+      const wsRoot = ctx.workspacePath || process.cwd();
+      if (!filePath.startsWith(wsRoot)) {
+        return { success: false, output: '', error: `Refusing to delete file outside workspace: ${filePath}`, executionTimeMs: Date.now() - start };
+      }
+      const stat = await fs.stat(filePath).catch(() => null);
+      if (!stat) return { success: false, output: '', error: `File not found: ${filePath}`, executionTimeMs: Date.now() - start };
+      if (stat.isDirectory()) return { success: false, output: '', error: `Path is a directory. Use removeDirectory instead.`, executionTimeMs: Date.now() - start };
+      await fs.unlink(filePath);
+      this.broadcastFileChanged(filePath);
+      return { success: true, output: `Deleted: ${filePath}`, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'moveFile',
+      name: 'moveFile',
+      description: 'Move or rename a file or directory',
+      category: 'file',
+      parameters: [
+        { name: 'source', type: 'string', description: 'Source path', required: true },
+        { name: 'destination', type: 'string', description: 'Destination path', required: true },
+      ],
+      requiredPermissions: ['file:write'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const src = this.resolvePath((args.source ?? args.from ?? args.src) as string, ctx.workspacePath, ctx.workspaceFolders);
+      const dst = this.resolvePath((args.destination ?? args.to ?? args.dest) as string, ctx.workspacePath, ctx.workspaceFolders);
+      await fs.mkdir(path.dirname(dst), { recursive: true });
+      await fs.rename(src, dst);
+      this.broadcastFileChanged(dst);
+      return { success: true, output: `Moved: ${src} -> ${dst}`, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'copyFile',
+      name: 'copyFile',
+      description: 'Copy a file to a new location',
+      category: 'file',
+      parameters: [
+        { name: 'source', type: 'string', description: 'Source file path', required: true },
+        { name: 'destination', type: 'string', description: 'Destination file path', required: true },
+      ],
+      requiredPermissions: ['file:write'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const src = this.resolvePath((args.source ?? args.from ?? args.src) as string, ctx.workspacePath, ctx.workspaceFolders);
+      const dst = this.resolvePath((args.destination ?? args.to ?? args.dest) as string, ctx.workspacePath, ctx.workspaceFolders);
+      await fs.mkdir(path.dirname(dst), { recursive: true });
+      await fs.copyFile(src, dst);
+      this.broadcastFileChanged(dst);
+      return { success: true, output: `Copied: ${src} -> ${dst}`, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'getFileInfo',
+      name: 'getFileInfo',
+      description: 'Get metadata about a file or directory (size, modified date, type)',
+      category: 'file',
+      parameters: [
+        { name: 'path', type: 'string', description: 'File or directory path', required: true },
+      ],
+      requiredPermissions: ['file:read'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
+      const stat = await fs.stat(filePath);
+      const info = [
+        `Path: ${filePath}`,
+        `Type: ${stat.isDirectory() ? 'directory' : stat.isSymbolicLink() ? 'symlink' : 'file'}`,
+        `Size: ${stat.size} bytes (${(stat.size / 1024).toFixed(2)} KB)`,
+        `Modified: ${stat.mtime.toISOString()}`,
+        `Created: ${stat.birthtime.toISOString()}`,
+        `Permissions: ${(stat.mode & 0o777).toString(8)}`,
+      ].join('\n');
+      return { success: true, output: info, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'insertAtLine',
+      name: 'insertAtLine',
+      description: 'Insert text at a specific line number in a file (existing content shifts down)',
+      category: 'file',
+      parameters: [
+        { name: 'path', type: 'string', description: 'File path', required: true },
+        { name: 'line', type: 'number', description: 'Line number to insert at (1-indexed)', required: true },
+        { name: 'content', type: 'string', description: 'Text to insert', required: true },
+      ],
+      requiredPermissions: ['file:write'],
+      dangerous: true,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
+      const lineNum = Math.max(1, args.line as number);
+      const insertContent = (args.content ?? args.text) as string;
+      const existing = await fs.readFile(filePath, 'utf-8');
+      const lines = existing.split('\n');
+      lines.splice(lineNum - 1, 0, insertContent);
+      await fs.writeFile(filePath, lines.join('\n'), 'utf-8');
+      this.broadcastFileChanged(filePath);
+      return { success: true, output: `Inserted at line ${lineNum} in ${filePath}`, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'replaceLines',
+      name: 'replaceLines',
+      description: 'Replace a range of lines in a file with new content',
+      category: 'file',
+      parameters: [
+        { name: 'path', type: 'string', description: 'File path', required: true },
+        { name: 'startLine', type: 'number', description: 'Start line (1-indexed, inclusive)', required: true },
+        { name: 'endLine', type: 'number', description: 'End line (1-indexed, inclusive)', required: true },
+        { name: 'content', type: 'string', description: 'Replacement content', required: true },
+      ],
+      requiredPermissions: ['file:write'],
+      dangerous: true,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
+      const startLine = Math.max(1, args.startLine as number);
+      const endLine = Math.max(startLine, args.endLine as number);
+      const newContent = (args.content ?? args.text) as string;
+      const existing = await fs.readFile(filePath, 'utf-8');
+      const lines = existing.split('\n');
+      const replacementLines = newContent.split('\n');
+      lines.splice(startLine - 1, endLine - startLine + 1, ...replacementLines);
+      await fs.writeFile(filePath, lines.join('\n'), 'utf-8');
+      this.broadcastFileChanged(filePath);
+      return { success: true, output: `Replaced lines ${startLine}-${endLine} in ${filePath}`, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'appendToFile',
+      name: 'appendToFile',
+      description: 'Append content to the end of a file (creates file if it does not exist)',
+      category: 'file',
+      parameters: [
+        { name: 'path', type: 'string', description: 'File path', required: true },
+        { name: 'content', type: 'string', description: 'Content to append', required: true },
+      ],
+      requiredPermissions: ['file:write'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
+      const appendContent = (args.content ?? args.text) as string;
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.appendFile(filePath, appendContent, 'utf-8');
+      this.broadcastFileChanged(filePath);
+      return { success: true, output: `Appended to ${filePath}`, executionTimeMs: Date.now() - start };
+    });
+
+    // -- Extended Git Tools ----------------------------------------------------
+    this.register({
+      id: 'gitAdd',
+      name: 'gitAdd',
+      description: 'Stage files for commit (git add)',
+      category: 'git',
+      parameters: [
+        { name: 'repoPath', type: 'string', description: 'Repository path', required: false },
+        { name: 'files', type: 'string', description: 'Files to stage (space-separated, or "." for all)', required: false },
+      ],
+      requiredPermissions: ['git:write'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const files = (args.files as string) || '.';
+      try {
+        const out = execSync(`git add ${files}`, { cwd, encoding: 'utf-8', timeout: 15000 });
+        return { success: true, output: out.trim() || `Staged: ${files}`, executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: err.stdout || '', error: err.stderr || err.message, executionTimeMs: Date.now() - start };
+      }
+    });
+
+    this.register({
+      id: 'gitCommit',
+      name: 'gitCommit',
+      description: 'Commit staged changes with a message',
+      category: 'git',
+      parameters: [
+        { name: 'message', type: 'string', description: 'Commit message', required: true },
+        { name: 'repoPath', type: 'string', description: 'Repository path', required: false },
+      ],
+      requiredPermissions: ['git:write'],
+      dangerous: true,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const message = (args.message ?? args.msg ?? args.m) as string;
+      if (!message) return { success: false, output: '', error: 'Missing commit message', executionTimeMs: Date.now() - start };
+      try {
+        const out = execSync(`git commit -m ${JSON.stringify(message)}`, { cwd, encoding: 'utf-8', timeout: 15000 });
+        return { success: true, output: out.trim(), executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: err.stdout || '', error: err.stderr || err.message, executionTimeMs: Date.now() - start };
+      }
+    });
+
+    this.register({
+      id: 'gitCheckout',
+      name: 'gitCheckout',
+      description: 'Switch to a branch or create a new branch (git checkout)',
+      category: 'git',
+      parameters: [
+        { name: 'branch', type: 'string', description: 'Branch name to checkout', required: true },
+        { name: 'create', type: 'boolean', description: 'Create branch if it does not exist (-b flag)', required: false },
+        { name: 'repoPath', type: 'string', description: 'Repository path', required: false },
+      ],
+      requiredPermissions: ['git:write'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const branch = (args.branch ?? args.name) as string;
+      const create = args.create === true || args.create === 'true';
+      const flag = create ? '-b ' : '';
+      try {
+        const out = execSync(`git checkout ${flag}${branch}`, { cwd, encoding: 'utf-8', timeout: 15000 });
+        return { success: true, output: out.trim() || `Switched to branch: ${branch}`, executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: err.stdout || '', error: err.stderr || err.message, executionTimeMs: Date.now() - start };
+      }
+    });
+
+    this.register({
+      id: 'gitBranch',
+      name: 'gitBranch',
+      description: 'List all branches in the repository',
+      category: 'git',
+      parameters: [
+        { name: 'repoPath', type: 'string', description: 'Repository path', required: false },
+        { name: 'all', type: 'boolean', description: 'Show all branches including remote', required: false },
+      ],
+      requiredPermissions: ['git:read'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const flag = args.all ? '-a' : '';
+      try {
+        const out = execSync(`git branch ${flag}`.trim(), { cwd, encoding: 'utf-8', timeout: 10000 });
+        return { success: true, output: out.trim(), executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: '', error: err.stderr || err.message, executionTimeMs: Date.now() - start };
+      }
+    });
+
+    this.register({
+      id: 'gitPush',
+      name: 'gitPush',
+      description: 'Push commits to remote repository',
+      category: 'git',
+      parameters: [
+        { name: 'repoPath', type: 'string', description: 'Repository path', required: false },
+        { name: 'remote', type: 'string', description: 'Remote name (default: origin)', required: false },
+        { name: 'branch', type: 'string', description: 'Branch to push (default: current)', required: false },
+        { name: 'setUpstream', type: 'boolean', description: 'Set upstream tracking (-u flag)', required: false },
+      ],
+      requiredPermissions: ['git:write'],
+      dangerous: true,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const remote = (args.remote as string) || 'origin';
+      const branch = (args.branch as string) || '';
+      const upstreamFlag = args.setUpstream ? '-u ' : '';
+      const target = branch ? `${remote} ${branch}` : remote;
+      try {
+        const out = execSync(`git push ${upstreamFlag}${target}`.trim(), { cwd, encoding: 'utf-8', timeout: 60000 });
+        return { success: true, output: out.trim() || 'Push successful', executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: err.stdout || '', error: err.stderr || err.message, executionTimeMs: Date.now() - start };
+      }
+    });
+
+    this.register({
+      id: 'gitPull',
+      name: 'gitPull',
+      description: 'Pull latest changes from remote repository',
+      category: 'git',
+      parameters: [
+        { name: 'repoPath', type: 'string', description: 'Repository path', required: false },
+        { name: 'remote', type: 'string', description: 'Remote name (default: origin)', required: false },
+        { name: 'branch', type: 'string', description: 'Branch to pull (default: current)', required: false },
+      ],
+      requiredPermissions: ['git:write'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const remote = (args.remote as string) || 'origin';
+      const branch = (args.branch as string) || '';
+      const target = branch ? `${remote} ${branch}` : remote;
+      try {
+        const out = execSync(`git pull ${target}`.trim(), { cwd, encoding: 'utf-8', timeout: 60000 });
+        return { success: true, output: out.trim() || 'Pull successful', executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: err.stdout || '', error: err.stderr || err.message, executionTimeMs: Date.now() - start };
+      }
+    });
+
+    // -- Editor / Project Tools ------------------------------------------------
+    this.register({
+      id: 'openInEditor',
+      name: 'openInEditor',
+      description: 'Open a file in the editor (brings it into focus as an active tab)',
+      category: 'editor',
+      parameters: [
+        { name: 'path', type: 'string', description: 'File path to open', required: true },
+      ],
+      requiredPermissions: ['file:read'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const filePath = this.resolvePath(args.path as string, ctx.workspacePath, ctx.workspaceFolders);
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) win.webContents.send('agent:open-file', { filePath });
+      }
+      return { success: true, output: `Opened in editor: ${filePath}`, executionTimeMs: Date.now() - start };
+    });
+
+    this.register({
+      id: 'runTests',
+      name: 'runTests',
+      description: 'Run project tests. Auto-detects vitest, jest, npm test, or pytest.',
+      category: 'terminal',
+      parameters: [
+        { name: 'repoPath', type: 'string', description: 'Project root path', required: false },
+        { name: 'filter', type: 'string', description: 'Test name filter/pattern', required: false },
+        { name: 'timeout', type: 'number', description: 'Timeout in ms (default: 60000)', required: false },
+      ],
+      requiredPermissions: ['terminal:execute'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const filter = args.filter as string | undefined;
+      const timeout = (args.timeout as number) || 60000;
+      let command = 'npm test';
+      try {
+        const pkgRaw = await fs.readFile(path.join(cwd, 'package.json'), 'utf-8');
+        const pkg = JSON.parse(pkgRaw);
+        const scripts: Record<string, string> = pkg.scripts || {};
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+        if (deps['vitest'] || scripts['test']?.includes('vitest')) {
+          command = filter ? `npx vitest run --reporter=verbose -t "${filter}"` : 'npx vitest run --reporter=verbose';
+        } else if (deps['jest'] || scripts['test']?.includes('jest')) {
+          command = filter ? `npx jest --verbose "${filter}"` : 'npx jest --verbose';
+        } else if (scripts['test']) {
+          command = `npm test${filter ? ` -- --grep "${filter}"` : ''}`;
+        }
+      } catch {
+        try {
+          await fs.access(path.join(cwd, 'pyproject.toml'));
+          command = filter ? `python -m pytest -v -k "${filter}"` : 'python -m pytest -v';
+        } catch { /* use npm test */ }
+      }
+      try {
+        const out = execSync(command, { cwd, encoding: 'utf-8', timeout, maxBuffer: 1024 * 1024 * 5 });
+        return { success: true, output: out.trim(), executionTimeMs: Date.now() - start };
+      } catch (err: any) {
+        return { success: false, output: (err.stdout || '').trim(), error: (err.stderr || err.message || '').trim(), executionTimeMs: Date.now() - start };
+      }
+    });
+
+    this.register({
+      id: 'getProjectInfo',
+      name: 'getProjectInfo',
+      description: 'Get project metadata from package.json, pyproject.toml, Cargo.toml, or go.mod',
+      category: 'file',
+      parameters: [
+        { name: 'repoPath', type: 'string', description: 'Project root path', required: false },
+      ],
+      requiredPermissions: ['file:read'],
+      dangerous: false,
+      enabled: true,
+    }, async (args, ctx) => {
+      const start = Date.now();
+      const cwd = this.resolvePath((args.repoPath as string) || '.', ctx.workspacePath, ctx.workspaceFolders);
+      const candidates = [
+        { file: 'package.json', type: 'Node.js' },
+        { file: 'pyproject.toml', type: 'Python' },
+        { file: 'Cargo.toml', type: 'Rust' },
+        { file: 'go.mod', type: 'Go' },
+        { file: 'pom.xml', type: 'Java/Maven' },
+      ];
+      const results: string[] = [];
+      for (const { file, type } of candidates) {
+        try {
+          const content = await fs.readFile(path.join(cwd, file), 'utf-8');
+          results.push(`=== ${type} (${file}) ===\n${content.substring(0, 3000)}`);
+        } catch { /* not found */ }
+      }
+      if (results.length === 0) return { success: false, output: '', error: 'No project manifest found', executionTimeMs: Date.now() - start };
+      return { success: true, output: results.join('\n\n'), executionTimeMs: Date.now() - start };
+    });
   }
 
   /**
@@ -590,6 +1065,85 @@ export class ToolRegistry {
     log: 'gitLog',
     history: 'gitLog',
   };
+
+  /**
+   * Fetch a URL using Node's built-in http/https modules.
+   * Strips HTML tags, follows redirects up to 5 hops, returns max 50KB of text.
+   */
+  private fetchUrl(urlStr: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const MAX_SIZE = 50 * 1024;
+      const MAX_REDIRECTS = 5;
+
+      const doRequest = (currentUrl: string, redirectsLeft: number) => {
+        let parsed: URL;
+        try { parsed = new URL(currentUrl); } catch { reject(new Error(`Invalid URL: ${currentUrl}`)); return; }
+
+        const lib = parsed.protocol === 'https:' ? https : http;
+        const options = {
+          hostname: parsed.hostname,
+          port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+          path: parsed.pathname + parsed.search,
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; HypothesisEditor/1.0)',
+            'Accept': 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+          },
+          timeout: 15000,
+        };
+
+        const req = lib.request(options, (res: IncomingMessage) => {
+          // Follow redirects
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            res.resume();
+            if (redirectsLeft <= 0) { reject(new Error('Too many redirects')); return; }
+            const nextUrl = res.headers.location.startsWith('http')
+              ? res.headers.location
+              : new URL(res.headers.location, currentUrl).toString();
+            doRequest(nextUrl, redirectsLeft - 1);
+            return;
+          }
+          if (res.statusCode && res.statusCode >= 400) {
+            res.resume();
+            reject(new Error(`HTTP ${res.statusCode}`));
+            return;
+          }
+
+          const chunks: Buffer[] = [];
+          let totalSize = 0;
+          res.on('data', (chunk: Buffer) => {
+            totalSize += chunk.length;
+            if (totalSize <= MAX_SIZE) chunks.push(chunk);
+          });
+          res.on('end', () => {
+            const raw = Buffer.concat(chunks).toString('utf-8');
+            // Strip HTML tags and normalize whitespace
+            const text = raw
+              .replace(/<script[\s\S]*?<\/script>/gi, '')
+              .replace(/<style[\s\S]*?<\/style>/gi, '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&amp;/g, '&')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/[ \t]+/g, ' ')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim();
+            resolve(text.substring(0, MAX_SIZE));
+          });
+          res.on('error', reject);
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')); });
+        req.end();
+      };
+
+      doRequest(urlStr, MAX_REDIRECTS);
+    });
+  }
 
   resolveToolId(functionName: string): string | undefined {
     // Direct match

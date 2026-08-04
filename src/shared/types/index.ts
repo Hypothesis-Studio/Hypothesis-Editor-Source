@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Hypothesis Editor - Shared Type Definitions
  * All types shared between main, preload, and renderer processes.
  */
@@ -1205,6 +1205,7 @@ export interface StoreSchema {
   'agent.configs': unknown[];
   'agent.sessions': unknown[];
   'agent.memory': unknown[];
+  'agent.memory.v2': unknown;
   'agent.tasks': unknown[];
   'agent.disabledTools': string[];
 }
