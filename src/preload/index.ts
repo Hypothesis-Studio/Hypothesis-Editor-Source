@@ -893,6 +893,7 @@ const api = {
     approveJoin: (roomId: string, requestId: string) => ipcRenderer.invoke('chat:approve-join', roomId, requestId),
     denyJoin: (roomId: string, requestId: string) => ipcRenderer.invoke('chat:deny-join', roomId, requestId),
     toggleAi: (roomId: string, enabled: boolean, agentId?: string) => ipcRenderer.invoke('chat:toggle-ai', roomId, enabled, agentId),
+    downloadFile: (fileName: string, fileData: string, mimeType: string) => ipcRenderer.invoke('chat:download-file', fileName, fileData, mimeType),
     onMessage: (callback: (event: unknown) => void) => {
       const handler = (_e: Electron.IpcRendererEvent, data: unknown) => callback(data);
       ipcRenderer.on('chat:evt:message', handler);

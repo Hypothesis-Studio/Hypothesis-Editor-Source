@@ -92,6 +92,8 @@ export class AgentService {
       this.saveConfigs();
     }
     this.agentLogs.info('agent', `Agent service initialized with ${this.configs.size} agent(s)`);
+    // Clean up any stale chat-room AI sessions from previous runs
+    this.sessions.cleanupChatRoomSessions();
   }
 
   private saveConfigs(): void {
@@ -135,7 +137,9 @@ export class AgentService {
     sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[],
   ): Promise<ChatMessage> {
     const agent = this.getAgentForSession(agentId);
-    const session = this.sessions.getSession(sessionId) ?? this.sessions.createSession(agent.id);
+    const session = sessionId.startsWith('chat-room-')
+      ? this.sessions.getOrCreateSessionWithId(sessionId, agent.id, `Chat Room ${sessionId.replace('chat-room-', '')}`)
+      : (this.sessions.getSession(sessionId) ?? this.sessions.createSession(agent.id));
     if (workspacePath) session.metadata = { ...session.metadata, workspacePath };
     if (workspaceFolders && workspaceFolders.length > 0) session.metadata = { ...session.metadata, workspaceFolders };
 
@@ -253,12 +257,18 @@ export class AgentService {
   // ── Chat (Streaming) ───────────────────────────────────────────
 
   async *streamMessage(
-    sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[],
+    sessionId: string, content: string, agentId?: string, workspacePath?: string, workspaceFolders?: string[], toolsAllow?: string[], systemPromptOverride?: string,
   ): AsyncGenerator<StreamEvent> {
     const agent = this.getAgentForSession(agentId);
-    const session = this.sessions.getSession(sessionId) ?? this.sessions.createSession(agent.id);
+    const session = sessionId.startsWith('chat-room-')
+      ? this.sessions.getOrCreateSessionWithId(sessionId, agent.id, `Chat Room ${sessionId.replace('chat-room-', '')}`)
+      : (this.sessions.getSession(sessionId) ?? this.sessions.createSession(agent.id));
     if (workspacePath) session.metadata = { ...session.metadata, workspacePath };
     if (workspaceFolders && workspaceFolders.length > 0) session.metadata = { ...session.metadata, workspaceFolders };
+    // toolsAllow=[]: restrict to conversation only (no file/run/write tools)
+    const effectiveEnabledTools = toolsAllow !== undefined
+      ? agent.enabledTools.filter(t => toolsAllow.includes(t))
+      : agent.enabledTools;
     const abortController = new AbortController();
     this.activeAbortControllers.set(session.id, abortController);
 
@@ -273,7 +283,7 @@ export class AgentService {
         ? this.memory.getRelevantContext(content, agent.memoryMaxTokens) : '';
 
       // Build initial conversation
-      const conversationMessages = this.buildMessages(agent, session, memoryContext);
+      const conversationMessages = this.buildMessages(agent, session, memoryContext, systemPromptOverride);
       let turn = 0;
       let totalContent = '';
       // Loop detection: track recent tool calls to prevent infinite loops
@@ -288,7 +298,7 @@ export class AgentService {
 
         await this.rateLimiter.waitForToken(agent.providerId);
 
-        const toolDefs = this.tools.toOpenAITools(agent.enabledTools);
+        const toolDefs = this.tools.toOpenAITools(effectiveEnabledTools);
         const request: ChatCompletionRequest = {
           model: agent.modelId, messages: conversationMessages,
           temperature: agent.temperature, maxTokens: agent.maxTokens, topP: agent.topP,
@@ -531,12 +541,21 @@ export class AgentService {
     return first;
   }
 
+  getAgentById(agentId?: string): AgentConfig | undefined {
+    if (agentId) return this.configs.get(agentId);
+    return this.configs.values().next().value;
+  }
+
+  deleteChatSession(sessionId: string): void {
+    this.sessions.deleteSession(sessionId);
+  }
+
   private buildMessages(
-    agent: AgentConfig, session: ChatSession, memoryContext: string,
+    agent: AgentConfig, session: ChatSession, memoryContext: string, systemPromptOverride?: string,
   ): Array<{ role: string; content: string; tool_call_id?: string }> {
     const messages: Array<{ role: string; content: string; tool_call_id?: string }> = [];
 
-    let systemPrompt = agent.systemPrompt;
+    let systemPrompt = systemPromptOverride ?? agent.systemPrompt;
     if (memoryContext) {
       systemPrompt += `\n\nRelevant context from memory:\n${memoryContext}`;
     }

@@ -117,4 +117,23 @@ export function registerChatIPC(chatService: ChatService): void {
     const room = chatService.toggleAi(roomId, enabled, agentId);
     return { success: room !== null, room };
   });
+
+  ipcMain.handle(CHAT_IPC.DOWNLOAD_FILE, async (_e, fileName: string, fileData: string, mimeType: string) => {
+    try {
+      const { app, dialog } = await import('electron');
+      const fs = await import('fs');
+      const path = await import('path');
+      const downloadsPath = app.getPath('downloads');
+      // Sanitize filename
+      const safeName = fileName.replace(/[\\/:\*\?"<>\|]/g, '_');
+      const defaultPath = path.join(downloadsPath, safeName);
+      const { filePath, canceled } = await dialog.showSaveDialog({ defaultPath, title: 'Save file' });
+      if (canceled || !filePath) return { success: false };
+      const buffer = Buffer.from(fileData, 'base64');
+      fs.writeFileSync(filePath, buffer);
+      return { success: true, filePath };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
 }

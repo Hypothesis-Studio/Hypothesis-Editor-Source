@@ -3,37 +3,48 @@
 ## [0.2.9] - 2026-08-02
 
 ### Added
-- **Real-time Chat Collaboration** — Chat with others directly in the editor while still writing code. You can host a room on your local network or share a public link via the Tunnel feature.
-- **Public Rooms via Tunnel** — Enable Public mode when creating a room to get a link that can be shared with anyone outside your local network.
-- **Invite AI to a Chat Room** — Hosts can activate an AI assistant in the room. Type `@ai` in the chat and the AI ​​will reply instantly as a separate bubble. This can be turned on and off at any time.
-- **Choose a dedicated AI agent for Chat** — In Settings → Chat Collaboration, you can choose which AI agent responds to `@ai` mentions in the chat room, separate from agents used elsewhere.
-- **Typing Indicator** — Animated moving dots appear when a participant is composing a message.
-- **Send Code Snippets** — Click the `<>` button in the compose bar, select a language, and your code will appear with syntax highlighting and a one-click copy button for all participants.
-- **Send files** — attach files up to 2 MB. Images appear directly in the chat; other files appear as download cards.
-- **Message reactions** — hover over a message and click an emoji to react. Reactions sync to all participants instantly.
-- **Reply to messages** — hover over a message and click the reply icon to quote the message as the context for your reply.
-- **Join approval queue** — hosts can enable approval mode so that every new participant needs to be approved before joining the room.
-- **Cursor / presence sharing** — the participant sidebar displays which files and lines each person is editing, updating in real time.
-- **Kick participants** — hosts can remove participants from the room at any time.
-- **Edit and delete messages** — hover over your own message to edit or delete it; changes are immediately visible to all participants.
-- **Message read receipts** — double-checkmark indicators appear after another participant has read your message.
-- **Saved message history** — Chat history (up to 500 messages per room) and active rooms are automatically saved and reappear the next time the app is opened.
-- **Auto-generator ER Diagram** — create Entity Relationship diagrams from connected database schemas with just one click. The interactive diagram displays all tables, columns, primary keys, foreign keys, and relationships between tables in a pan- and zoom-able SVG view with freely swiping table cards.
-- **Minimap ER Diagram** — a thumbnail panel in the corner of the ER Diagram canvas for quick navigation to any part of the large diagram.
-- **Edit cells directly in the Table Data viewer** — double-click any cell to edit its value directly in the table. Press Enter or Tab to save, Escape to cancel.
-- **Foreign key navigation in the Table Data viewer** — foreign key columns now display a → button next to each value to instantly jump to the referenced row.
-- **Export table data** — export table data as CSV, JSON, or SQL INSERT from the Table Data viewer toolbar.
-- **Export ER Diagram** — save the diagram as a PNG or SVG file from the diagram toolbar.
-- **Updated Database Explorer view** — icons replaced with cleaner SVGs and file explorer-like tree lines for easier navigation of tables, views, and columns.
-- **AI Agent now supports multiple folders** — when multiple project folders are open, AI Agent can read and edit files from all of them.
+- **Real-time Chat Collaboration** — Chat with teammates directly inside the editor while still writing code. Host a room on your local network or share a public link via the Tunnel feature.
+- **Public Rooms via Tunnel** — Enable Public mode when creating a room to get a shareable link for anyone outside your local network. If the tunnel drops, hosts can regenerate a new public URL without disconnecting anyone already in the room.
+- **AI Assistant in Chat** — Hosts can invite an AI assistant to any room. Mention `@ai` anywhere in your message — at the start, middle, or end — and the AI responds instantly as its own bubble. Works for bare `@ai`, `hello @ai`, or `what can @ai do`. Can be toggled on/off at any time.
+- **@ai mention badge** — Typing `@ai` in the compose bar turns it into a styled badge chip, just like mention tags in Slack or Discord.
+- **Choose a dedicated AI agent for Chat** — In Settings → Chat Collaboration, pick which AI agent responds to `@ai` mentions in chat rooms, separate from agents used elsewhere.
+- **AI is typing indicator** — While the AI is preparing a response, a breathing typing indicator appears showing "AI Assistant is typing…" — visible to everyone in the room, disappears the moment the response arrives.
+- **Multi-user typing indicator** — Shows up to 3 names at once (e.g. Alice, John, AI Assistant are typing…). If more people are typing, the rest are shown as a count (e.g. +2 others). AI Assistant name is highlighted in purple to stand out.
+- **Host slash commands** — Room hosts can type `/` to get a command menu: `/clear` to clear chat history, `/ai on` or `/ai off` to toggle the AI, `/kick <name>` to remove a participant, and `/close` to shut down the room.
+- **Select and copy messages** — Click and drag to select any message text, AI response, or code snippet to copy it. Code blocks also have a one-click Copy button.
+- **Download files from chat** — Clicking a file attachment opens a Save dialog defaulting to your Downloads folder. Works on Windows, macOS, and Linux.
+- **AI in chat is conversation-only** — The AI assistant in chat rooms focuses purely on conversation. It cannot read files, run commands, or access your workspace — keeping it fast, focused, and safe for collaboration.
+- **Typing Indicator** — Animated bouncing dots appear when someone is composing a message.
+- **Send Code Snippets** — Click the `<>` button in the compose bar, pick a language, and your code renders with syntax highlighting and a one-click copy button for all participants.
+- **Send Files** — Attach files up to 2 MB. Images render inline; other files appear as download cards.
+- **Markdown rendering** — All chat messages render full Markdown: bold, italic, code blocks, lists, tables, blockquotes, headings, and links.
+- **Message Reactions** — Hover any message and click an emoji to react. Reactions sync live to all participants.
+- **Reply to Messages** — Hover a message and click the reply icon to quote it as context for your reply.
+- **Join Approval Queue** — Hosts can require approval before anyone enters the room. Approve or deny each request individually.
+- **Presence & Cursor Sharing** — The participant sidebar shows which file and line each person is editing, updated live.
+- **Kick Participants** — Hosts can remove any participant from the room at any time.
+- **Edit & Delete Messages** — Hover your own message to edit or delete it; changes are visible to everyone instantly.
+- **Read Receipts** — A double-checkmark appears once another participant has read your message.
+- **Chat History Persistence** — Message history (up to 500 messages per room) and active rooms are saved and restored automatically the next time you open the app.
+- **ER Diagram Generator** — Generate an Entity Relationship diagram from any connected database schema in one click. The interactive SVG canvas shows all tables, columns, primary keys, foreign keys, and relations — with pan, zoom, and draggable table cards.
+- **ER Diagram Minimap** — A thumbnail overview in the corner of the canvas for quick navigation across large diagrams.
+- **Inline Cell Editing** — Double-click any cell in the Table Data viewer to edit it directly. Enter or Tab to save, Escape to cancel.
+- **Foreign Key Navigation** — FK columns show a → button next to each value to jump straight to the referenced row.
+- **Export Table Data** — Export any table as CSV, JSON, or SQL INSERT statements from the toolbar.
+- **Export ER Diagram** — Save the current diagram as PNG or SVG from the diagram toolbar.
+- **Database Explorer redesigned** — Cleaner SVG icons and file-explorer-style tree lines for easier navigation through tables, views, and columns.
+- **AI Agent works across multiple folders** — With more than one project folder open, the AI Agent can read and edit files from all of them.
 
 ### Fixed
-- AI Agent now performs better when multiple projects are open simultaneously.
-- Fixed a bug that sometimes caused AI Agent to stop responding mid-process.
-- Stopped or canceled AI responses are now saved and not lost.
-- Fixed a bug that caused a new session to hang when switching sessions while AI was working.
-- Improved AI connection stability so that the Agent can complete responses even if there are connection interruptions.
-- Improved AI Agent performance with Anthropic and Gemini.
+- Fixed `@ai` not responding when the AI agent service was not properly connected on startup.
+- Fixed the compose bar not clearing after sending a code snippet.
+- Fixed input area auto-clearing unexpectedly after sending files.
+- AI Agent now performs better when multiple projects are open at the same time.
+- Fixed a bug that sometimes caused AI Agent to stop responding mid-reply.
+- Stopped or cancelled AI responses are now saved instead of lost.
+- Fixed a session hang when switching sessions while AI was working.
+- Improved AI connection stability so responses complete even with brief connection drops.
+- Improved AI Agent performance with Anthropic and Gemini providers.
 
 ## [0.2.8] - 2026-08-02
 

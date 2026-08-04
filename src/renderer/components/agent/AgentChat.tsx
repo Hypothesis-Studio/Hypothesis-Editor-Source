@@ -419,7 +419,7 @@ export const AgentChat: React.FC<AgentChatProps> = ({ onOpenSettings }) => {
               >
                 + New Session
               </button>
-              {sessions.map((s) => (
+              {sessions.filter(s => !s.id.startsWith('chat-room-')).map((s) => (
                 <div key={s.id} style={{
                   display: 'flex', alignItems: 'center',
                   background: s.id === activeSessionId ? 'var(--theme-bg-active)' : 'transparent',

@@ -53,8 +53,39 @@ export class SessionPersistence {
     return this.sessions.get(id);
   }
 
+  getOrCreateSessionWithId(id: string, agentId: string, title?: string): ChatSession {
+    const existing = this.sessions.get(id);
+    if (existing) return existing;
+    const session: ChatSession = {
+      id,
+      title: title ?? `Session ${new Date().toLocaleString()}`,
+      agentId,
+      messages: [],
+      totalTokenUsage: { promptTokens: 0, completionTokens: 0, totalTokens: 0, estimatedCost: 0 },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    this.sessions.set(id, session);
+    this.save();
+    return session;
+  }
+
+  cleanupChatRoomSessions(): number {
+    let removed = 0;
+    for (const id of Array.from(this.sessions.keys())) {
+      if (id.startsWith('chat-room-')) {
+        this.sessions.delete(id);
+        removed++;
+      }
+    }
+    if (removed > 0) this.save();
+    return removed;
+  }
+
   listSessions(agentId?: string, limit: number = 50): ChatSession[] {
     let sessions = Array.from(this.sessions.values());
+    // Exclude dedicated chat-room AI sessions from the agent session list
+    sessions = sessions.filter(s => !s.id.startsWith('chat-room-'));
     if (agentId) {
       sessions = sessions.filter(s => s.agentId === agentId);
     }

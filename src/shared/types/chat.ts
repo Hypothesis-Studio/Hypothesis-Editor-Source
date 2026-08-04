@@ -235,6 +235,7 @@ export const CHAT_IPC = {
   TOGGLE_AI:          'chat:toggle-ai',
   EDIT_MESSAGE:       'chat:edit-message',
   DELETE_MESSAGE:     'chat:delete-message',
+  DOWNLOAD_FILE:      'chat:download-file',
 
   // Events (main → renderer)
   EVT_MESSAGE:        'chat:evt:message',

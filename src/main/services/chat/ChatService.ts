@@ -214,6 +214,10 @@ export class ChatService {
       room.status = 'closed';
       this.broadcastStatus(room);
     }
+    // Clear AI session for this room
+    if (this.agentService) {
+      this.agentService.deleteChatSession(`chat-room-${id}`);
+    }
     this.records.delete(id);
   }
 
@@ -232,6 +236,10 @@ export class ChatService {
       this.saveHistory(room);
     } else {
       await this.leave(id);
+    }
+    // Clear AI session for this room so next session starts fresh
+    if (this.agentService) {
+      this.agentService.deleteChatSession(`chat-room-${id}`);
     }
     this.records.delete(id);
   }
@@ -266,8 +274,16 @@ export class ChatService {
     this.saveHistory(record.room);
 
     // AI mention detection
-    if (record.room.aiEnabled && /^@ai\b/i.test(content.trim())) {
-      setImmediate(() => this.handleAiMention(record.room, content.replace(/^@ai\s*/i, '').trim(), replyToContent, replyToSenderName));
+    const hasAiMention = /@ai\b/i.test(content);
+    if (hasAiMention) {
+      if (record.room.aiEnabled) {
+        const prompt = content.replace(/@ai\s*/gi, '').trim();
+        setImmediate(() => this.handleAiMention(record.room, prompt, replyToContent, replyToSenderName));
+      } else {
+        // AI is disabled — send a small note back only to the renderer (host sees it too)
+        const noteMsg = this.systemMessage(roomId, '\u26a0\ufe0f AI assistant is currently disabled. The host can enable it via the robot icon in the header.');
+        this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId, message: noteMsg });
+      }
     }
 
     return { ...msg };
@@ -520,6 +536,12 @@ export class ChatService {
     if (!r) return;
     r.room.publicUrl = publicUrl.replace(/^http/, 'ws');
     r.room.tunnelId = tunnelId;
+    // Notify all connected guests about the new public URL (info only — their WS connection stays alive)
+    this.broadcast(CHAT_IPC.EVT_STATUS, {
+      roomId,
+      status: r.room.status,
+      publicUrl: r.room.publicUrl,
+    });
     this.broadcastStatus(r.room);
   }
 
@@ -570,12 +592,28 @@ ${effectivePrompt}`
       const agentId = room.aiAgentId
         ?? (this.appStore?.get('settings')?.[`chat.aiAgentId`] as string | undefined)
         ?? undefined;
-      for await (const event of this.agentService.streamMessage(sessionId, fullPrompt, agentId)) {
+
+      // Show AI typing indicator
+      this.sendTyping(room.id, 'ai', 'AI Assistant', true);
+
+      const CHAT_CONSTRAINTS = `\n\n---\nYou are currently participating in a real-time team chat room.\n\nAdditional rules:\n- Keep responses concise, professional, and chat-friendly.\n- This chat is for discussion, explanations, questions, and coordination.\n- Do not directly read, write, edit, create, delete, or modify files in chat.\n- Do not directly run commands, scripts, terminals, builds, tests, or other system operations in chat.\n- When the user requests any file or workspace operation, clearly direct the task to the AI Agent.\n- For coding tasks that require inspecting or modifying the workspace, tell the user to use the AI Agent to perform the task.\n- Do not pretend that a file was read, changed, created, deleted, or a command was executed unless the AI Agent has actually performed the operation.\n- If the request can be answered without workspace access, answer it directly.\n- Keep responses short. Prefer 1–3 concise sentences.\n- Avoid unnecessary explanations, disclaimers, or repetition.\n- Maintain a professional, helpful, and collaborative tone.`;
+
+      const agentObj = this.agentService.getAgentById(agentId);
+      const basePrompt = agentObj?.systemPrompt ?? '';
+      const finalSystemPrompt = basePrompt
+        ? `${basePrompt}${CHAT_CONSTRAINTS}`
+        : `You are a helpful AI assistant.${CHAT_CONSTRAINTS}`;
+
+      for await (const event of this.agentService.streamMessage(sessionId, fullPrompt, agentId, undefined, undefined, [], finalSystemPrompt)) {
         if (event.type === 'content_delta') {
           responseText += (event.data as { content: string }).content;
         }
         if (event.type === 'done') break;
       }
+
+      // Clear AI typing indicator
+      this.sendTyping(room.id, 'ai', 'AI Assistant', false);
+
       if (!responseText.trim()) return;
       const aiMsg: ChatMessage = {
         id: nanoid(), roomId: room.id, senderId: 'ai',
@@ -591,7 +629,11 @@ ${effectivePrompt}`
       }
       this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId: room.id, message: aiMsg });
       this.saveHistory(room);
-    } catch { /* AI errors are non-fatal */ }
+    } catch {
+      // Clear typing indicator on error so it doesn't get stuck
+      this.sendTyping(room.id, 'ai', 'AI Assistant', false);
+      /* AI errors are non-fatal */
+    }
   }
 
   // ── Host: handle incoming guest connection ─────────────────────────────────
@@ -679,8 +721,16 @@ ${effectivePrompt}`
       socketMap.forEach((_uid, s) => { if (s !== ws) this.wsSend(s, { type: 'chat', payload: msg }); });
       this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId: room.id, message: msg });
       this.saveHistory(room);
-      if (room.aiEnabled && /^@ai\b/i.test(msg.content.trim())) {
-        setImmediate(() => this.handleAiMention(room, msg.content.replace(/^@ai\s*/i, '').trim(), msg.replyToContent, msg.replyToSenderName));
+      const hasAiMention = /@ai\b/i.test(msg.content);
+      if (hasAiMention) {
+        if (room.aiEnabled) {
+          const prompt = msg.content.replace(/@ai\s*/gi, '').trim();
+          setImmediate(() => this.handleAiMention(room, prompt, msg.replyToContent, msg.replyToSenderName));
+        } else {
+          const noteMsg = this.systemMessage(room.id, '\u26a0\ufe0f AI assistant is currently disabled. The host can enable it via the robot icon in the header.');
+          this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId: room.id, message: noteMsg });
+          this.wsSend(ws, { type: 'chat', payload: noteMsg });
+        }
       }
       return;
     }

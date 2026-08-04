@@ -240,7 +240,9 @@ export const useAgentStore = create<AgentState>((set, get) => {
 
     loadSessions: async (agentId) => {
       const result = (await window.api.agent.session.list(agentId)) as IPCResult<ChatSession[]>;
-      if (result.success && result.data) set({ sessions: result.data });
+      if (result.success && result.data) {
+        set({ sessions: result.data.filter((s) => !s.id.startsWith('chat-room-')) });
+      }
     },
 
     createSession: async (agentId, title) => {

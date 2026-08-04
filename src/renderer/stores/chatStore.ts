@@ -91,6 +91,7 @@ interface ChatState {
   approveJoin: (roomId: string, requestId: string) => Promise<void>;
   denyJoin: (roomId: string, requestId: string) => Promise<void>;
   toggleAi: (roomId: string, enabled: boolean) => Promise<void>;
+  regenerateTunnel: (roomId: string) => Promise<void>;
 
   // ── IPC event handlers ───────────────────────────────────────────────────
   handleMessage: (event: { roomId: string; message: ChatMessage }) => void;
@@ -393,6 +394,45 @@ export const useChatStore = create<ChatState>()(persist((set, get) => ({
     await api.chat.toggleAi?.(roomId, enabled);
   },
 
+  regenerateTunnel: async (roomId) => {
+    const api = (window as any).api;
+    if (!api?.chat || !api?.tunnel) return;
+    const room = get().rooms.find((r) => r.id === roomId);
+    if (!room || !room.localPort) return;
+
+    // Close old tunnel if exists
+    if (room.tunnelId) {
+      await api.tunnel.close(room.tunnelId).catch(() => {});
+    }
+
+    // Mark as pending
+    set({ pendingTunnelRoomId: roomId });
+
+    try {
+      const result = await api.tunnel.open({
+        localPort: room.localPort,
+        label: `Chat: ${room.name}`,
+        autoReconnect: true,
+      });
+      if (result?.success && result.tunnel) {
+        const publicUrl = result.tunnel.publicUrl;
+        if (publicUrl) {
+          await api.chat.updatePublicUrl?.(roomId, publicUrl, result.tunnel.id);
+          set((s) => ({
+            rooms: s.rooms.map((r) =>
+              r.id === roomId
+                ? { ...r, publicUrl: publicUrl.replace(/^http/, 'ws'), tunnelId: result.tunnel.id }
+                : r,
+            ),
+            pendingTunnelRoomId: null,
+          }));
+        }
+      }
+    } finally {
+      set({ pendingTunnelRoomId: null });
+    }
+  },
+
   // ── IPC event handlers ────────────────────────────────────────────────────
 
   handleMessage: (event) => {
@@ -462,8 +502,8 @@ export const useChatStore = create<ChatState>()(persist((set, get) => ({
       }
       return { roomUI: { ...s.roomUI, [event.roomId]: { ...ui, typingUsers } } };
     });
-    // Auto-expire after TYPING_EXPIRE_MS
-    if (event.isTyping) {
+    // Auto-expire after TYPING_EXPIRE_MS — skip for AI (it clears itself when done)
+    if (event.isTyping && event.userId !== 'ai') {
       setTimeout(() => {
         set((s) => {
           const ui = s.roomUI[event.roomId];

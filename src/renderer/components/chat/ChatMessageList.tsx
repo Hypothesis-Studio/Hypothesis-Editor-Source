@@ -3,9 +3,24 @@
  * reactions, reply context, read receipts, typing indicators, and AI messages.
  * All UI uses SVG icons, no emoji in UI chrome.
  */
-import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo, useMemo } from 'react';
 import type { ChatMessage } from '../../../shared/types/chat';
 import { useChatStore } from '../../stores/chatStore';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+
+// Configure marked
+marked.setOptions({ breaks: true, gfm: true });
+
+/** Render markdown to sanitized HTML */
+function renderMarkdown(content: string): string {
+  const raw = marked.parse(content) as string;
+  return DOMPurify.sanitize(raw, {
+    ALLOWED_TAGS: ['p','br','strong','em','code','pre','blockquote','ul','ol','li','h1','h2','h3','h4','h5','h6','a','hr','del','table','thead','tbody','tr','th','td'],
+    ALLOWED_ATTR: ['href','target','rel'],
+    FORCE_BODY: true,
+  });
+}
 
 interface Props {
   messages: ChatMessage[];
@@ -29,7 +44,8 @@ export const ChatMessageList: React.FC<Props> = ({ messages, roomId, currentUser
   const prevLenRef = useRef(0);
   const { roomUI, addReaction, markRead, setReplyingTo } = useChatStore();
   const typingUsers = roomUI[roomId]?.typingUsers ?? {};
-  const typingList = Object.values(typingUsers).filter((u) => u.name); // filter out self is done at display level
+  const typingList = Object.values(typingUsers).filter((u) => u.name);
+  const hasAiTyping = typingList.some((u) => u.name === 'AI Assistant');
 
   useEffect(() => {
     if (messages.length > prevLenRef.current) {
@@ -285,7 +301,7 @@ const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, is
           fontSize: 13, lineHeight: 1.55, wordBreak: 'break-word',
           boxShadow: isSelf && !isAi ? '0 1px 4px rgba(0,0,0,0.18)' : '0 1px 3px rgba(0,0,0,0.10)',
           border: isSelf && !isAi ? 'none' : `1px solid ${isAi ? '#c586c033' : 'var(--theme-border)'}`,
-          position: 'relative',
+          position: 'relative', userSelect: 'text', cursor: 'text',
         }}
       >
         {msg.type === 'code' ? (
@@ -293,7 +309,7 @@ const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, is
         ) : msg.type === 'file' ? (
           <FileBlock msg={msg} isSelf={isSelf} />
         ) : (
-          <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
+          <MarkdownContent content={msg.content} isSelf={isSelf && !isAi} />
         )}
         {msg.edited && (
           <span style={{ fontSize: 9, opacity: 0.5, marginLeft: 6, fontStyle: 'italic' }}>(edited)</span>
@@ -376,6 +392,23 @@ const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, is
   );
 });
 
+// ── Markdown content ─────────────────────────────────────────────────────────
+
+const MarkdownContent: React.FC<{ content: string; isSelf: boolean }> = ({ content, isSelf }) => {
+  const html = useMemo(() => renderMarkdown(content), [content]);
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: html }}
+      style={{
+        // Reset aggressive margins from browser defaults
+        lineHeight: 1.6,
+        color: isSelf ? '#fff' : 'var(--theme-fg)',
+      }}
+      className={`chat-md${isSelf ? ' chat-md-self' : ''}`}
+    />
+  );
+};
+
 // ── Code block ────────────────────────────────────────────────────────────────
 
 const CodeBlock: React.FC<{ content: string; language?: string; isSelf: boolean }> = ({ content, language, isSelf }) => {
@@ -405,8 +438,9 @@ const CodeBlock: React.FC<{ content: string; language?: string; isSelf: boolean 
         background: isSelf ? 'rgba(0,0,0,0.15)' : 'var(--theme-bg)',
         borderRadius: 5, padding: '8px 10px',
         maxHeight: 320, fontSize: 12, lineHeight: 1.5,
+        userSelect: 'text', cursor: 'text',
       }}>
-        <code>{content}</code>
+        <code style={{ userSelect: 'text' }}>{content}</code>
       </pre>
     </div>
   );
@@ -418,12 +452,19 @@ const FileBlock: React.FC<{ msg: ChatMessage; isSelf: boolean }> = ({ msg, isSel
   const isImage = msg.fileMimeType?.startsWith('image/');
   const sizeStr = msg.fileSize ? `${(msg.fileSize / 1024).toFixed(1)} KB` : '';
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!msg.fileData) return;
-    const a = document.createElement('a');
-    a.href = `data:${msg.fileMimeType};base64,${msg.fileData}`;
-    a.download = msg.fileName ?? 'file';
-    a.click();
+    const api = (window as any).api;
+    // Use Electron dialog to save to Downloads folder (cross-platform: Win/Mac/Linux)
+    if (api?.chat?.downloadFile) {
+      await api.chat.downloadFile(msg.fileName ?? 'file', msg.fileData, msg.fileMimeType ?? 'application/octet-stream');
+    } else {
+      // Fallback for non-Electron environments
+      const a = document.createElement('a');
+      a.href = `data:${msg.fileMimeType};base64,${msg.fileData}`;
+      a.download = msg.fileName ?? 'file';
+      a.click();
+    }
   }, [msg]);
 
   if (isImage && msg.fileData) {
@@ -486,11 +527,34 @@ const ReactionChip: React.FC<{ emoji: string; count: number; reacted: boolean; o
 // ── Typing indicator ──────────────────────────────────────────────────────────
 
 const TypingIndicator: React.FC<{ users: Array<{ name: string; since: number }>; currentUserId?: string }> = ({ users, currentUserId }) => {
-  const filteredUsers = users.filter((u) => u.name); // Already filtered at store level, but safe guard
+  const filteredUsers = users.filter((u) => u.name);
   if (filteredUsers.length === 0) return null;
 
-  const names = filteredUsers.map((u) => u.name);
-  const label = names.length === 1 ? `${names[0]} is typing` : names.length === 2 ? `${names[0]} and ${names[1]} are typing` : `${names.length} people are typing`;
+  const MAX_SHOWN = 3;
+  const shown = filteredUsers.slice(0, MAX_SHOWN);
+  const overflow = filteredUsers.length - MAX_SHOWN;
+
+  // Build label parts with AI styled differently
+  const nameParts = shown.map((u) => {
+    const isAi = u.name === 'AI Assistant';
+    return (
+      <span key={u.name} className={isAi ? 'ai-typing-breath' : undefined} style={{ color: isAi ? '#c586c0' : 'var(--theme-fg-muted)', fontWeight: isAi ? 600 : 400 }}>
+        {u.name}
+      </span>
+    );
+  });
+
+  // Join with commas + Oxford-style last separator
+  const parts: React.ReactNode[] = [];
+  nameParts.forEach((part, i) => {
+    parts.push(part);
+    if (i < nameParts.length - 1) parts.push(<span key={`sep-${i}`}>, </span>);
+  });
+  if (overflow > 0) {
+    parts.push(<span key="overflow">, <strong>{overflow} other{overflow > 1 ? 's' : ''}</strong></span>);
+  }
+
+  const verb = filteredUsers.length === 1 ? 'is' : 'are';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px 0', marginTop: 4 }}>
@@ -508,7 +572,9 @@ const TypingIndicator: React.FC<{ users: Array<{ name: string; since: number }>;
           />
         ))}
       </div>
-      <span style={{ fontSize: 11, color: 'var(--theme-fg-muted)', fontStyle: 'italic' }}>{label}</span>
+      <span style={{ fontSize: 11, color: 'var(--theme-fg-muted)', fontStyle: 'italic' }}>
+        {parts} {verb} typing…
+      </span>
       <style>{`
         @keyframes typingBounce {
           0%, 60%, 100% { transform: translateY(0); }

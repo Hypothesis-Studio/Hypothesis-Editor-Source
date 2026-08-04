@@ -15,7 +15,8 @@ interface Props {
 export const ChatRoomView: React.FC<Props> = ({ roomId }) => {
   const {
     rooms, messages, leaveRoom, closeRoom, copyUrl, clearMessages,
-    kickUser, approveJoin, denyJoin, toggleAi, sendPresence,
+    kickUser, approveJoin, denyJoin, toggleAi, sendPresence, regenerateTunnel,
+    pendingTunnelRoomId,
   } = useChatStore();
   const [copied, setCopied] = useState(false);
   const [showParticipants, setShowParticipants] = useState(true);
@@ -178,6 +179,25 @@ export const ChatRoomView: React.FC<Props> = ({ roomId }) => {
             }
           </HeaderBtn>
 
+          {/* Regenerate public URL (host + public room only) */}
+          {isHost && isPublic && (
+            <HeaderBtn
+              title={pendingTunnelRoomId === roomId ? 'Generating new URL…' : 'Regenerate public URL'}
+              onClick={() => regenerateTunnel(roomId)}
+              active={pendingTunnelRoomId === roomId}
+            >
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                style={pendingTunnelRoomId === roomId ? { animation: 'spin 1s linear infinite' } : undefined}
+              >
+                <path d="M23 4v6h-6" />
+                <path d="M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+              </svg>
+            </HeaderBtn>
+          )}
+
           <div style={{ width: 1, height: 18, background: 'var(--theme-border)', margin: '0 4px' }} />
 
           {/* Leave / Disconnect */}
@@ -234,7 +254,7 @@ export const ChatRoomView: React.FC<Props> = ({ roomId }) => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <ChatMessageList messages={roomMessages} roomId={roomId} currentUserId={selfUserId} />
           {isActive
-            ? <ChatInput roomId={roomId} currentUserId={selfUserId} />
+            ? <ChatInput roomId={roomId} currentUserId={selfUserId} isHost={isHost} />
             : (
               <div style={{
                 padding: '12px 16px', textAlign: 'center', fontSize: 12,
