@@ -3,6 +3,7 @@
  * Supports streaming, markdown, tool display, slash commands with autocomplete, session management, clear.
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { CollapsibleCodeBlock } from '../shared/CollapsibleCodeBlock';
 import { useAgentStore, type ActiveToolCall, type PendingApproval } from '../../stores/agentStore';
 import { useEditorStore } from '../../stores/editorStore';
 import type { ChatMessage, StreamEvent, AgentTask } from '../../../shared/types/agent';
@@ -808,9 +809,11 @@ const ToolCallCard: React.FC<{ call: ActiveToolCall }> = React.memo(({ call }) =
           <div style={{ fontSize: 10, color: 'var(--theme-error)', marginTop: 2 }}>{call.error.substring(0, 120)}</div>
         )}
         {expanded && call.output && (
-          <pre style={{ margin: '4px 0 0', padding: '4px 6px', background: 'var(--theme-bg-secondary)', borderRadius: 3, fontSize: 10, fontFamily: 'monospace', maxHeight: 120, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            {call.output.substring(0, 1000)}
-          </pre>
+          <CollapsibleCodeBlock
+            lang={call.name.match(/terminal|run|exec|bash/i) ? 'bash' : 'plaintext'}
+            code={call.output.substring(0, 2000)}
+            defaultCollapsed={false}
+          />
         )}
       </div>
     </div>
@@ -844,15 +847,11 @@ const ApprovalGate: React.FC<{ approval: PendingApproval; onApprove: () => void;
         <span style={{ fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>Confirm: {approval.toolName}</span>
         <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--theme-fg-muted)' }}>Auto-deny in {secondsLeft}s</span>
       </div>
-      <pre style={{
-        background: 'var(--theme-bg-secondary)', borderRadius: 4,
-        padding: '6px 8px', fontSize: 10, fontFamily: 'monospace',
-        maxHeight: 120, overflow: 'auto', margin: '0 0 10px',
-        whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-        color: 'var(--theme-fg)',
-      }}>
-        {JSON.stringify(approval.args, null, 2)}
-      </pre>
+      <CollapsibleCodeBlock
+        lang="json"
+        code={JSON.stringify(approval.args, null, 2)}
+        defaultCollapsed={false}
+      />
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={onApprove}
@@ -1195,74 +1194,6 @@ function renderInline(text: string): React.ReactNode {
 
 // ── Collapsible Code Block ─────────────────────────────────────
 
-const CollapsibleCodeBlock: React.FC<{ lang: string; code: string; lineCount: number }> = ({ lang, code, lineCount }) => {
-  const [collapsed, setCollapsed] = useState(true);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(code);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = code;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div style={{
-      background: 'var(--theme-bg-tertiary)', borderRadius: 6,
-      border: '1px solid var(--theme-border)', margin: '8px 0',
-      overflow: 'hidden',
-    }}>
-      {/* Header */}
-      <div
-        onClick={() => setCollapsed(!collapsed)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '6px 12px', cursor: 'pointer',
-          background: 'var(--theme-bg-secondary)',
-          borderBottom: collapsed ? 'none' : '1px solid var(--theme-border)',
-        }}
-      >
-        <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)', transition: 'transform 0.15s', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
-          ▼
-        </span>
-        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--theme-fg-muted)', flex: 1 }}>
-          {lang || 'code'} · {lineCount} line{lineCount !== 1 ? 's' : ''}
-        </span>
-        <button
-          onClick={handleCopy}
-          style={{
-            background: copied ? 'rgba(99,102,241,0.15)' : 'transparent',
-            border: '1px solid var(--theme-border-light)', borderRadius: 3,
-            padding: '2px 8px', fontSize: 9, cursor: 'pointer',
-            color: copied ? 'var(--theme-accent)' : 'var(--theme-fg-muted)',
-          }}
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-
-      {/* Code content */}
-      {!collapsed && (
-        <pre style={{
-          margin: 0, padding: '10px 12px', overflow: 'auto',
-          fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
-          lineHeight: 1.5, maxHeight: 400,
-        }}>
-          <code>{code}</code>
-        </pre>
-      )}
-    </div>
-  );
-};
 
 // ── Copy Button ───────────────────────────────────────────────
 

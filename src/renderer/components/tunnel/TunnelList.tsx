@@ -255,6 +255,7 @@ function statusColor(status: TunnelStatus): string {
   switch (status) {
     case 'connected':   return '#4ade80';
     case 'connecting':  return '#facc15';
+    case 'downloading': return '#4fc1ff';
     case 'error':       return 'var(--theme-error)';
     case 'closed':      return 'var(--theme-fg-muted)';
   }
@@ -264,6 +265,7 @@ function statusLabel(status: TunnelStatus): string {
   switch (status) {
     case 'connected':   return 'Connected';
     case 'connecting':  return 'Connecting';
+    case 'downloading': return 'Downloading';
     case 'error':       return 'Error';
     case 'closed':      return 'Closed';
   }

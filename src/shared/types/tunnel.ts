@@ -6,7 +6,7 @@
 // Core Tunnel Types
 // ============================================================================
 
-export type TunnelStatus = 'connecting' | 'connected' | 'error' | 'closed';
+export type TunnelStatus = 'connecting' | 'connected' | 'error' | 'closed' | 'downloading';
 
 export type TunnelProtocol = 'http' | 'https';
 
@@ -16,11 +16,15 @@ export interface TunnelEntry {
   localPort: number;
   /** Human-friendly label (editable) */
   label: string;
-  /** The public URL assigned by localtunnel */
+  /** The public URL assigned by the tunnel provider */
   publicUrl: string | null;
   /** Preferred subdomain (may not be honored by the server) */
   subdomain: string | null;
   status: TunnelStatus;
+  /** Tunnel provider */
+  provider: 'localtunnel' | 'cloudflare';
+  /** Origin of this tunnel — chat-room tunnels are hidden from Tunnel Panel */
+  source: 'tunnel-panel' | 'chat-room';
   /** ISO timestamp when the tunnel was opened */
   startedAt: string | null;
   /** Error message when status === 'error' */
@@ -40,6 +44,8 @@ export interface TunnelCreateOptions {
   label?: string;
   subdomain?: string;
   autoReconnect?: boolean;
+  provider?: 'localtunnel' | 'cloudflare';
+  source?: 'tunnel-panel' | 'chat-room';
 }
 
 export interface TunnelStats {
@@ -71,6 +77,11 @@ export interface TunnelListResult {
 // ============================================================================
 // IPC Events (main → renderer)
 // ============================================================================
+
+export interface TunnelDownloadProgressEvent {
+  percent: number;   // 0-100
+  message: string;   // human-readable status
+}
 
 export interface TunnelStatusChangedEvent {
   tunnelId: string;
@@ -108,4 +119,5 @@ export const TUNNEL_IPC = {
   EVT_STATUS:     'tunnel:evt:status',
   EVT_REQUEST:    'tunnel:evt:request',
   EVT_ERROR:      'tunnel:evt:error',
+  EVT_DOWNLOAD_PROGRESS: 'tunnel:evt:download-progress',
 } as const;

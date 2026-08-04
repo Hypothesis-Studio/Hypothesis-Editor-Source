@@ -18,6 +18,9 @@ export const ChatRoomList: React.FC = () => {
     joinUserName, setJoinUserName,
     createRoom, joinRoom, setSelectedRoom,
     findFreePort,
+    hostingMode, setHostingMode,
+    createSubdomain, setCreateSubdomain,
+    tunnelProvider, setTunnelProvider,
   } = useChatStore();
 
   const tunnels = useTunnelStore((s) => s.tunnels);
@@ -129,6 +132,68 @@ export const ChatRoomList: React.FC = () => {
                     <option key={t.id} value={t.id}>{t.label} — {t.publicUrl}</option>
                   ))}
                 </select>
+              </Field>
+            )}
+
+            {/* ── Hosting mode ── */}
+            <Field label="Room visibility">
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['local', 'public'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setHostingMode(mode)}
+                    style={{
+                      flex: 1, padding: '5px 0', fontSize: 12, borderRadius: 5, cursor: 'pointer',
+                      border: `1px solid ${hostingMode === mode ? 'var(--theme-accent)' : 'var(--theme-border)'}`,
+                      background: hostingMode === mode ? 'var(--theme-accent)' : 'var(--theme-bg-secondary)',
+                      color: hostingMode === mode ? '#fff' : 'var(--theme-fg-muted)',
+                      fontWeight: hostingMode === mode ? 600 : 400,
+                    }}
+                  >
+                    {mode === 'local' ? '🔒 Local (LAN)' : '🌐 Public (Tunnel)'}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            {/* ── Tunnel provider (only when public) ── */}
+            {hostingMode === 'public' && (
+              <Field label="Tunnel provider">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(['cloudflare', 'localtunnel'] as const).map((p) => (
+                    <label key={p} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 12 }}>
+                      <input
+                        type="radio"
+                        name="tunnelProvider"
+                        checked={tunnelProvider === p}
+                        onChange={() => setTunnelProvider(p)}
+                        style={{ accentColor: 'var(--theme-accent)', marginTop: 2 }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--theme-fg)' }}>
+                          {p === 'cloudflare' ? 'Cloudflare Tunnel' : 'LocalTunnel'}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)', marginTop: 1 }}>
+                          {p === 'cloudflare'
+                            ? 'Stable, no account needed. URL via trycloudflare.com'
+                            : 'Simple, no account needed. URL via loca.lt (less stable)'}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </Field>
+            )}
+
+            {/* ── Subdomain (localtunnel only) ── */}
+            {hostingMode === 'public' && tunnelProvider === 'localtunnel' && (
+              <Field label="Subdomain (optional)">
+                <Input
+                  placeholder="e.g. my-team (may not be available)"
+                  value={createSubdomain}
+                  onChange={setCreateSubdomain}
+                />
               </Field>
             )}
 

@@ -136,4 +136,21 @@ export function registerChatIPC(chatService: ChatService): void {
       return { success: false, error: (err as Error).message };
     }
   });
+
+  ipcMain.handle(CHAT_IPC.SHOW_NOTIFICATION, (_e, title: string, body: string, _roomId: string) => {
+    try {
+      const { Notification } = require('electron');
+      if (Notification.isSupported()) {
+        const n = new Notification({
+          title: `💬 ${title}`,
+          body: body.length > 100 ? body.substring(0, 100) + '…' : body,
+          silent: false,
+        });
+        n.show();
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
 }

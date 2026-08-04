@@ -53,7 +53,9 @@ export interface ChatMessage {
   fileName?: string;
   fileSize?: number;
   fileMimeType?: string;
-  fileData?: string; // base64, only present during transfer
+  fileData?: string; // base64, legacy/fallback only
+  fileUrl?: string;  // http URL served by host, preferred over fileData
+  fileStoredPath?: string; // absolute path on host disk (never sent to guests)
 }
 
 export interface JoinRequest {
@@ -91,6 +93,7 @@ export interface ChatCreateOptions {
   tunnelId?: string | null;
   aiEnabled?: boolean;
   aiAgentId?: string;
+  tunnelProvider?: 'localtunnel' | 'cloudflare';
 }
 
 export interface ChatJoinOptions {
@@ -236,6 +239,7 @@ export const CHAT_IPC = {
   EDIT_MESSAGE:       'chat:edit-message',
   DELETE_MESSAGE:     'chat:delete-message',
   DOWNLOAD_FILE:      'chat:download-file',
+  SHOW_NOTIFICATION:  'chat:show-notification',
 
   // Events (main → renderer)
   EVT_MESSAGE:        'chat:evt:message',
@@ -284,9 +288,18 @@ export interface WsEnvelope {
 // File transfer constraints
 // ============================================================================
 
-export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
 export const ALLOWED_MIME_TYPES = [
+  // Images
   'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+  // Video
+  'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-matroska',
+  // Audio
+  'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/aac', 'audio/flac',
+  // Documents
   'text/plain', 'application/json', 'text/markdown',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/octet-stream',
 ];

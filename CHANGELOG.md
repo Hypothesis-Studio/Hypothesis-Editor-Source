@@ -1,5 +1,31 @@
 ﻿# CHANGELOG
 
+## [0.2.10] - 2026-08-04
+
+### Added
+- **Syntax highlighting in code blocks** — Code snippets and code blocks in both AI Agent chat and Chat Collaboration now display with full syntax highlighting. Supports 40+ languages including TypeScript, Python, Rust, Go, Java, PHP, SQL, Bash, and more.
+- **Collapsible code blocks** — All code blocks are collapsed by default to keep conversations easy to scan. Click to expand and read the full code, or collapse it again when done.
+- **Code blocks adapt to your theme** — Code block colors automatically follow your current editor theme. Dark themes get a VS Code Dark+ palette; light themes switch to a matching light palette — no manual changes needed.
+- **More language options for code snippets** — The language picker in Chat Collaboration now includes 40+ languages, up from 15.
+- **Tool output with syntax highlighting** — When the AI Agent uses tools like read, write, or edit, the output is now shown with syntax highlighting and can be expanded or collapsed.
+- **Jump to original message** — Clicking a reply quote in Chat Collaboration scrolls to and highlights the original message, just like WhatsApp.
+- **Play media directly in chat** — Images, videos, and audio files sent in Chat Collaboration now display inline. Videos and audio play directly without downloading first. A Save button appears on hover when you want to keep the file.
+- **Support for video and audio attachments** — Chat Collaboration now accepts video (MP4, WebM, MKV, MOV) and audio (MP3, WAV, AAC, FLAC, OGG) files in addition to images and documents. File size limit raised to 50 MB.
+
+### Improved
+- **Code snippets send without a chat bubble** — Code snippets in Chat Collaboration now appear full-width without a message bubble wrapper, making them easier to read.
+- **Compose bar exits code mode after sending** — After sending a code snippet, the compose bar automatically returns to regular text mode.
+- **Inline code blocks in messages** — Code fences inside regular chat messages (e.g. AI responses with example code) now render with the same highlighted, collapsible style as standalone code snippets.
+- **Code snippets support reply and reactions** — You can now reply to and react on code snippet messages, same as regular messages.
+- **One reaction per person per message** — Each participant can only have one active reaction per message. Picking a new emoji automatically removes the previous one.
+- **Chat files stored on disk, not in memory** — Shared files are now saved to disk on the host machine instead of being held in memory. This prevents memory buildup in long or busy sessions. Files are served directly to participants over the local network and cleaned up automatically when the room is closed.
+- **AI Agent session history stored per file** — AI Agent conversation history is now saved as individual files instead of one large data store. This keeps memory usage low no matter how many sessions you have, and deleting a session removes all its data immediately.
+
+### Fixed
+- **Cloudflare tunnel no longer disconnects when switching tabs** — Cloudflare tunnels now run reliably inside the app process using the official `cloudflared` Node.js package, the same way LocalTunnel works. Previously the tunnel would drop whenever you opened the editor, settings, or browser tab.
+- **Second chat room no longer fails to start** — Creating a second room now correctly picks a free port that isn't already used by the first room.
+- **Public URL no longer resets when switching editor tabs** — The room's public URL is now managed exclusively by tunnel events and is no longer accidentally cleared by unrelated status updates.
+
 ## [0.2.9] - 2026-08-02
 
 ### Added

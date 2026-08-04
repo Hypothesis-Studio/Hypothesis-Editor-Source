@@ -14,6 +14,8 @@ import type {
 import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as http from 'http';
+import * as url from 'url';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal record types
@@ -25,6 +27,8 @@ interface HostRecord {
   wss: WebSocketServer;
   socketMap: Map<WebSocket, string>;
   pingInterval: NodeJS.Timeout;
+  httpServer: http.Server;
+  filePort: number;
 }
 
 interface GuestRecord {
@@ -33,6 +37,7 @@ interface GuestRecord {
   ws: WebSocket;
   selfUser: ChatUser;
   pingInterval: NodeJS.Timeout;
+  hostFileBase: string; // e.g. http://192.168.1.x:filePort
 }
 
 type RoomRecord = HostRecord | GuestRecord;
@@ -46,6 +51,7 @@ const MAX_MESSAGES = 500;
 const PING_INTERVAL_MS = 25_000;
 const TYPING_DEBOUNCE_MS = 3_000;
 const HISTORY_DIR = () => path.join(app.getPath('userData'), 'chat-history');
+const FILES_DIR = (roomId: string) => path.join(app.getPath('userData'), 'chat-history', 'files', roomId);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -87,6 +93,17 @@ export class ChatService {
     } catch { /* non-critical */ }
   }
 
+  private rewriteFileUrl(fileUrl: string, hostFileBase: string): string {
+    try {
+      // Replace 127.0.0.1 with actual host IP/port from hostFileBase
+      const orig = new URL(fileUrl);
+      const base = new URL(hostFileBase);
+      orig.hostname = base.hostname;
+      orig.port = base.port;
+      return orig.toString();
+    } catch { return fileUrl; }
+  }
+
   private deleteHistory(roomId: string): void {
     try {
       const file = this.historyFile(roomId);
@@ -94,11 +111,75 @@ export class ChatService {
     } catch { /* ignore */ }
   }
 
+  private deleteFiles(roomId: string): void {
+    try {
+      const dir = FILES_DIR(roomId);
+      if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+    } catch { /* ignore */ }
+  }
+
+  private createFileServer(roomId: string, filePort: number): http.Server {
+    const filesDir = FILES_DIR(roomId);
+    if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir, { recursive: true });
+
+    const MIME_MAP: Record<string, string> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+      '.mp4': 'video/mp4', '.webm': 'video/webm', '.ogv': 'video/ogg',
+      '.mov': 'video/quicktime', '.mkv': 'video/x-matroska',
+      '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav',
+      '.aac': 'audio/aac', '.flac': 'audio/flac', '.m4a': 'audio/mp4',
+      '.pdf': 'application/pdf',
+      '.txt': 'text/plain', '.md': 'text/markdown', '.json': 'application/json',
+    };
+
+    const server = http.createServer((req, res) => {
+      try {
+        const parsed = url.parse(req.url ?? '/');
+        const filePath = path.join(filesDir, path.basename(parsed.pathname ?? ''));
+        if (!filePath.startsWith(filesDir) || !fs.existsSync(filePath)) {
+          res.writeHead(404); res.end('Not found'); return;
+        }
+        const ext = path.extname(filePath).toLowerCase();
+        const mime = MIME_MAP[ext] ?? 'application/octet-stream';
+        const stat = fs.statSync(filePath);
+        // Range request support for video/audio streaming
+        const range = req.headers.range;
+        if (range) {
+          const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
+          const start = parseInt(startStr, 10);
+          const end = endStr ? parseInt(endStr, 10) : stat.size - 1;
+          const chunkSize = end - start + 1;
+          res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize,
+            'Content-Type': mime,
+            'Access-Control-Allow-Origin': '*',
+          });
+          fs.createReadStream(filePath, { start, end }).pipe(res);
+        } else {
+          res.writeHead(200, {
+            'Content-Length': stat.size,
+            'Content-Type': mime,
+            'Accept-Ranges': 'bytes',
+            'Access-Control-Allow-Origin': '*',
+          });
+          fs.createReadStream(filePath).pipe(res);
+        }
+      } catch { res.writeHead(500); res.end(); }
+    });
+
+    server.listen(filePort);
+    return server;
+  }
+
   // ── Public API ─────────────────────────────────────────────────────────────
 
   async create(options: ChatCreateOptions): Promise<ChatRoom> {
     const id = nanoid();
     const port = options.localPort ?? (await this.findFreePort(4900));
+    const filePort = await this.findFreePort(port + 1);
 
     const hostUser: ChatUser = {
       id: nanoid(), name: options.userName || 'Host',
@@ -129,10 +210,12 @@ export class ChatService {
     }
 
     const wss = new WebSocketServer({ port });
+    const httpServer = this.createFileServer(id, filePort);
     const pingInterval = setInterval(() => this.pingAll(record), PING_INTERVAL_MS);
     const record: HostRecord = {
       kind: 'host', room, wss,
       socketMap: new Map(), pingInterval,
+      httpServer, filePort,
     };
     this.records.set(id, record);
 
@@ -163,12 +246,15 @@ export class ChatService {
     };
 
     const ws = new WebSocket(options.url);
+    // Extract host base URL for file serving (ws://host:port → http://host:filePort)
+    const wsUrl = new URL(options.url.replace(/^ws/, 'http'));
+    const hostFileBase = `http://${wsUrl.hostname}`; // filePort filled in from room-info/join-response
     const pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN)
         this.wsSend(ws, { type: 'ping', payload: {} });
     }, PING_INTERVAL_MS);
 
-    const record: GuestRecord = { kind: 'guest', room, ws, selfUser, pingInterval };
+    const record: GuestRecord = { kind: 'guest', room, ws, selfUser, pingInterval, hostFileBase };
     this.records.set(id, record);
 
     await new Promise<void>((resolve, reject) => {
@@ -225,15 +311,18 @@ export class ChatService {
     const record = this.records.get(id);
     if (!record) return;
     if (record.kind === 'host') {
-      const { room, wss, socketMap, pingInterval } = record;
+      const { room, wss, socketMap, pingInterval, httpServer } = record;
       clearInterval(pingInterval);
       const goodbye: WsEnvelope = { type: 'system', payload: { content: 'Host closed the room.' } };
       socketMap.forEach((_uid, ws) => { this.wsSend(ws, goodbye); ws.close(); });
       wss.close();
+      httpServer.close();
+      this.deleteFiles(id);
+      this.deleteHistory(id);
       room.status = 'closed';
       this.broadcastStatus(room);
       this.broadcast(CHAT_IPC.EVT_ROOM_CLOSED, { roomId: id, reason: 'Host closed the room' });
-      this.saveHistory(room);
+      // No saveHistory — room is deleted
     } else {
       await this.leave(id);
     }
@@ -324,20 +413,42 @@ export class ChatService {
     const byteLen = Buffer.byteLength(fileData, 'base64');
     if (byteLen > MAX_FILE_SIZE_BYTES) return null;
 
+    const msgId = nanoid();
+    let fileUrl: string | undefined;
+    let fileStoredPath: string | undefined;
+
+    // Host stores file to disk and serves via HTTP
+    if (record.kind === 'host') {
+      const filesDir = FILES_DIR(roomId);
+      if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir, { recursive: true });
+      // Sanitize filename to avoid path traversal
+      const safeExt = path.extname(fileName).replace(/[^a-zA-Z0-9.]/g, '') || '';
+      const safeName = `${msgId}${safeExt}`;
+      fileStoredPath = path.join(filesDir, safeName);
+      fs.writeFileSync(fileStoredPath, Buffer.from(fileData, 'base64'));
+      fileUrl = `http://127.0.0.1:${record.filePort}/${safeName}`;
+    }
+
     const msg: ChatMessage = {
-      id: nanoid(), roomId, senderId: sender.id, senderName: sender.name,
+      id: msgId, roomId, senderId: sender.id, senderName: sender.name,
       senderColor: sender.color, type: 'file',
       content: `Shared file: ${fileName}`,
       timestamp: new Date().toISOString(),
-      fileName, fileSize: byteLen, fileMimeType, fileData,
+      fileName, fileSize: byteLen, fileMimeType,
+      // Only send fileData to guests if no fileUrl (guest-to-guest fallback)
+      fileData: record.kind === 'host' ? undefined : fileData,
+      fileUrl,
+      fileStoredPath,
       reactions: {}, readBy: [sender.id],
     };
 
     this.appendMessage(record.room, msg);
-    this.relayToOthers(record, null, { type: 'chat', payload: msg });
+    // Relay to guests without fileStoredPath; guests get fileUrl
+    const msgForRelay: ChatMessage = { ...msg, fileStoredPath: undefined, fileData: undefined };
+    this.relayToOthers(record, null, { type: 'chat', payload: msgForRelay });
     this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId, message: msg });
-    // Save history without fileData to avoid bloating disk
-    const msgForDisk = { ...msg, fileData: undefined };
+    // Save history without fileData/fileStoredPath
+    const msgForDisk = { ...msg, fileData: undefined, fileStoredPath: undefined };
     const roomForDisk = { ...record.room, messages: record.room.messages.map((m) => m.id === msg.id ? msgForDisk : m) };
     this.saveHistory(roomForDisk as any);
     return { ...msg };
@@ -441,7 +552,7 @@ export class ChatService {
     user.isOnline = true;
     record.socketMap.set(targetWs, user.id);
     record.room.participants.push(user);
-    this.wsSend(targetWs, { type: 'join-response', payload: { approved: true, room: { ...record.room } } });
+    this.wsSend(targetWs, { type: 'join-response', payload: { approved: true, room: { ...record.room }, filePort: record.filePort } });
     const sysMsg = this.systemMessage(roomId, `${user.name} joined the room.`);
     this.appendMessage(record.room, sysMsg);
     this.broadcast(CHAT_IPC.EVT_USER_JOINED, { roomId, user });
@@ -554,7 +665,10 @@ export class ChatService {
   }
 
   async findFreePort(preferred = 4900): Promise<number> {
+    // Collect ports already in use by active rooms
+    const usedPorts = new Set([...this.records.values()].map((r) => r.room.localPort));
     for (let port = preferred; port < preferred + 100; port++) {
+      if (usedPorts.has(port)) continue;
       if (await this.isPortFree(port)) return port;
     }
     throw new Error('No free port found in range');
@@ -668,7 +782,7 @@ ${effectivePrompt}`
     });
 
     // Send room-info so the guest knows who's in the room
-    this.wsSend(ws, { type: 'room-info', payload: { ...record.room } });
+    this.wsSend(ws, { type: 'room-info', payload: { ...record.room, filePort: record.filePort } });
   }
 
   private handleHostIncoming(record: HostRecord, ws: WebSocket, env: WsEnvelope): void {
@@ -810,24 +924,35 @@ ${effectivePrompt}`
       const { room } = record;
 
       if (env.type === 'room-info') {
-        const info = env.payload as ChatRoom;
+        const info = env.payload as ChatRoom & { filePort?: number };
         room.name = info.name; room.host = info.host;
         room.participants = info.participants;
         room.messages = info.messages ?? [];
         room.openJoin = info.openJoin;
         room.aiEnabled = info.aiEnabled;
+        // Store filePort for URL rewriting
+        if (info.filePort) record.hostFileBase = `${record.hostFileBase}:${info.filePort}`;
+        // Rewrite fileUrl in history messages
+        room.messages.forEach((m) => {
+          if (m.type === 'file' && m.fileUrl) m.fileUrl = this.rewriteFileUrl(m.fileUrl, record.hostFileBase);
+        });
         this.broadcastStatus(room);
         room.messages.forEach((m) => this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId: room.id, message: m }));
         return;
       }
 
       if (env.type === 'join-response') {
-        const { approved, room: roomInfo } = env.payload as { approved: boolean; room?: ChatRoom };
+        const { approved, room: roomInfo, filePort } = env.payload as { approved: boolean; room?: ChatRoom; filePort?: number };
         if (approved && roomInfo) {
           room.name = roomInfo.name; room.host = roomInfo.host;
           room.participants = roomInfo.participants;
           room.messages = roomInfo.messages ?? [];
           room.status = 'connected';
+          if (filePort) record.hostFileBase = `${record.hostFileBase}:${filePort}`;
+          // Rewrite fileUrl in history messages
+          room.messages.forEach((m) => {
+            if (m.type === 'file' && m.fileUrl) m.fileUrl = this.rewriteFileUrl(m.fileUrl, record.hostFileBase);
+          });
           this.broadcastStatus(room);
           room.messages.forEach((m) => this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId: room.id, message: m }));
         }
@@ -845,6 +970,10 @@ ${effectivePrompt}`
       if (env.type === 'chat') {
         const msg = env.payload as ChatMessage;
         if (!msg.reactions) msg.reactions = {};
+        // Rewrite fileUrl so guest fetches from host's HTTP server
+        if (msg.type === 'file' && msg.fileUrl) {
+          msg.fileUrl = this.rewriteFileUrl(msg.fileUrl, record.hostFileBase);
+        }
         this.appendMessage(room, msg);
         this.broadcast(CHAT_IPC.EVT_MESSAGE, { roomId: room.id, message: msg });
         return;

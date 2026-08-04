@@ -26,17 +26,21 @@ interface TunnelState {
   requestLogs: TunnelRequestLog[];
   selectedTunnelId: string | null;
   isLoading: boolean;
+  downloadProgress: { percent: number; message: string } | null;
+  setDownloadProgress: (p: { percent: number; message: string } | null) => void;
   // Port input for new tunnel form
   portInput: string;
   labelInput: string;
   subdomainInput: string;
   autoReconnect: boolean;
+  tunnelProvider: 'localtunnel' | 'cloudflare';
 
   // Actions
   setPortInput: (v: string) => void;
   setLabelInput: (v: string) => void;
   setSubdomainInput: (v: string) => void;
   setAutoReconnect: (v: boolean) => void;
+  setTunnelProvider: (v: 'localtunnel' | 'cloudflare') => void;
   setSelectedTunnel: (id: string | null) => void;
 
   openTunnel: (options: TunnelCreateOptions) => Promise<void>;
@@ -61,15 +65,19 @@ export const useTunnelStore = create<TunnelState>((set, get) => ({
   requestLogs: [],
   selectedTunnelId: null,
   isLoading: false,
+  downloadProgress: null,
+  setDownloadProgress: (p) => set({ downloadProgress: p }),
   portInput: '',
   labelInput: '',
   subdomainInput: '',
   autoReconnect: true,
+  tunnelProvider: 'cloudflare',
 
   setPortInput: (v) => set({ portInput: v }),
   setLabelInput: (v) => set({ labelInput: v }),
   setSubdomainInput: (v) => set({ subdomainInput: v }),
   setAutoReconnect: (v) => set({ autoReconnect: v }),
+  setTunnelProvider: (v) => set({ tunnelProvider: v }),
   setSelectedTunnel: (id) => set({ selectedTunnelId: id }),
 
   loadTunnels: async () => {
@@ -87,7 +95,10 @@ export const useTunnelStore = create<TunnelState>((set, get) => ({
       const result = await api.tunnel.open(options);
       if (result?.success && result.tunnel) {
         set((s) => ({
-          tunnels: [...s.tunnels, result.tunnel],
+          // Deduplicate by id
+          tunnels: s.tunnels.find((t) => t.id === result.tunnel.id)
+            ? s.tunnels.map((t) => t.id === result.tunnel.id ? result.tunnel : t)
+            : [...s.tunnels, result.tunnel],
           selectedTunnelId: result.tunnel.id,
           portInput: '',
           labelInput: '',
@@ -147,18 +158,22 @@ export const useTunnelStore = create<TunnelState>((set, get) => ({
   },
 
   handleStatusChanged: (event) => {
-    set((s) => ({
-      tunnels: s.tunnels.map((t) =>
-        t.id === event.tunnelId
-          ? {
-              ...t,
-              status: event.status,
-              publicUrl: event.publicUrl ?? t.publicUrl,
-              error: event.error,
-            }
-          : t,
-      ),
-    }));
+    set((s) => {
+      const exists = s.tunnels.find((t) => t.id === event.tunnelId);
+      if (!exists) return {}; // ignore chat-room tunnels filtered out by list()
+      return {
+        tunnels: s.tunnels.map((t) =>
+          t.id === event.tunnelId
+            ? {
+                ...t,
+                status: event.status,
+                publicUrl: event.publicUrl ?? t.publicUrl,
+                error: event.error,
+              }
+            : t,
+        ),
+      };
+    });
   },
 
   handleRequest: (event) => {

@@ -36,6 +36,7 @@ export const ChatPanel: React.FC = () => {
     handleJoinRequest,
     handleMessageEdited,
     handleMessageDeleted,
+    handleTunnelStatus,
   } = useChatStore();
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export const ChatPanel: React.FC = () => {
       api.chat.onJoinRequest?.((evt: ChatJoinRequestEvent) => handleJoinRequest(evt)),
       api.chat.onMessageEdited?.((evt: ChatMessageEditedEvent) => handleMessageEdited(evt)),
       api.chat.onMessageDeleted?.((evt: ChatMessageDeletedEvent) => handleMessageDeleted(evt)),
+      api.tunnel?.onStatusChanged?.((evt: any) => handleTunnelStatus(evt)),
     ];
     return () => unsubs.forEach((u) => u?.());
   }, []);

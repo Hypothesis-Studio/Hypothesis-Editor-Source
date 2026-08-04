@@ -18,6 +18,8 @@ export const TunnelPanel: React.FC = () => {
     handleRequest,
     closeAllTunnels,
     clearRequestLogs,
+    downloadProgress,
+    setDownloadProgress,
   } = useTunnelStore();
 
   // Load existing tunnels and subscribe to IPC events
@@ -35,9 +37,14 @@ export const TunnelPanel: React.FC = () => {
       handleRequest(evt);
     });
 
+    const unsubDownload = api.tunnel.onDownloadProgress?.((evt: { percent: number; message: string }) => {
+      setDownloadProgress(evt.percent >= 100 ? null : evt);
+    });
+
     return () => {
       unsubStatus?.();
       unsubRequest?.();
+      unsubDownload?.();
     };
   }, [loadTunnels, handleStatusChanged, handleRequest]);
 
@@ -56,6 +63,31 @@ export const TunnelPanel: React.FC = () => {
       {/* Body: form + list + logs */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <TunnelForm />
+        {downloadProgress && (
+          <div style={{
+            padding: '6px 10px',
+            background: 'var(--theme-bg-secondary)',
+            borderBottom: '1px solid var(--theme-border)',
+            display: 'flex', flexDirection: 'column', gap: 4,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: 'var(--theme-fg-muted)' }}>{downloadProgress.message}</span>
+              {downloadProgress.percent >= 0 && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--theme-accent)' }}>{downloadProgress.percent}%</span>
+              )}
+            </div>
+            {downloadProgress.percent >= 0 && (
+              <div style={{ height: 4, borderRadius: 2, background: 'var(--theme-border)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 2,
+                  background: 'var(--theme-accent)',
+                  width: `${downloadProgress.percent}%`,
+                  transition: 'width 0.2s ease',
+                }} />
+              </div>
+            )}
+          </div>
+        )}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row' }}>
           <TunnelList />
           {selectedTunnelId && <TunnelRequestLog tunnelId={selectedTunnelId} />}

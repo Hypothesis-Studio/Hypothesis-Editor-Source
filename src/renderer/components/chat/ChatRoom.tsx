@@ -16,7 +16,7 @@ export const ChatRoomView: React.FC<Props> = ({ roomId }) => {
   const {
     rooms, messages, leaveRoom, closeRoom, copyUrl, clearMessages,
     kickUser, approveJoin, denyJoin, toggleAi, sendPresence, regenerateTunnel,
-    pendingTunnelRoomId,
+    pendingTunnelRoomId, tunnelStatuses,
   } = useChatStore();
   const [copied, setCopied] = useState(false);
   const [showParticipants, setShowParticipants] = useState(true);
@@ -124,7 +124,27 @@ export const ChatRoomView: React.FC<Props> = ({ roomId }) => {
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusDot[room.status] ?? '#6e6e6e', display: 'inline-block', flexShrink: 0 }} />
             <span>{room.participants.filter((u) => u.id !== 'ai').length} participant{room.participants.filter((u) => u.id !== 'ai').length !== 1 ? 's' : ''}</span>
             <span style={{ opacity: 0.5 }}>·</span>
-            <span style={{ fontFamily: 'monospace', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{wsUrl}</span>
+            {/* Tunnel status / URL */}
+            {isHost && tunnelStatuses[roomId] === 'generating' ? (
+              <span style={{ fontSize: 10, color: '#d7ba7d', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                Generating…
+              </span>
+            ) : isHost && tunnelStatuses[roomId] === 'connecting' ? (
+              <span style={{ fontSize: 10, color: '#4fc1ff', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                Connecting…
+              </span>
+            ) : isHost && tunnelStatuses[roomId] === 'failed' ? (
+              <span style={{ fontSize: 10, color: '#f48771', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Tunnel Failed
+              </span>
+            ) : isHost && isPublic ? (
+              <span style={{ fontFamily: 'monospace', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220, color: '#89d185' }}>{wsUrl}</span>
+            ) : (
+              <span style={{ fontFamily: 'monospace', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{wsUrl}</span>
+            )}
           </div>
         </div>
 

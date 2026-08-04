@@ -8,6 +8,7 @@ import type { ChatMessage } from '../../../shared/types/chat';
 import { useChatStore } from '../../stores/chatStore';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { CollapsibleCodeBlock } from '../shared/CollapsibleCodeBlock';
 
 // Configure marked
 marked.setOptions({ breaks: true, gfm: true });
@@ -42,6 +43,17 @@ const REACTION_OPTIONS = [
 export const ChatMessageList: React.FC<Props> = ({ messages, roomId, currentUserId }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLenRef = useRef(0);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const scrollToMessage = useCallback((msgId: string) => {
+    const el = listRef.current?.querySelector(`[data-msg-id="${msgId}"]`) as HTMLElement | null;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Flash highlight like WhatsApp
+    el.style.transition = 'background 0.15s';
+    el.style.background = 'rgba(var(--theme-accent-rgb, 0,122,204), 0.18)';
+    setTimeout(() => { el.style.background = ''; }, 1200);
+  }, []);
   const { roomUI, addReaction, markRead, setReplyingTo } = useChatStore();
   const typingUsers = roomUI[roomId]?.typingUsers ?? {};
   const typingList = Object.values(typingUsers).filter((u) => u.name);
@@ -81,7 +93,7 @@ export const ChatMessageList: React.FC<Props> = ({ messages, roomId, currentUser
   const groups = groupMessages(messages);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
       {groups.map((group, gi) =>
         group.isSystem
           ? <SystemDivider key={`sys-${gi}`} messages={group.messages} />
@@ -95,6 +107,7 @@ export const ChatMessageList: React.FC<Props> = ({ messages, roomId, currentUser
               currentUserId={currentUserId}
               onReact={(msgId, emoji) => addReaction(roomId, msgId, emoji)}
               onReply={(msg) => setReplyingTo(roomId, msg)}
+              onScrollTo={scrollToMessage}
             />
           )
       )}
@@ -147,9 +160,10 @@ interface BubbleGroupProps {
   currentUserId?: string;
   onReact: (msgId: string, emoji: string) => void;
   onReply: (msg: ChatMessage) => void;
+  onScrollTo: (msgId: string) => void;
 }
 
-const BubbleGroup = memo<BubbleGroupProps>(({ group, isSelf, isAi, roomId, currentUserId, onReact, onReply }) => {
+const BubbleGroup = memo<BubbleGroupProps>(({ group, isSelf, isAi, roomId, currentUserId, onReact, onReply, onScrollTo }) => {
   const time = new Date(group.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -203,6 +217,7 @@ const BubbleGroup = memo<BubbleGroupProps>(({ group, isSelf, isAi, roomId, curre
               currentUserId={currentUserId}
               onReact={onReact}
               onReply={onReply}
+              onScrollTo={onScrollTo}
             />
           );
         })}
@@ -235,9 +250,10 @@ interface MessageBubbleProps {
   currentUserId?: string;
   onReact: (msgId: string, emoji: string) => void;
   onReply: (msg: ChatMessage) => void;
+  onScrollTo: (msgId: string) => void;
 }
 
-const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, isLast, currentUserId, onReact, onReply }) => {
+const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, isLast, currentUserId, onReact, onReply, onScrollTo }) => {
   const [showEmoji, setShowEmoji] = useState(false);
   const [hover, setHover] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -271,50 +287,63 @@ const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, is
 
   return (
     <div
+      data-msg-id={msg.id}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{ position: 'relative', maxWidth: '100%' }}
     >
       {/* Reply context */}
       {msg.replyToId && msg.replyToContent && (
-        <div style={{
-          fontSize: 11, color: 'var(--theme-fg-muted)',
-          borderLeft: `2px solid ${isSelf ? 'rgba(255,255,255,0.4)' : 'var(--theme-accent)'}`,
-          paddingLeft: 7, marginBottom: 3,
-          opacity: 0.8, fontStyle: 'italic',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          maxWidth: 280,
-        }}>
+        <div
+          onClick={() => msg.replyToId && onScrollTo(msg.replyToId)}
+          style={{
+            fontSize: 11, color: 'var(--theme-fg-muted)',
+            borderLeft: `2px solid ${isSelf ? 'rgba(255,255,255,0.4)' : 'var(--theme-accent)'}`,
+            paddingLeft: 7, marginBottom: 3,
+            opacity: 0.8, fontStyle: 'italic',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            maxWidth: 280, cursor: 'pointer',
+            borderRadius: '0 4px 4px 0',
+            transition: 'background 0.1s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,122,204,0.1)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
+        >
           <span style={{ fontWeight: 600, fontStyle: 'normal' }}>{msg.replyToSenderName}</span>
           {' · '}{msg.replyToContent}
         </div>
       )}
 
-      {/* Bubble */}
-      <div
-        title={new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        style={{
-          padding: msg.type === 'code' ? '10px 12px' : '7px 12px',
-          borderRadius: radius,
-          background: bgColor,
-          color: isSelf && !isAi ? '#fff' : 'var(--theme-fg)',
-          fontSize: 13, lineHeight: 1.55, wordBreak: 'break-word',
-          boxShadow: isSelf && !isAi ? '0 1px 4px rgba(0,0,0,0.18)' : '0 1px 3px rgba(0,0,0,0.10)',
-          border: isSelf && !isAi ? 'none' : `1px solid ${isAi ? '#c586c033' : 'var(--theme-border)'}`,
-          position: 'relative', userSelect: 'text', cursor: 'text',
-        }}
-      >
-        {msg.type === 'code' ? (
-          <CodeBlock content={msg.content} language={msg.language} isSelf={isSelf} />
-        ) : msg.type === 'file' ? (
-          <FileBlock msg={msg} isSelf={isSelf} />
-        ) : (
-          <MarkdownContent content={msg.content} isSelf={isSelf && !isAi} />
-        )}
-        {msg.edited && (
-          <span style={{ fontSize: 9, opacity: 0.5, marginLeft: 6, fontStyle: 'italic' }}>(edited)</span>
-        )}
-      </div>
+      {/* Code snippet — full width, no bubble */}
+      {msg.type === 'code' ? (
+        <div style={{ width: '100%' }}>
+          <CollapsibleCodeBlock lang={msg.language ?? ''} code={msg.content} />
+          {msg.edited && <span style={{ fontSize: 9, opacity: 0.4, fontStyle: 'italic', marginLeft: 2 }}>(edited)</span>}
+        </div>
+      ) : (
+        <div
+          title={new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          style={{
+            padding: '7px 12px',
+            borderRadius: radius,
+            background: bgColor,
+            color: isSelf && !isAi ? '#fff' : 'var(--theme-fg)',
+            fontSize: 13, lineHeight: 1.55, wordBreak: 'break-word',
+            boxShadow: isSelf && !isAi ? '0 1px 4px rgba(0,0,0,0.18)' : '0 1px 3px rgba(0,0,0,0.10)',
+            border: isSelf && !isAi ? 'none' : `1px solid ${isAi ? '#c586c033' : 'var(--theme-border)'}`,
+            position: 'relative', userSelect: 'text', cursor: 'text',
+          }}
+        >
+          {msg.type === 'file' ? (
+            <FileBlock msg={msg} isSelf={isSelf} />
+          ) : (
+            <MarkdownContent content={msg.content} isSelf={isSelf && !isAi} />
+          )}
+          {msg.edited && (
+            <span style={{ fontSize: 9, opacity: 0.5, marginLeft: 6, fontStyle: 'italic' }}>(edited)</span>
+          )}
+        </div>
+      )}
 
       {/* Reactions */}
       {hasReactions && (
@@ -331,10 +360,10 @@ const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, is
         </div>
       )}
 
-      {/* Hover actions */}
+      {/* Hover actions — shown for all message types */}
       {hover && (
         <div style={{
-          position: 'absolute', top: -34,
+          position: 'absolute', top: msg.type === 'code' ? 4 : -34,
           [isSelf ? 'left' : 'right']: 0,
           display: 'flex', alignItems: 'center', gap: 2,
           background: 'var(--theme-bg)', border: '1px solid var(--theme-border)',
@@ -395,112 +424,295 @@ const MessageBubble = memo<MessageBubbleProps>(({ msg, isSelf, isAi, isFirst, is
 // ── Markdown content ─────────────────────────────────────────────────────────
 
 const MarkdownContent: React.FC<{ content: string; isSelf: boolean }> = ({ content, isSelf }) => {
-  const html = useMemo(() => renderMarkdown(content), [content]);
-  return (
-    <div
-      dangerouslySetInnerHTML={{ __html: html }}
-      style={{
-        // Reset aggressive margins from browser defaults
-        lineHeight: 1.6,
-        color: isSelf ? '#fff' : 'var(--theme-fg)',
-      }}
-      className={`chat-md${isSelf ? ' chat-md-self' : ''}`}
-    />
-  );
-};
+  // Split content into segments: code fences vs prose
+  const segments = useMemo(() => {
+    const result: Array<{ type: 'prose' | 'code'; text: string; lang: string }> = [];
+    const lines = content.split('\n');
+    let i = 0;
+    let proseLines: string[] = [];
 
-// ── Code block ────────────────────────────────────────────────────────────────
-
-const CodeBlock: React.FC<{ content: string; language?: string; isSelf: boolean }> = ({ content, language, isSelf }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(content).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+    while (i < lines.length) {
+      const line = lines[i];
+      const fenceMatch = line.trimStart().match(/^```(\S*)/);
+      if (fenceMatch) {
+        // Flush accumulated prose
+        if (proseLines.length > 0) {
+          result.push({ type: 'prose', text: proseLines.join('\n'), lang: '' });
+          proseLines = [];
+        }
+        const lang = fenceMatch[1] || '';
+        const codeLines: string[] = [];
+        i++;
+        while (i < lines.length && !lines[i].trimStart().startsWith('```')) {
+          codeLines.push(lines[i]);
+          i++;
+        }
+        i++; // skip closing ```
+        if (codeLines.join('\n').trim()) {
+          result.push({ type: 'code', text: codeLines.join('\n'), lang });
+        }
+      } else {
+        proseLines.push(line);
+        i++;
+      }
+    }
+    if (proseLines.length > 0) {
+      result.push({ type: 'prose', text: proseLines.join('\n'), lang: '' });
+    }
+    return result;
   }, [content]);
 
   return (
-    <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, opacity: 0.7 }}>
-        <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{language ?? 'code'}</span>
-        <button
-          onClick={handleCopy}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: 10, display: 'flex', alignItems: 'center', gap: 3, opacity: 0.8, padding: '1px 4px', borderRadius: 4 }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.8'; }}
-        >
-          {copied
-            ? <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#89d185" strokeWidth="2.2" strokeLinecap="round"><path d="M3 8l4 4 6-7" /></svg> Copied</>
-            : <><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="5" y="5" width="9" height="10" rx="1.5" /><path d="M3 11H2a1 1 0 01-1-1V2a1 1 0 011-1h8a1 1 0 011 1v2" /></svg> Copy</>
-          }
-        </button>
-      </div>
-      <pre style={{
-        margin: 0, overflowX: 'auto', whiteSpace: 'pre',
-        background: isSelf ? 'rgba(0,0,0,0.15)' : 'var(--theme-bg)',
-        borderRadius: 5, padding: '8px 10px',
-        maxHeight: 320, fontSize: 12, lineHeight: 1.5,
-        userSelect: 'text', cursor: 'text',
-      }}>
-        <code style={{ userSelect: 'text' }}>{content}</code>
-      </pre>
+    <div style={{ lineHeight: 1.6, color: isSelf ? '#fff' : 'var(--theme-fg)' }}>
+      {segments.map((seg, idx) =>
+        seg.type === 'code' ? (
+          <CollapsibleCodeBlock key={idx} lang={seg.lang} code={seg.text} />
+        ) : (
+          <div
+            key={idx}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(seg.text) }}
+            className={`chat-md${isSelf ? ' chat-md-self' : ''}`}
+          />
+        )
+      )}
     </div>
   );
 };
 
 // ── File block ────────────────────────────────────────────────────────────────
 
+const FILE_ICON_COLOR: Record<string, string> = {
+  pdf: '#f48771', doc: '#4fc1ff', docx: '#4fc1ff',
+  xls: '#89d185', xlsx: '#89d185', csv: '#89d185',
+  zip: '#d7ba7d', rar: '#d7ba7d', '7z': '#d7ba7d',
+  mp4: '#c586c0', mp3: '#c586c0', mov: '#c586c0',
+  default: '#9cdcfe',
+};
+function getFileExt(name?: string) {
+  if (!name) return '';
+  return name.split('.').pop()?.toLowerCase() ?? '';
+}
+function getFileIconColor(name?: string) {
+  const ext = getFileExt(name);
+  return FILE_ICON_COLOR[ext] ?? FILE_ICON_COLOR.default;
+}
+function formatSize(bytes?: number) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 const FileBlock: React.FC<{ msg: ChatMessage; isSelf: boolean }> = ({ msg, isSelf }) => {
   const isImage = msg.fileMimeType?.startsWith('image/');
-  const sizeStr = msg.fileSize ? `${(msg.fileSize / 1024).toFixed(1)} KB` : '';
+  const isVideo = msg.fileMimeType?.startsWith('video/');
+  const isAudio = msg.fileMimeType?.startsWith('audio/');
+  const [downloading, setDownloading] = useState(false);
+  const [hover, setHover] = useState(false);
+  const iconColor = getFileIconColor(msg.fileName);
+  const ext = getFileExt(msg.fileName);
 
-  const handleDownload = useCallback(async () => {
-    if (!msg.fileData) return;
-    const api = (window as any).api;
-    // Use Electron dialog to save to Downloads folder (cross-platform: Win/Mac/Linux)
-    if (api?.chat?.downloadFile) {
-      await api.chat.downloadFile(msg.fileName ?? 'file', msg.fileData, msg.fileMimeType ?? 'application/octet-stream');
-    } else {
-      // Fallback for non-Electron environments
-      const a = document.createElement('a');
-      a.href = `data:${msg.fileMimeType};base64,${msg.fileData}`;
-      a.download = msg.fileName ?? 'file';
-      a.click();
+  const handleDownload = useCallback(async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!msg.fileData || downloading) return;
+    setDownloading(true);
+    try {
+      const api = (window as any).api;
+      if (api?.chat?.downloadFile) {
+        await api.chat.downloadFile(msg.fileName ?? 'file', msg.fileData, msg.fileMimeType ?? 'application/octet-stream');
+      } else {
+        const a = document.createElement('a');
+        a.href = `data:${msg.fileMimeType};base64,${msg.fileData}`;
+        a.download = msg.fileName ?? 'file';
+        a.click();
+      }
+    } finally {
+      setDownloading(false);
     }
-  }, [msg]);
+  }, [msg, downloading]);
 
-  if (isImage && msg.fileData) {
+  const dataUrl = msg.fileUrl ?? (msg.fileData ? `data:${msg.fileMimeType};base64,${msg.fileData}` : undefined);
+
+  // ── Download button overlay ──────────────────────────────────────────────
+  const DownloadBtn = (
+    <button
+      onClick={handleDownload}
+      title="Download"
+      style={{
+        position: 'absolute', top: 8, right: 8,
+        background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.2)',
+        borderRadius: 6, padding: '4px 8px',
+        display: 'flex', alignItems: 'center', gap: 5,
+        color: '#fff', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+        backdropFilter: 'blur(4px)',
+        opacity: hover ? 1 : 0,
+        transition: 'opacity 0.15s',
+        zIndex: 2,
+      }}
+    >
+      {downloading
+        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+      }
+      Save
+    </button>
+  );
+
+  // ── Image preview ────────────────────────────────────────────────────────
+  if (isImage && dataUrl) {
     return (
-      <div>
-        <img
-          src={`data:${msg.fileMimeType};base64,${msg.fileData}`}
-          alt={msg.fileName}
-          style={{ maxWidth: 260, maxHeight: 200, borderRadius: 6, display: 'block', cursor: 'pointer' }}
-          onClick={handleDownload}
-        />
-        <div style={{ fontSize: 10, opacity: 0.65, marginTop: 4 }}>{msg.fileName} · {sizeStr}</div>
+      <div
+        style={{ margin: '-2px -4px', position: 'relative' }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
+        <div style={{
+          borderRadius: 8, overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(0,0,0,0.2)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+        }}>
+          <img
+            src={dataUrl}
+            alt={msg.fileName}
+            style={{ maxWidth: 280, maxHeight: 220, display: 'block', width: '100%', objectFit: 'cover' }}
+          />
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '6px 10px',
+            background: 'rgba(0,0,0,0.3)',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
+              {msg.fileName}
+            </span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0, marginLeft: 8 }}>
+              {formatSize(msg.fileSize)}
+            </span>
+          </div>
+        </div>
+        {DownloadBtn}
       </div>
     );
   }
 
+  // ── Video preview ────────────────────────────────────────────────────────
+  if (isVideo && dataUrl) {
+    return (
+      <div
+        style={{ margin: '-2px -4px', position: 'relative' }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
+        <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: '#000' }}>
+          <video
+            src={dataUrl}
+            controls
+            style={{ maxWidth: 300, maxHeight: 200, display: 'block', width: '100%' }}
+          />
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '6px 10px',
+            background: 'rgba(0,0,0,0.3)',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+              {msg.fileName}
+            </span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0, marginLeft: 8 }}>
+              {formatSize(msg.fileSize)}
+            </span>
+          </div>
+        </div>
+        {DownloadBtn}
+      </div>
+    );
+  }
+
+  // ── Audio preview ────────────────────────────────────────────────────────
+  if (isAudio && dataUrl) {
+    return (
+      <div
+        style={{ margin: '-2px -4px', position: 'relative', minWidth: 260 }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
+        <div style={{
+          borderRadius: 8, overflow: 'hidden',
+          border: `1px solid ${isSelf ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)'}`,
+          background: isSelf ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.04)',
+          padding: '10px 12px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9cdcfe" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
+            <span style={{ fontSize: 11.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+              {msg.fileName}
+            </span>
+            <span style={{ fontSize: 10, opacity: 0.4, flexShrink: 0 }}>{formatSize(msg.fileSize)}</span>
+          </div>
+          <audio src={dataUrl} controls style={{ width: '100%', height: 32 }} />
+        </div>
+        {DownloadBtn}
+      </div>
+    );
+  }
+
+  // ── File card (non-media) ────────────────────────────────────────────────
   return (
     <button
       onClick={handleDownload}
-      disabled={!msg.fileData}
+      disabled={!msg.fileData || downloading}
+      title={msg.fileData ? 'Click to download' : 'File not available offline'}
       style={{
-        display: 'flex', alignItems: 'center', gap: 9,
-        background: isSelf ? 'rgba(0,0,0,0.12)' : 'var(--theme-bg)',
-        border: `1px solid ${isSelf ? 'rgba(255,255,255,0.2)' : 'var(--theme-border)'}`,
-        borderRadius: 7, padding: '8px 12px', cursor: msg.fileData ? 'pointer' : 'default',
-        color: 'inherit', width: '100%', textAlign: 'left', minWidth: 180,
+        display: 'flex', alignItems: 'center', gap: 12,
+        background: isSelf ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${isSelf ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 10, padding: '10px 14px',
+        cursor: msg.fileData ? 'pointer' : 'default',
+        color: 'inherit', width: '100%', textAlign: 'left',
+        minWidth: 220, maxWidth: 300,
+        margin: '-2px -4px',
+        transition: 'background 0.15s, border-color 0.15s',
       }}
+      onMouseEnter={(e) => { if (msg.fileData) e.currentTarget.style.background = isSelf ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.07)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = isSelf ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.04)'; }}
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
-        {msg.fileData && <path d="M12 12v6M9 15l3 3 3-3" />}
-      </svg>
-      <div>
-        <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{msg.fileName}</div>
-        <div style={{ fontSize: 10, opacity: 0.6, marginTop: 1 }}>{sizeStr}{!msg.fileData ? ' · Not available offline' : ''}</div>
+      {/* File type icon */}
+      <div style={{
+        width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+        background: `${iconColor}18`, border: `1px solid ${iconColor}33`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: 2,
+      }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        {ext && <span style={{ fontSize: 8, fontWeight: 700, color: iconColor, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1 }}>{ext}</span>}
       </div>
+      {/* File info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>
+          {msg.fileName ?? 'Unknown file'}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 10.5, opacity: 0.5 }}>{formatSize(msg.fileSize)}</span>
+          {!msg.fileData && <span style={{ fontSize: 10, color: '#f48771', opacity: 0.8 }}>Not available offline</span>}
+        </div>
+      </div>
+      {/* Download icon */}
+      {msg.fileData && (
+        <div style={{ flexShrink: 0, opacity: downloading ? 0.4 : 0.6 }}>
+          {downloading
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+          }
+        </div>
+      )}
     </button>
   );
 };

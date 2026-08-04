@@ -2,7 +2,7 @@
  * ChatSidebar - WA-web style left sidebar:
  * Header + Create/Join form + Room list
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import type { ChatRoom } from '../../../shared/types/chat';
 import type { HostingMode } from '../../stores/chatStore';
@@ -18,14 +18,25 @@ export const ChatSidebar: React.FC = () => {
     createOpenJoin, setCreateOpenJoin,
     hostingMode, setHostingMode,
     createSubdomain, setCreateSubdomain,
+    tunnelProvider, setTunnelProvider,
     joinUrl, setJoinUrl,
     joinUserName, setJoinUserName,
     createRoom, joinRoom,
     findFreePort,
     messages,
+    unreadCounts,
   } = useChatStore();
 
   const [portLoading, setPortLoading] = useState(false);
+  const [dlProgress, setDlProgress] = useState<{ percent: number; message: string } | null>(null);
+
+  useEffect(() => {
+    const api = (window as any).api;
+    const unsub = api?.tunnel?.onDownloadProgress?.((evt: { percent: number; message: string }) => {
+      setDlProgress(evt.percent >= 100 ? null : evt);
+    });
+    return () => unsub?.();
+  }, []);
 
   const handleFindPort = async () => {
     setPortLoading(true);
@@ -146,11 +157,62 @@ export const ChatSidebar: React.FC = () => {
                     {portLoading ? '…' : 'Auto'}
                   </button>
                 </div>
-                <SidebarInput placeholder="Subdomain (optional)" value={createSubdomain} onChange={setCreateSubdomain} />
+
+                {/* Tunnel provider */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {(['cloudflare', 'localtunnel'] as const).map((p) => (
+                    <label key={p} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, cursor: 'pointer', fontSize: 11 }}>
+                      <input
+                        type="radio"
+                        name="tunnelProvider"
+                        checked={tunnelProvider === p}
+                        onChange={() => setTunnelProvider(p)}
+                        style={{ accentColor: 'var(--theme-accent)', marginTop: 2, flexShrink: 0 }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--theme-fg)', fontSize: 11 }}>
+                          {p === 'cloudflare' ? 'Cloudflare' : 'LocalTunnel'}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>
+                          {p === 'cloudflare' ? 'trycloudflare.com — stable' : 'loca.lt — subdomain support'}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {tunnelProvider === 'localtunnel' && (
+                  <SidebarInput placeholder="Subdomain (optional)" value={createSubdomain} onChange={setCreateSubdomain} />
+                )}
+
                 <div style={{ fontSize: 10, color: 'var(--theme-fg-muted)', lineHeight: 1.5, padding: '0 2px' }}>
-                  A localtunnel will be opened automatically so anyone can join from any network.
+                  A tunnel will open automatically so anyone can join from any network.
                 </div>
               </>
+            )}
+
+            {/* Download progress banner */}
+            {dlProgress && (
+              <div style={{
+                borderRadius: 5, overflow: 'hidden',
+                border: '1px solid var(--theme-border)',
+                background: 'var(--theme-bg-secondary)',
+              }}>
+                <div style={{ padding: '5px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)' }}>{dlProgress.message}</span>
+                  {dlProgress.percent >= 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--theme-accent)' }}>{dlProgress.percent}%</span>
+                  )}
+                </div>
+                {dlProgress.percent >= 0 && (
+                  <div style={{ height: 3, background: 'var(--theme-border)' }}>
+                    <div style={{
+                      height: '100%', background: 'var(--theme-accent)',
+                      width: `${dlProgress.percent}%`, transition: 'width 0.2s ease',
+                    }} />
+                  </div>
+                )}
+              </div>
             )}
 
             <button
@@ -200,7 +262,7 @@ export const ChatSidebar: React.FC = () => {
               key={r.id}
               room={r}
               active={r.id === selectedRoomId}
-              unread={(messages[r.id] ?? []).length}
+              unread={unreadCounts[r.id] ?? 0}
               onClick={() => setSelectedRoom(r.id)}
             />
           ))
@@ -217,7 +279,7 @@ const RoomRow: React.FC<{
   active: boolean;
   unread: number;
   onClick: () => void;
-}> = ({ room, active, onClick }) => {
+}> = ({ room, active, unread, onClick }) => {
   const statusColor: Record<string, string> = {
     hosting: '#4fc1ff', connected: '#89d185',
     connecting: '#d7ba7d', error: '#f48771',
@@ -262,18 +324,25 @@ const RoomRow: React.FC<{
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {room.name}
           </span>
-          <span style={{
-            fontSize: 9,
-            padding: '1px 5px',
-            borderRadius: 8,
-            background: 'var(--theme-bg)',
-            color: statusColor[room.status] ?? '#6e6e6e',
-            fontWeight: 700,
-            flexShrink: 0,
-            marginLeft: 4,
-            textTransform: 'uppercase',
-          }}>
-            {room.status === 'hosting' ? 'host' : room.status}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 4 }}>
+            {unread > 0 && (
+              <span style={{
+                fontSize: 9, minWidth: 16, height: 16, borderRadius: 8,
+                background: 'var(--theme-accent)', color: '#fff',
+                fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 4px',
+              }}>
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
+            <span style={{
+              fontSize: 9, padding: '1px 5px', borderRadius: 8,
+              background: 'var(--theme-bg)',
+              color: statusColor[room.status] ?? '#6e6e6e',
+              fontWeight: 700, textTransform: 'uppercase',
+            }}>
+              {room.status === 'hosting' ? 'host' : room.status}
+            </span>
           </span>
         </div>
         <div style={{ fontSize: 11, color: 'var(--theme-fg-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>

@@ -1,11 +1,12 @@
 /**
- * TunnelService - Manages LocalTunnel instances for the Hypothesis Editor.
- * Provides port forwarding via localtunnel with lifecycle management,
- * auto-reconnect, and per-tunnel metrics.
+ * TunnelService - Manages Cloudflare Quick Tunnel instances.
+ * Uses `cloudflared tunnel --url` — no account or login required.
+ * URL format: https://<random>.trycloudflare.com
  */
 import { BrowserWindow, shell, clipboard } from 'electron';
-import localtunnel from 'localtunnel';
+import { ChildProcess, spawn } from 'child_process';
 import { EventEmitter } from 'events';
+import { Tunnel as CloudflaredTunnel } from 'cloudflared';
 import { nanoid } from '../../utils/nanoid';
 import type {
   TunnelEntry,
@@ -15,25 +16,18 @@ import type {
 } from '../../../shared/types/tunnel';
 import { TUNNEL_IPC } from '../../../shared/types/tunnel';
 
-// Raw localtunnel tunnel handle
-interface LTTunnel extends EventEmitter {
-  url: string;
-  clientId: string;
-  close(): void;
-}
-
-interface TunnelRecord {
-  entry: TunnelEntry;
-  lt: LTTunnel | null;
-  reconnectTimer: ReturnType<typeof setTimeout> | null;
-  closing: boolean;
-}
-
 const RECONNECT_DELAY_MS = 5_000;
 const MAX_RECONNECT_DELAY_MS = 60_000;
 const RECONNECT_MULTIPLIER = 1.5;
 
-export class TunnelService {
+interface TunnelRecord {
+  entry: TunnelEntry;
+  proc: ChildProcess | null;
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
+  closing: boolean;
+}
+
+export class TunnelService extends EventEmitter {
   private readonly records = new Map<string, TunnelRecord>();
   private reconnectDelays = new Map<string, number>();
 
@@ -41,6 +35,8 @@ export class TunnelService {
 
   async open(options: TunnelCreateOptions): Promise<TunnelEntry> {
     const id = nanoid();
+    const provider = options.provider ?? 'cloudflare';
+
     const entry: TunnelEntry = {
       id,
       localPort: options.localPort,
@@ -48,6 +44,8 @@ export class TunnelService {
       publicUrl: null,
       subdomain: options.subdomain ?? null,
       status: 'connecting',
+      provider,
+      source: options.source ?? 'tunnel-panel',
       startedAt: null,
       error: null,
       requestCount: 0,
@@ -56,7 +54,7 @@ export class TunnelService {
       autoReconnect: options.autoReconnect ?? true,
     };
 
-    const record: TunnelRecord = { entry, lt: null, reconnectTimer: null, closing: false };
+    const record: TunnelRecord = { entry, proc: null, reconnectTimer: null, closing: false };
     this.records.set(id, record);
     this.reconnectDelays.set(id, RECONNECT_DELAY_MS);
 
@@ -74,10 +72,21 @@ export class TunnelService {
       record.reconnectTimer = null;
     }
 
-    if (record.lt) {
-      record.lt.removeAllListeners();
-      record.lt.close();
-      record.lt = null;
+    if (record.proc) {
+      record.proc.removeAllListeners();
+      try {
+        if (process.platform === 'win32' && record.proc.pid) {
+          spawn('taskkill', ['/pid', String(record.proc.pid), '/f', '/t'], { windowsHide: true });
+        } else {
+          record.proc.kill('SIGTERM');
+        }
+      } catch (_) { /* ignore */ }
+      record.proc = null;
+    }
+    // Stop cloudflared Tunnel instance if present
+    if ((record as any)._cfTunnel) {
+      try { (record as any)._cfTunnel.stop(); } catch (_) { /* ignore */ }
+      (record as any)._cfTunnel = null;
     }
 
     this.updateStatus(record, 'closed', null, null);
@@ -91,7 +100,9 @@ export class TunnelService {
   }
 
   list(): TunnelEntry[] {
-    return [...this.records.values()].map((r) => ({ ...r.entry }));
+    return [...this.records.values()]
+      .filter((r) => r.entry.source !== 'chat-room')
+      .map((r) => ({ ...r.entry }));
   }
 
   get(id: string): TunnelEntry | null {
@@ -125,45 +136,38 @@ export class TunnelService {
     this.closeAll();
   }
 
-  // ── Private ────────────────────────────────────────────────────────────────
+  // ── Connection ──────────────────────────────────────────────────────────────
 
   private async connect(record: TunnelRecord): Promise<void> {
     if (record.closing) return;
-
     this.updateStatus(record, 'connecting', null, null);
+    if (record.entry.provider === 'localtunnel') {
+      await this.connectLocaltunnel(record);
+    } else {
+      await this.connectCloudflare(record);
+    }
+  }
 
+  private async connectLocaltunnel(record: TunnelRecord): Promise<void> {
     try {
+      const localtunnel = await import('localtunnel').then((m: any) => m.default ?? m);
       const ltOpts: { port: number; subdomain?: string } = { port: record.entry.localPort };
       if (record.entry.subdomain) ltOpts.subdomain = record.entry.subdomain;
-
-      const lt = (await localtunnel(ltOpts)) as unknown as LTTunnel;
-      if (record.closing) {
-        lt.close();
-        return;
-      }
-
-      record.lt = lt;
+      const lt = await localtunnel(ltOpts) as any;
+      if (record.closing) { lt.close(); return; }
       record.entry.startedAt = new Date().toISOString();
       this.reconnectDelays.set(record.entry.id, RECONNECT_DELAY_MS);
       this.updateStatus(record, 'connected', lt.url, null);
-
       lt.on('close', () => {
         if (record.closing) return;
         this.updateStatus(record, 'closed', null, null);
         this.scheduleReconnect(record);
       });
-
       lt.on('error', (err: Error) => {
         if (record.closing) return;
         this.updateStatus(record, 'error', null, err.message);
-        record.lt = null;
         this.scheduleReconnect(record);
       });
-
-      // Intercept request events for metrics — localtunnel request events
-      // fire on the tunnel emitter when the underlying client emits 'request'.
-      // We attach at the Node EventEmitter level via the internal client.
-      this.attachRequestMetrics(record, lt);
     } catch (err: unknown) {
       if (record.closing) return;
       const msg = err instanceof Error ? err.message : String(err);
@@ -172,30 +176,41 @@ export class TunnelService {
     }
   }
 
-  private attachRequestMetrics(record: TunnelRecord, lt: LTTunnel): void {
-    // localtunnel doesn't expose per-request events on its public API,
-    // but emits 'request' on some versions. Guard gracefully.
+  private async connectCloudflare(record: TunnelRecord): Promise<void> {
     try {
-      lt.on('request', (info: { method?: string; path?: string; statusCode?: number }) => {
-        if (record.closing) return;
-        record.entry.requestCount += 1;
-        // Estimate rough bytes — real values unavailable without intercepting TCP
-        record.entry.bytesIn += 512;
-        record.entry.bytesOut += 2048;
+      if (record.closing) return;
 
-        this.broadcast(TUNNEL_IPC.EVT_REQUEST, {
-          tunnelId: record.entry.id,
-          method: info?.method ?? 'GET',
-          path: info?.path ?? '/',
-          statusCode: info?.statusCode ?? 200,
-          bytesIn: 512,
-          bytesOut: 2048,
-          durationMs: 0,
-          timestamp: new Date().toISOString(),
-        });
+      const cf = CloudflaredTunnel.quick(`http://localhost:${record.entry.localPort}`);
+
+      // Store process reference for cleanup
+      (record as any)._cfTunnel = cf;
+
+      cf.once('url', (url: string) => {
+        if (record.closing) { cf.stop(); return; }
+        record.entry.startedAt = new Date().toISOString();
+        this.reconnectDelays.set(record.entry.id, RECONNECT_DELAY_MS);
+        this.updateStatus(record, 'connected', url, null);
       });
-    } catch {
-      // Not available on this version — silently skip
+
+      cf.once('exit', (code: number | null) => {
+        (record as any)._cfTunnel = null;
+        record.proc = null;
+        if (record.closing) return;
+        this.updateStatus(record, 'closed', null, code !== null && code !== 0 ? `Process exited with code ${code}` : null);
+        this.scheduleReconnect(record);
+      });
+
+      cf.on('error', (err: Error) => {
+        if (record.closing) return;
+        this.updateStatus(record, 'error', null, err.message);
+        this.scheduleReconnect(record);
+      });
+
+    } catch (err: unknown) {
+      if (record.closing) return;
+      const msg = err instanceof Error ? err.message : String(err);
+      this.updateStatus(record, 'error', null, msg);
+      this.scheduleReconnect(record);
     }
   }
 
@@ -213,6 +228,8 @@ export class TunnelService {
     }, delay);
   }
 
+  // ── Status helpers ──────────────────────────────────────────────────────────
+
   private updateStatus(
     record: TunnelRecord,
     status: TunnelStatus,
@@ -223,7 +240,6 @@ export class TunnelService {
     if (publicUrl !== null) record.entry.publicUrl = publicUrl;
     if (error !== null) record.entry.error = error;
     if (status === 'connected') record.entry.error = null;
-
     this.broadcastStatus(record);
   }
 

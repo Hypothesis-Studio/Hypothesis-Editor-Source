@@ -13,7 +13,20 @@ interface Props {
   isHost?: boolean;
 }
 
-const COMMON_LANGUAGES = ['typescript', 'javascript', 'python', 'rust', 'go', 'java', 'cpp', 'csharp', 'html', 'css', 'json', 'bash', 'sql', 'markdown', 'plain text'];
+const COMMON_LANGUAGES = [
+  // Web
+  'typescript', 'javascript', 'html', 'css', 'scss', 'json', 'xml', 'graphql',
+  // Backend
+  'python', 'rust', 'go', 'java', 'kotlin', 'swift', 'cpp', 'c', 'csharp', 'php', 'ruby', 'scala', 'dart',
+  // Shell & config
+  'bash', 'powershell', 'dockerfile', 'yaml', 'toml', 'ini',
+  // Data & query
+  'sql', 'r', 'matlab',
+  // Markup & docs
+  'markdown', 'latex',
+  // Other
+  'lua', 'haskell', 'elixir', 'erlang', 'clojure', 'fsharp', 'plaintext',
+];
 
 // ── Slash commands (host only) ────────────────────────────────────────────────
 
@@ -40,13 +53,16 @@ function getPlainText(el: HTMLElement): string {
     if (node.nodeType === Node.TEXT_NODE) {
       text += node.textContent ?? '';
     } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const el = node as HTMLElement;
-      if (el.dataset.mention === 'ai') {
+      const child = node as HTMLElement;
+      if (child.dataset.mention === 'ai') {
         text += '@ai';
-      } else if (el.tagName === 'BR') {
+      } else if (child.tagName === 'BR') {
         text += '\n';
+      } else if (child.tagName === 'DIV') {
+        // Browser wraps new lines in <div> in contenteditable
+        text += '\n' + getPlainText(child);
       } else {
-        text += el.textContent ?? '';
+        text += getPlainText(child);
       }
     }
   });
@@ -259,8 +275,9 @@ export const ChatInput: React.FC<Props> = ({ roomId, currentUserId, isHost }) =>
   const handleSend = useCallback(async () => {
     const el = editorRef.current;
     if (!el) return;
-    const text = getPlainText(el).replace(/\u200B/g, '').trim();
-    if (!text) return;
+    const rawText = getPlainText(el).replace(/\u200B/g, '');
+    const text = mode === 'code' ? rawText : rawText.trim();
+    if (!text.trim()) return;
     stopTyping();
     // Slash command execution
     if (isHost && text.startsWith('/')) {
@@ -269,6 +286,7 @@ export const ChatInput: React.FC<Props> = ({ roomId, currentUserId, isHost }) =>
     }
     if (mode === 'code') {
       await sendCode(roomId, text, codeLang);
+      setMode('text'); // auto-exit code mode after send
     } else {
       isSyncingRef.current = true;
       setDraft(roomId, text);
@@ -448,7 +466,7 @@ export const ChatInput: React.FC<Props> = ({ roomId, currentUserId, isHost }) =>
             </svg>
           </ComposeBtn>
 
-          <ComposeBtn title="Attach file (max 2 MB)" onClick={() => fileInputRef.current?.click()}>
+          <ComposeBtn title="Attach file — images, video, audio, docs (max 50 MB)" onClick={() => fileInputRef.current?.click()}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <path d="M13.5 8.5l-6 6a4 4 0 01-5.66-5.66l7-7a2.5 2.5 0 013.54 3.54l-7 7a1 1 0 01-1.42-1.42l6-6" />
             </svg>
@@ -487,7 +505,7 @@ export const ChatInput: React.FC<Props> = ({ roomId, currentUserId, isHost }) =>
         </div>
       )}
 
-      <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileSelect} />
+      <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.md,.json" onChange={handleFileSelect} />
     </div>
   );
 };

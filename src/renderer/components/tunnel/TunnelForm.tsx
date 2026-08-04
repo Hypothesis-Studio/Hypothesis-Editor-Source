@@ -9,6 +9,7 @@ export const TunnelForm: React.FC = () => {
   const {
     portInput, labelInput, subdomainInput, autoReconnect, isLoading, tunnels,
     setPortInput, setLabelInput, setSubdomainInput, setAutoReconnect,
+    tunnelProvider, setTunnelProvider,
     openTunnel,
   } = useTunnelStore();
 
@@ -26,8 +27,9 @@ export const TunnelForm: React.FC = () => {
     await openTunnel({
       localPort: port,
       label: labelInput.trim() || undefined,
-      subdomain: subdomainInput.trim() || undefined,
+      subdomain: tunnelProvider === 'localtunnel' ? (subdomainInput.trim() || undefined) : undefined,
       autoReconnect,
+      provider: tunnelProvider,
     });
     portRef.current?.focus();
   }, [portInput, labelInput, subdomainInput, autoReconnect, openTunnel]);
@@ -90,7 +92,22 @@ export const TunnelForm: React.FC = () => {
         />
       </div>
 
-      {/* Subdomain */}
+      {/* Provider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ fontSize: 11, color: 'var(--theme-fg-muted)', whiteSpace: 'nowrap' }}>Provider</label>
+        <select
+          value={tunnelProvider}
+          onChange={(e) => setTunnelProvider(e.target.value as 'localtunnel' | 'cloudflare')}
+          disabled={isLoading}
+          style={{ ...inputStyle(120), height: 22, padding: '0 4px' }}
+        >
+          <option value="cloudflare">Cloudflare</option>
+          <option value="localtunnel">LocalTunnel</option>
+        </select>
+      </div>
+
+      {/* Subdomain (localtunnel only) */}
+      {tunnelProvider === 'localtunnel' && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <label style={{ fontSize: 11, color: 'var(--theme-fg-muted)', whiteSpace: 'nowrap' }}>Subdomain</label>
         <input
@@ -103,6 +120,7 @@ export const TunnelForm: React.FC = () => {
           style={inputStyle(140)}
         />
       </div>
+      )}
 
       {/* Auto-reconnect toggle */}
       <label style={{
