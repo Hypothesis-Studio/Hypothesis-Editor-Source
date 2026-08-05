@@ -121,6 +121,38 @@ const SETTINGS_SCHEMA: SettingItem[] = [
   // Accessibility
   { key: 'accessibility.supportAccessibilityMode', label: 'Accessibility Mode', description: 'Optimize the editor for screen readers.', type: 'boolean', default: false, category: 'Accessibility' },
 
+  // Editor - Suggestions & Snippets
+  { key: 'editor.quickSuggestions.other', label: 'Quick Suggestions (Code)', description: 'Show quick suggestions while typing in code.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.quickSuggestions.comments', label: 'Quick Suggestions (Comments)', description: 'Show quick suggestions while typing in comments.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.quickSuggestions.strings', label: 'Quick Suggestions (Strings)', description: 'Show quick suggestions while typing in strings.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.quickSuggestionsDelay', label: 'Quick Suggestions Delay (ms)', description: 'Delay in ms before quick suggestions appear.', type: 'number', default: 10, category: 'Editor' },
+  { key: 'editor.suggest.preview', label: 'Suggestion Preview', description: 'Preview the selected suggestion inline in the editor.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.suggest.insertMode', label: 'Suggestion Insert Mode', description: 'Controls whether suggestions replace or insert text.', type: 'enum', options: ['insert', 'replace'], default: 'replace', category: 'Editor' },
+  { key: 'editor.suggest.filterGraceful', label: 'Graceful Suggestion Filter', description: 'Keep showing suggestions even without an exact prefix match.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.suggest.showStatusBar', label: 'Suggestion Status Bar', description: 'Show status bar at the bottom of the suggestion widget.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.suggest.snippetsPreventQuickSuggestions', label: 'Snippets Prevent Quick Suggestions', description: 'Prevent quick suggestions when inside a snippet.', type: 'boolean', default: false, category: 'Editor' },
+  { key: 'editor.inlineSuggest.enabled', label: 'Inline Suggestions', description: 'Show inline ghost-text suggestions while typing.', type: 'boolean', default: true, category: 'Editor' },
+
+  // Editor - Hover
+  { key: 'editor.hover.sticky', label: 'Sticky Hover', description: 'Keep the hover popup visible when moving the mouse into it.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.hover.above', label: 'Hover Above Line', description: 'Prefer showing hover above the current line.', type: 'boolean', default: true, category: 'Editor' },
+
+  // Editor - Cursor
+  { key: 'editor.cursorSmoothCaretAnimation', label: 'Smooth Caret Animation', description: 'Controls whether the cursor should be animated smoothly.', type: 'enum', options: ['off', 'explicit', 'on'], default: 'on', category: 'Editor' },
+
+  // Editor - Find
+  { key: 'editor.find.autoFindInSelection', label: 'Auto Find In Selection', description: 'Auto-select find scope when text is selected.', type: 'enum', options: ['never', 'always', 'multiline'], default: 'multiline', category: 'Editor' },
+  { key: 'editor.find.loop', label: 'Find Loop', description: 'Controls whether the search wraps around when reaching the end.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.find.cursorMoveOnType', label: 'Cursor Move On Find Type', description: 'Jump to the next match while typing in the find field.', type: 'boolean', default: true, category: 'Editor' },
+
+  // Editor - Unicode & Security
+  { key: 'editor.unicodeHighlight.ambiguousCharacters', label: 'Highlight Ambiguous Characters', description: 'Highlight characters that may be confused with ASCII characters.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.unicodeHighlight.invisibleCharacters', label: 'Highlight Invisible Characters', description: 'Highlight invisible/zero-width characters.', type: 'boolean', default: true, category: 'Editor' },
+  { key: 'editor.unicodeHighlight.nonBasicASCII', label: 'Highlight Non-ASCII', description: 'Highlight all non-basic ASCII characters.', type: 'boolean', default: false, category: 'Editor' },
+
+  // Editor - Semantic Highlighting
+  { key: 'editor.semanticHighlighting.enabled', label: 'Semantic Highlighting', description: 'Use semantic token colors for more accurate syntax highlighting in TypeScript/JavaScript.', type: 'boolean', default: true, category: 'Editor' },
+
   // AI Agent - Basic toggles only (detailed config is in AgentSettingsPanel)
   { key: 'agent.enabled', label: 'Agent Enabled', description: 'Enable or disable the AI agent system.', type: 'boolean', default: true, category: 'AI Agent' },
   { key: 'agent.streaming', label: 'Streaming Responses', description: 'Stream agent responses in real-time.', type: 'boolean', default: true, category: 'AI Agent' },

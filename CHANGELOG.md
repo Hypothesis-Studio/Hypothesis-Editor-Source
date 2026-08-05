@@ -2,11 +2,23 @@
 
 ## [0.2.11] - 2026-08-05
 
+### Added
+- **Inline Suggestions** — Ghost-text suggestions now appear while typing (configurable via Settings → Editor → Inline Suggestions).
+- **Suggestion Preview** — Selected suggestion is previewed inline before accepting (configurable).
+- **Semantic Highlighting** — TypeScript and JavaScript now use semantic token colors for more accurate syntax highlighting beyond textmate grammar (configurable).
+- **Unicode Highlight** — Ambiguous, invisible, and non-basic ASCII characters are now highlighted to prevent security issues like homoglyph attacks (configurable).
+- **Smooth Caret Animation** — Cursor now animates smoothly by default (configurable via Cursor Smooth Caret Animation).
+- **Sticky Hover** — Hover popup stays visible when moving the mouse into it (configurable).
+- **Find Loop & Cursor Move on Type** — Search now wraps around end of file and jumps to matches while typing in the find bar (configurable).
+- **25 new editor settings** exposed in Settings panel: Quick Suggestions (code/comments/strings), Quick Suggestions Delay, Suggestion Preview, Suggestion Insert Mode, Graceful Filter, Suggestion Status Bar, Inline Suggestions, Hover Sticky/Above, Smooth Caret Animation, Find Auto-Select, Find Loop, Find Cursor Move on Type, Unicode Highlight (3 options), Semantic Highlighting.
+
 ### Fixed
-- **Builtin snippets now appear in editor completion** — 664 built-in snippets across 21 languages (TypeScript, JavaScript, Python, Go, Rust, Java, C, C++, C#, PHP, Ruby, SQL, HTML, CSS, SCSS, JSON, YAML, Markdown, Shell, and more) were previously blocked from showing up in the editor autocomplete due to an incorrect filter. They now appear correctly when typing a matching prefix.
-- **Snippet suggestions trigger automatically while typing** — The snippet completion provider previously only activated on manual `Ctrl+Space`. It now triggers automatically as you type, matching prefixes in real time.
-- **Snippet suggestions work inside strings and comments** — `quickSuggestions` is now explicitly enabled for all contexts including strings and comments, so snippets appear everywhere in the file.
-- **Tab completion enabled for snippets** — `tabCompletion` was previously turned off, preventing Tab from being used to accept snippet suggestions. It is now enabled.
+- **Builtin snippets now appear in editor completion** — 664 built-in snippets across 21 languages were previously blocked from showing up in the editor autocomplete due to an incorrect filter. They now appear correctly when typing a matching prefix.
+- **Snippet suggestions trigger automatically while typing** — The snippet completion provider previously only activated on manual `Ctrl+Space`. It now triggers automatically as you type.
+- **Snippet suggestions work inside strings and comments** — `quickSuggestions` is now explicitly enabled for all contexts including strings and comments.
+- **Tab completion enabled for snippets** — `tabCompletion` was previously turned off. It is now enabled.
+- **Hover delay fixed** — Hover was previously set to `delay: 0` (instant, disruptive). Default is now 300ms and fully configurable.
+- **Settings changes now live-apply** — All new editor settings sync to the running editor immediately when changed in Settings, no restart required.
 
 ## [0.2.10] - 2026-08-04
 

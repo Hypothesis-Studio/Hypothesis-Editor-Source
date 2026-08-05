@@ -121,12 +121,44 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
     const lineHeight = (settings['editor.lineHeight'] as number) || 24;
     const cursorStyle = (settings['editor.cursorStyle'] as string) || 'line';
     const cursorBlinking = (settings['editor.cursorBlinking'] as string) || 'blink';
+    const cursorSmoothCaretAnimation = (settings['editor.cursorSmoothCaretAnimation'] as string) || 'on';
     const renderWhitespace = (settings['editor.renderWhitespace'] as string) || 'none';
     const autoIndent = (settings['editor.autoIndent'] as string) || 'advanced';
     const mouseWheelZoom = (settings['editor.mouseWheelZoom'] as boolean) || false;
     const smoothScrolling = (settings['editor.smoothScrolling'] as boolean) || false;
     const paddingTop = (settings['editor.padding.top'] as number) || 0;
     const paddingBottom = (settings['editor.padding.bottom'] as number) || 0;
+
+    // Suggestions & snippets
+    const quickSuggestionsDelay = (settings['editor.quickSuggestionsDelay'] as number) ?? 10;
+    const suggestPreview = (settings['editor.suggest.preview'] as boolean) !== false;
+    const suggestInsertMode = (settings['editor.suggest.insertMode'] as string) || 'replace';
+    const suggestFilterGraceful = (settings['editor.suggest.filterGraceful'] as boolean) !== false;
+    const suggestShowStatusBar = (settings['editor.suggest.showStatusBar'] as boolean) !== false;
+    const suggestSnippetsPreventQuick = (settings['editor.suggest.snippetsPreventQuickSuggestions'] as boolean) || false;
+    const inlineSuggestEnabled = (settings['editor.inlineSuggest.enabled'] as boolean) !== false;
+
+    // Hover
+    const hoverEnabled = (settings['editor.hover.enabled'] as boolean) !== false;
+    const hoverDelay = (settings['editor.hover.delay'] as number) ?? 300;
+    const hoverSticky = (settings['editor.hover.sticky'] as boolean) !== false;
+    const hoverAbove = (settings['editor.hover.above'] as boolean) !== false;
+
+    // Find
+    const findAutoFindInSelection = (settings['editor.find.autoFindInSelection'] as string) || 'multiline';
+    const findLoop = (settings['editor.find.loop'] as boolean) !== false;
+    const findCursorMoveOnType = (settings['editor.find.cursorMoveOnType'] as boolean) !== false;
+
+    // Unicode highlight
+    const unicodeAmbiguous = (settings['editor.unicodeHighlight.ambiguousCharacters'] as boolean) !== false;
+    const unicodeInvisible = (settings['editor.unicodeHighlight.invisibleCharacters'] as boolean) !== false;
+    const unicodeNonBasicASCII = (settings['editor.unicodeHighlight.nonBasicASCII'] as boolean) || false;
+
+    // Semantic highlighting
+    const semanticHighlighting = (settings['editor.semanticHighlighting.enabled'] as boolean) !== false;
+
+    // Accessibility
+    const accessibilitySupport = (settings['accessibility.supportAccessibilityMode'] as boolean) ? 'on' : 'auto';
 
     // Determine base Monaco theme from current settings
     const colorThemeForCreate = (settings['workbench.colorTheme'] as string) || 'hypothesis-dark';
@@ -164,7 +196,7 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       renderWhitespace: renderWhitespace as any,
       cursorStyle: cursorStyle as any,
       cursorBlinking: cursorBlinking as any,
-      cursorSmoothCaretAnimation: 'off',
+      cursorSmoothCaretAnimation: cursorSmoothCaretAnimation as any,
       bracketPairColorization: {
         enabled: (settings['editor.bracketPairColorization.enabled'] as boolean) !== false,
       },
@@ -190,16 +222,26 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       acceptSuggestionOnEnter: 'on',
       tabCompletion: 'on',
       snippetSuggestions: 'inline',
-      quickSuggestions: { other: true, comments: true, strings: true },
+      quickSuggestions: {
+        other: (settings['editor.quickSuggestions.other'] as boolean) !== false,
+        comments: (settings['editor.quickSuggestions.comments'] as boolean) !== false,
+        strings: (settings['editor.quickSuggestions.strings'] as boolean) !== false,
+      },
+      quickSuggestionsDelay,
+      inlineSuggest: {
+        enabled: inlineSuggestEnabled,
+        mode: 'prefix',
+      },
       codeLens: true,
       lightbulb: {
         // @ts-ignore - LightbulbIconOption may not exist in all Monaco versions
         enabled: (monaco.editor as any).LightbulbIconOption?.On ?? true,
       },
       hover: {
-        enabled: true,
-        delay: 0,
-        sticky: false,
+        enabled: hoverEnabled,
+        delay: hoverDelay,
+        sticky: hoverSticky,
+        above: hoverAbove,
       },
       links: true,
       colorDecorators: true,
@@ -225,13 +267,23 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         horizontalScrollbarSize: 10,
         verticalSliderSize: 10,
         horizontalSliderSize: 10,
+        useShadows: true,
       },
       find: {
         addExtraSpaceOnTop: false,
-        autoFindInSelection: 'never',
-        seedSearchStringFromSelection: 'always',
+        autoFindInSelection: findAutoFindInSelection as any,
+        seedSearchStringFromSelection: 'selection',
+        loop: findLoop,
+        cursorMoveOnType: findCursorMoveOnType,
       },
       wordBasedSuggestions: 'allDocuments',
+      accessibilitySupport: accessibilitySupport as any,
+      unicodeHighlight: {
+        ambiguousCharacters: unicodeAmbiguous,
+        invisibleCharacters: unicodeInvisible,
+        nonBasicASCII: unicodeNonBasicASCII,
+      },
+      'semanticHighlighting.enabled': semanticHighlighting,
       parameterHints: {
         enabled: true,
       },
@@ -261,6 +313,11 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         showFolders: true,
         showTypeParameters: true,
         showSnippets: true,
+        preview: suggestPreview,
+        insertMode: suggestInsertMode as any,
+        filterGraceful: suggestFilterGraceful,
+        showStatusBar: suggestShowStatusBar,
+        snippetsPreventQuickSuggestions: suggestSnippetsPreventQuick,
       },
     });
 
@@ -788,6 +845,7 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       lineHeight: (settings['editor.lineHeight'] as number) || 24,
       cursorStyle: (settings['editor.cursorStyle'] as any) || 'line',
       cursorBlinking: (settings['editor.cursorBlinking'] as any) || 'blink',
+      cursorSmoothCaretAnimation: (settings['editor.cursorSmoothCaretAnimation'] as any) || 'on',
       renderWhitespace: (settings['editor.renderWhitespace'] as any) || 'none',
       autoIndent: (settings['editor.autoIndent'] as any) || 'advanced',
       mouseWheelZoom: (settings['editor.mouseWheelZoom'] as boolean) || false,
@@ -804,17 +862,70 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         top: (settings['editor.padding.top'] as number) || 0,
         bottom: (settings['editor.padding.bottom'] as number) || 0,
       },
+      quickSuggestions: {
+        other: (settings['editor.quickSuggestions.other'] as boolean) !== false,
+        comments: (settings['editor.quickSuggestions.comments'] as boolean) !== false,
+        strings: (settings['editor.quickSuggestions.strings'] as boolean) !== false,
+      },
+      quickSuggestionsDelay: (settings['editor.quickSuggestionsDelay'] as number) ?? 10,
+      inlineSuggest: {
+        enabled: (settings['editor.inlineSuggest.enabled'] as boolean) !== false,
+        mode: 'prefix',
+      },
+      suggest: {
+        showSnippets: true,
+        preview: (settings['editor.suggest.preview'] as boolean) !== false,
+        insertMode: ((settings['editor.suggest.insertMode'] as string) || 'replace') as any,
+        filterGraceful: (settings['editor.suggest.filterGraceful'] as boolean) !== false,
+        showStatusBar: (settings['editor.suggest.showStatusBar'] as boolean) !== false,
+        snippetsPreventQuickSuggestions: (settings['editor.suggest.snippetsPreventQuickSuggestions'] as boolean) || false,
+      },
+      hover: {
+        enabled: (settings['editor.hover.enabled'] as boolean) !== false,
+        delay: (settings['editor.hover.delay'] as number) ?? 300,
+        sticky: (settings['editor.hover.sticky'] as boolean) !== false,
+        above: (settings['editor.hover.above'] as boolean) !== false,
+      },
+      find: {
+        addExtraSpaceOnTop: false,
+        autoFindInSelection: ((settings['editor.find.autoFindInSelection'] as string) || 'multiline') as any,
+        seedSearchStringFromSelection: 'selection',
+        loop: (settings['editor.find.loop'] as boolean) !== false,
+        cursorMoveOnType: (settings['editor.find.cursorMoveOnType'] as boolean) !== false,
+      },
+      unicodeHighlight: {
+        ambiguousCharacters: (settings['editor.unicodeHighlight.ambiguousCharacters'] as boolean) !== false,
+        invisibleCharacters: (settings['editor.unicodeHighlight.invisibleCharacters'] as boolean) !== false,
+        nonBasicASCII: (settings['editor.unicodeHighlight.nonBasicASCII'] as boolean) || false,
+      },
+      accessibilitySupport: ((settings['accessibility.supportAccessibilityMode'] as boolean) ? 'on' : 'auto') as any,
+      'semanticHighlighting.enabled': (settings['editor.semanticHighlighting.enabled'] as boolean) !== false,
     });
     // NOTE: Theme is handled by the creation effect above + the ext:monaco:defineTheme listener.
     // Do NOT set theme here — it would override extension themes on every settings change.
   }, [
     settings['editor.fontSize'], settings['editor.fontFamily'], settings['editor.tabSize'], settings['editor.insertSpaces'],
     settings['editor.lineHeight'], settings['editor.cursorStyle'], settings['editor.cursorBlinking'],
+    settings['editor.cursorSmoothCaretAnimation'],
     settings['editor.renderWhitespace'], settings['editor.autoIndent'],
     settings['editor.mouseWheelZoom'], settings['editor.smoothScrolling'],
     settings['editor.folding'], settings['editor.bracketPairColorization.enabled'],
     settings['editor.stickyScroll.enabled'],
     settings['editor.padding.top'], settings['editor.padding.bottom'],
+    settings['editor.quickSuggestions.other'], settings['editor.quickSuggestions.comments'], settings['editor.quickSuggestions.strings'],
+    settings['editor.quickSuggestionsDelay'],
+    settings['editor.suggest.preview'], settings['editor.suggest.insertMode'],
+    settings['editor.suggest.filterGraceful'], settings['editor.suggest.showStatusBar'],
+    settings['editor.suggest.snippetsPreventQuickSuggestions'],
+    settings['editor.inlineSuggest.enabled'],
+    settings['editor.hover.enabled'], settings['editor.hover.delay'],
+    settings['editor.hover.sticky'], settings['editor.hover.above'],
+    settings['editor.find.autoFindInSelection'], settings['editor.find.loop'], settings['editor.find.cursorMoveOnType'],
+    settings['editor.unicodeHighlight.ambiguousCharacters'],
+    settings['editor.unicodeHighlight.invisibleCharacters'],
+    settings['editor.unicodeHighlight.nonBasicASCII'],
+    settings['editor.semanticHighlighting.enabled'],
+    settings['accessibility.supportAccessibilityMode'],
   ]);
 
   // Focus and register as active editor when tab becomes active
