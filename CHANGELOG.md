@@ -1,5 +1,13 @@
 ﻿# CHANGELOG
 
+## [0.2.11] - 2026-08-05
+
+### Fixed
+- **Builtin snippets now appear in editor completion** — 664 built-in snippets across 21 languages (TypeScript, JavaScript, Python, Go, Rust, Java, C, C++, C#, PHP, Ruby, SQL, HTML, CSS, SCSS, JSON, YAML, Markdown, Shell, and more) were previously blocked from showing up in the editor autocomplete due to an incorrect filter. They now appear correctly when typing a matching prefix.
+- **Snippet suggestions trigger automatically while typing** — The snippet completion provider previously only activated on manual `Ctrl+Space`. It now triggers automatically as you type, matching prefixes in real time.
+- **Snippet suggestions work inside strings and comments** — `quickSuggestions` is now explicitly enabled for all contexts including strings and comments, so snippets appear everywhere in the file.
+- **Tab completion enabled for snippets** — `tabCompletion` was previously turned off, preventing Tab from being used to accept snippet suggestions. It is now enabled.
+
 ## [0.2.10] - 2026-08-04
 
 ### Added

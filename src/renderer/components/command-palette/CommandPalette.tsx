@@ -36,11 +36,12 @@ interface CommandPaletteProps {
   onOpenRestClient?: () => void;
   onOpenDatabase?: () => void;
   onOpenBrowser?: () => void;
+  onOpenSnippets?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onClose, onNewFile, onOpenFile, onOpenFolder, onCloseFolder, onOpenSettings, onSave, onSaveAs,
-  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent, onOpenInsights, onOpenRestClient, onOpenDatabase, onOpenBrowser,
+  onOpenDocs, onOpenShortcuts, onOpenWelcome, onOpenAbout, onOpenAgent, onOpenInsights, onOpenRestClient, onOpenDatabase, onOpenBrowser, onOpenSnippets,
 }) => {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -89,6 +90,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'view.database', label: 'Open Database Explorer', category: 'View', keybinding: 'Ctrl+Shift+D', action: () => { onOpenDatabase?.(); onClose(); } },
     { id: 'view.browser', label: 'Open Web Browser', category: 'View', keybinding: 'Ctrl+Shift+B', action: () => { onOpenBrowser?.(); onClose(); } },
     { id: 'view.insights', label: 'Open Project Insights', category: 'View', action: () => { onOpenInsights?.(); onClose(); } },
+    { id: 'view.snippets', label: 'Open Snippet Manager', category: 'View', action: () => { onOpenSnippets?.(); onClose(); } },
 
     // ── View: Toggles ──────────────────────────────────────────────
     { id: 'view.toggleSidebar', label: 'Toggle Sidebar', category: 'View', keybinding: 'Ctrl+B', action: () => { app.getState().toggleSidebar(); onClose(); } },

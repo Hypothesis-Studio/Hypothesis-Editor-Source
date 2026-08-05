@@ -45,6 +45,8 @@ const CH = {
   DIALOG_MESSAGE: 'dialog:message', DIALOG_CONFIRM: 'dialog:confirm', DIALOG_INPUT: 'dialog:input',
   CLIPBOARD_READ: 'clipboard:read', CLIPBOARD_WRITE: 'clipboard:write', CLIPBOARD_HISTORY: 'clipboard:history',
   CRASH_REPORT: 'crash:report', CRASH_RECOVERY: 'crash:recovery',
+  SNIPPETS_GET: 'snippets:get',
+  SNIPPETS_SET: 'snippets:set',
 };
 
 const api = {
@@ -995,6 +997,12 @@ const api = {
       ipcRenderer.on('mock-server:evt:request', handler);
       return () => ipcRenderer.removeListener('mock-server:evt:request', handler);
     },
+  },
+
+  // Snippets
+  snippets: {
+    get: () => ipcRenderer.invoke(CH.SNIPPETS_GET),
+    set: (snippets: unknown[]) => ipcRenderer.invoke(CH.SNIPPETS_SET, snippets),
   },
 
   // Log

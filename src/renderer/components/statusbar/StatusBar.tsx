@@ -9,9 +9,10 @@ import { Icon } from '../common/Icon';
 interface StatusBarProps {
   rootPath?: string | null;
   onOpenSettings?: () => void;
+  onOpenSnippets?: () => void;
 }
 
-export const StatusBar: React.FC<StatusBarProps> = ({ rootPath, onOpenSettings }) => {
+export const StatusBar: React.FC<StatusBarProps> = ({ rootPath, onOpenSettings, onOpenSnippets }) => {
   const {
     togglePanel, panelVisible, activePanel, setActivePanel,
     lineNumbers, wordWrap, toggleLineNumbers, toggleWordWrap,
@@ -123,6 +124,13 @@ export const StatusBar: React.FC<StatusBarProps> = ({ rootPath, onOpenSettings }
           onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
         >
           <Icon name="terminal" size={14} />
+        </button>
+        <button style={itemStyle} title="Snippets" onClick={onOpenSnippets}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+        >
+          <Icon name="symbol-snippet" size={14} />
+          <span>Snippets</span>
         </button>
         <button style={itemStyle} title="Settings" onClick={onOpenSettings}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}

@@ -1151,6 +1151,10 @@ export const IPC_CHANNELS = {
   // Crash
   CRASH_REPORT: 'crash:report',
   CRASH_RECOVERY: 'crash:recovery',
+
+  // Snippets
+  SNIPPETS_GET: 'snippets:get',
+  SNIPPETS_SET: 'snippets:set',
 } as const;
 
 export type IPCChannelName = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

@@ -28,6 +28,7 @@ import { pluginManager } from './plugins/PluginManager';
 import { useKeyboardShortcutStore } from './stores/keyboardShortcutStore';
 import { WelcomePage } from './components/pages/WelcomePage';
 import { AboutDialog } from './components/docs/AboutDialog';
+import { SnippetManagerPanel } from './components/snippets/SnippetManagerPanel';
 
 const App: React.FC = () => {
   const {
@@ -61,6 +62,7 @@ const App: React.FC = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showSnippets, setShowSnippets] = useState(false);
   const [sessionRestored, setSessionRestored] = useState(false);
 
   // ── Wire stores to PluginManager for extension API ─────────────
@@ -1094,6 +1096,11 @@ const App: React.FC = () => {
     return <AboutDialog onClose={() => setShowAbout(false)} />;
   }
 
+  // ── Snippet Manager overlay ───────────────────────────────────
+  if (showSnippets) {
+    return <SnippetManagerPanel onClose={() => setShowSnippets(false)} />;
+  }
+
   // ── Main layout ─────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden select-none" style={{ background: 'var(--theme-bg)' }}>
@@ -1130,7 +1137,7 @@ const App: React.FC = () => {
           {panelVisible && <Panel />}
         </div>
       </div>
-      {statusBarVisible && <StatusBar rootPath={rootPath} onOpenSettings={() => setShowSettings(true)} />}
+      {statusBarVisible && <StatusBar rootPath={rootPath} onOpenSettings={() => setShowSettings(true)} onOpenSnippets={() => setShowSnippets(true)} />}
       {commandPaletteVisible && (
         <CommandPalette
           onClose={hideCommandPalette}
@@ -1150,6 +1157,7 @@ const App: React.FC = () => {
           onOpenRestClient={() => { hideCommandPalette(); openRestClientTab(); }}
           onOpenDatabase={() => { hideCommandPalette(); openDatabaseTab(); }}
               onOpenBrowser={() => { hideCommandPalette(); openBrowserTab(); }}
+          onOpenSnippets={() => { hideCommandPalette(); setShowSnippets(true); }}
         />
       )}
 

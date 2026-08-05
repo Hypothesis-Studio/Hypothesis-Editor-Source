@@ -17,6 +17,7 @@ import { useEditorStore } from '../../stores/editorStore';
 import type { EditorTab } from '../../../shared/types';
 import { AIInlineEditWidget } from './AIInlineEditWidget';
 import * as ReactDOM from 'react-dom/client';
+import { useSnippetStore } from '../../stores/snippetStore';
 
 interface MonacoEditorProps {
   tab: EditorTab;
@@ -187,8 +188,9 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       suggestOnTriggerCharacters: true,
       acceptSuggestionOnCommitCharacter: true,
       acceptSuggestionOnEnter: 'on',
-      tabCompletion: 'off',
+      tabCompletion: 'on',
       snippetSuggestions: 'inline',
+      quickSuggestions: { other: true, comments: true, strings: true },
       codeLens: true,
       lightbulb: {
         // @ts-ignore - LightbulbIconOption may not exist in all Monaco versions
@@ -701,6 +703,42 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
     const editorDom = editor.getDomNode();
     if (editorDom) editorDom.addEventListener('contextmenu', contextMenuHandler);
 
+    // ── Register user snippet completion provider ──────────────
+    const snippetProvider = monaco.languages.registerCompletionItemProvider('*', {
+      triggerCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'.split(''),
+      provideCompletionItems(model, position) {
+        const langId = model.getLanguageId();
+        const allSnippets = useSnippetStore.getState().snippets;
+        const applicable = allSnippets.filter(s =>
+          !s.scope || s.scope === langId || s.language === langId
+        );
+        if (applicable.length === 0) return { suggestions: [] };
+
+        const word = model.getWordUntilPosition(position);
+        const range = new monaco.Range(
+          position.lineNumber, word.startColumn,
+          position.lineNumber, word.endColumn,
+        );
+
+        const suggestions: monaco.languages.CompletionItem[] = applicable.map(s => {
+          const bodyLines: string[] = Array.isArray(s.body)
+            ? s.body
+            : s.body.split('\n');
+          return {
+            label: s.prefix,
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            detail: s.name,
+            documentation: s.description || undefined,
+            insertText: bodyLines.join('\n'),
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+            sortText: `0_${s.prefix}`,
+          };
+        });
+        return { suggestions };
+      },
+    });
+
     // Focus editor if active
     if (isActive) {
       editor.focus();
@@ -708,6 +746,7 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
 
     return () => {
       formatAction.dispose();
+      snippetProvider.dispose();
       hoverProviders.forEach(p => p.dispose());
       fallbackHover.dispose();
       contentChangeDisposable.dispose();

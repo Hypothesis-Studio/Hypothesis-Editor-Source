@@ -46,6 +46,7 @@ export { MockServerService };
 import { registerChatIPC } from './chat.ipc';
 import { ChatService } from '../services/chat/ChatService';
 export { ChatService };
+import { registerSnippetsIPC } from './snippets.ipc';
 
 interface IPCDependencies {
   appStore: AppStore;
@@ -96,6 +97,7 @@ export function registerIPC(deps: IPCDependencies): void {
   registerLiveServerIPC(deps.liveServerService);
   registerMockServerIPC(deps.mockServerService);
   registerChatIPC(deps.chatService);
+  registerSnippetsIPC(deps.appStore);
 }
 
 /** Kill all run processes on app quit */
