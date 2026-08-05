@@ -16,11 +16,13 @@ interface PageProps {
 const NAV_SECTIONS = [
   { id: 'getting-started', label: 'Getting Started' },
   { id: 'editor', label: 'Editor' },
+  { id: 'snippets', label: 'Code Snippets' },
   { id: 'sidebar', label: 'Sidebar & Panels' },
   { id: 'terminal', label: 'Terminal' },
   { id: 'git', label: 'Git Integration' },
   { id: 'rest-client', label: 'REST Client' },
   { id: 'ai-agent', label: 'AI Agent' },
+  { id: 'chat', label: 'Chat Collaboration' },
   { id: 'insights', label: 'Project Insights' },
   { id: 'preview', label: 'File Preview' },
   { id: 'browser', label: 'Web Browser' },
@@ -125,6 +127,7 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                 <FeatureGrid features={[
                   ['Syntax Highlighting', '80+ languages with rich color themes'],
                   ['IntelliSense', 'Auto-completion, parameter hints, quick info'],
+                  ['Semantic Highlighting', 'TypeScript/JS use semantic token colors for accurate highlighting'],
                   ['Bracket Colorization', 'Matching brackets are color-coded'],
                   ['Minimap', 'Code overview sidebar (toggle via View menu)'],
                   ['Breadcrumbs', 'File path & symbol navigation above editor'],
@@ -133,9 +136,67 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                   ['Sticky Scroll', 'Current scope stays visible at top'],
                   ['Multi-Cursor', 'Ctrl+Click to add cursors, Ctrl+D for next match'],
                   ['Code Folding', 'Collapse/expand blocks with gutter icons'],
-                  ['Find & Replace', 'Regex, case sensitivity, whole word options'],
+                  ['Find & Replace', 'Regex, case sensitivity, whole word, loop through matches'],
                   ['Format on Save', 'Auto-format with configured formatter'],
+                  ['Inline Suggestions', 'Ghost-text suggestions appear while typing'],
+                  ['Tab Completion', 'Press Tab to accept snippet or suggestion'],
+                  ['Unicode Highlight', 'Flags ambiguous or invisible characters for security'],
+                  ['Compare Files', 'Right-click any code tab → Compare With... to open a side-by-side diff'],
                 ]} />
+              </Card>
+            </Section>
+          </div>
+
+          {/* Code Snippets */}
+          <div id="doc-snippets">
+            <Section title="Code Snippets">
+              <Card>
+                <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 12 }}>
+                  Manage reusable code templates with tab stops and variable placeholders. Open via <Kbd>Ctrl+Shift+P</Kbd> → Snippets or the snippet icon in the toolbar.
+                </p>
+                <SubSection title="Built-in Snippets">
+                  <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 8 }}>
+                    664 built-in snippets across 21 languages — TypeScript, JavaScript, Python, Go, Rust, Java, C, C++, C#, PHP, Ruby, SQL, HTML, CSS, SCSS, JSON, YAML, Markdown, Shell, and more.
+                    Type a prefix (e.g. <code style={{ background: 'var(--theme-bg)', padding: '1px 5px', borderRadius: 3, fontSize: 11 }}>slugify</code>, <code style={{ background: 'var(--theme-bg)', padding: '1px 5px', borderRadius: 3, fontSize: 11 }}>toCamelCase</code>) and select from the suggestion dropdown.
+                  </p>
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="Snippet Manager">
+                  <List items={[
+                    ['New Snippet', 'Click New Snippet button — fill in name, prefix, language, and body'],
+                    ['Prefix', 'The trigger word you type in the editor to invoke the snippet'],
+                    ['Body', 'Snippet content — use ${1:placeholder} for tab stops, $0 for final cursor'],
+                    ['Language', 'Scope the snippet to a specific language so it only appears in relevant files'],
+                    ['Edit', 'Select any snippet from the list and modify fields, then Save Changes'],
+                    ['Delete', 'Select a snippet and click Delete'],
+                    ['Search', 'Filter snippets by name, prefix, or description'],
+                    ['Filter by Language', 'Use the language dropdown to narrow the list'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="Import & Export">
+                  <List items={[
+                    ['Import', 'Click Import → choose .code-snippets file or paste JSON — compatible with VS Code snippet format'],
+                    ['Export', 'Click Export to download snippets as a .code-snippets file'],
+                    ['Scope on Import', 'Select a language scope to apply to all imported snippets'],
+                    ['VS Code compatible', 'Full support for VS Code .code-snippets format including tab stops and placeholders'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="Snippet Syntax">
+                  <List items={[
+                    ['$1, $2, ...', 'Tab stops — press Tab to jump between them'],
+                    ['${1:placeholder}', 'Tab stop with default placeholder text'],
+                    ['${1|opt1,opt2|}', 'Tab stop with a choice dropdown'],
+                    ['$0', 'Final cursor position after all tab stops'],
+                    ['$TM_FILENAME', 'Current file name variable'],
+                    ['$CURRENT_DATE', 'Current date'],
+                    ['$CLIPBOARD', 'Contents of the clipboard'],
+                  ]} />
+                </SubSection>
               </Card>
             </Section>
           </div>
@@ -335,6 +396,63 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
             </Section>
           </div>
 
+          {/* Chat Collaboration */}
+          <div id="doc-chat">
+            <Section title="Chat Collaboration">
+              <Card>
+                <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 12 }}>
+                  Real-time chat with teammates directly inside the editor. Host a room on your local network or share a public link via Tunnel.
+                </p>
+                <SubSection title="Getting Started">
+                  <List items={[
+                    ['Create Room', 'Click the chat icon in the Activity Bar → New Room'],
+                    ['Join Room', 'Enter the room URL or local IP shared by the host'],
+                    ['Public Room', 'Enable Public mode to get a shareable internet link via Tunnel'],
+                    ['Join Approval', 'Hosts can require approval before anyone enters the room'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="Messaging">
+                  <List items={[
+                    ['Send Message', 'Type in the compose bar and press Enter'],
+                    ['Markdown', 'Full Markdown support — bold, italic, code blocks, tables, lists'],
+                    ['Reply', 'Hover a message and click the reply icon to quote it'],
+                    ['Edit & Delete', 'Hover your own message to edit or delete it'],
+                    ['Reactions', 'Hover a message and click an emoji to react (one per person)'],
+                    ['Read Receipts', 'Double checkmark appears once another participant reads your message'],
+                    ['Code Snippets', 'Click <> in compose bar → pick language → send syntax-highlighted code'],
+                    ['File Attachments', 'Attach images, videos, audio, documents up to 50 MB'],
+                    ['Inline Media', 'Images, videos, and audio play inline without downloading'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="AI Assistant">
+                  <List items={[
+                    ['Invite AI', 'Hosts can toggle AI assistant on/off in any room'],
+                    ['@ai mention', 'Type @ai anywhere in your message to get an AI response'],
+                    ['Typing indicator', 'AI shows a breathing typing indicator while preparing a response'],
+                    ['Conversation only', 'AI in chat cannot read files or run commands — focused on conversation'],
+                    ['Choose agent', 'Settings → Chat Collaboration to pick which AI agent responds to @ai'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="Host Controls">
+                  <List items={[
+                    ['/clear', 'Clear all chat messages'],
+                    ['/ai on | /ai off', 'Toggle the AI assistant'],
+                    ['/kick <name>', 'Remove a participant from the room'],
+                    ['/close', 'Shut down the room and disconnect everyone'],
+                    ['Presence', 'Sidebar shows which file and line each participant is editing'],
+                    ['Regenerate URL', 'If the tunnel drops, regenerate a new public URL without disconnecting anyone'],
+                  ]} />
+                </SubSection>
+              </Card>
+            </Section>
+          </div>
+
           {/* Project Insights */}
           <div id="doc-insights">
             <Section title="Project Insights">
@@ -459,12 +577,26 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
               <Card>
                 <SubSection title="Features">
                   <FeatureGrid features={[
-                    ['Schema Browser', 'Browse databases, tables, views, columns, indexes, foreign keys'],
+                    ['Schema Browser', 'Browse databases, tables, views, columns, indexes, and foreign keys'],
                     ['Query Editor', 'Write and execute SQL with syntax highlighting'],
                     ['Table Data Viewer', 'Browse table contents with pagination and sorting'],
+                    ['Inline Cell Editing', 'Double-click any cell to edit it directly — Enter/Tab to save, Escape to cancel'],
+                    ['Foreign Key Navigation', 'FK columns show a → button to jump straight to the referenced row'],
+                    ['Export Table Data', 'Export any table as CSV, JSON, or SQL INSERT statements from the toolbar'],
                     ['Query History', 'Track and re-run previous queries'],
                     ['Connection Manager', 'Save and manage multiple database connections'],
-                    ['Connection Dialog', 'Easy setup with driver-specific fields'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="ER Diagram">
+                  <List items={[
+                    ['Generate', 'Click the ER Diagram button in the database toolbar to generate from schema'],
+                    ['Interactive canvas', 'Pan, zoom, and drag table cards freely on the canvas'],
+                    ['Tables & relations', 'Shows all tables, columns, primary keys, foreign keys, and relations'],
+                    ['Minimap', 'Thumbnail overview in the corner for navigation across large diagrams'],
+                    ['Export PNG', 'Save the diagram as a PNG image from the diagram toolbar'],
+                    ['Export SVG', 'Save the diagram as an SVG vector file from the diagram toolbar'],
                   ]} />
                 </SubSection>
               </Card>
@@ -512,14 +644,16 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {[
-                    ['Editor', 'Font family, size, tab size, word wrap, minimap, line numbers'],
-                    ['Themes', 'Hypothesis Dark, Hypothesis Light, VS Dark, HC Black'],
+                    ['Editor', 'Font, size, tab size, word wrap, minimap, suggestions, hover, find, unicode highlight, semantic highlighting'],
+                    ['Themes', 'Hypothesis Dark, Hypothesis Light, VS Dark, HC Black, and installed extension themes'],
                     ['Files', 'Auto-save, trim whitespace, insert final newline, format on save'],
                     ['Terminal', 'Shell path, font family, size, cursor style, scrollback'],
                     ['Git', 'User name, email, auto-fetch, commit signing'],
                     ['AI Agent', 'Provider, model, API key, tools, memory, rate limits'],
                     ['Extensions', 'Manage installed .hyp extensions'],
-                    ['Icon Theme', 'Seti, Minimal, Material, Catppuccin, Nord, None'],
+                    ['Icon Theme', 'Material, Codi, None'],
+                    ['Accessibility', 'Accessibility mode for screen readers'],
+                    ['Window', 'Zoom level, restore windows on startup'],
                   ].map(([name, desc], i) => (
                     <div key={i} style={{ fontSize: 12, padding: '4px 0' }}>
                       <div style={{ fontWeight: 600, color: 'var(--theme-accent)', marginBottom: 2 }}>{name}</div>
@@ -541,12 +675,15 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                   ['Quick Open', 'Ctrl+P — fuzzy-search and open any file'],
                   ['Go to Line', 'Ctrl+G — jump directly to a line number'],
                   ['Multi-select', 'Ctrl+D to select next match, Ctrl+Shift+L for all'],
+                  ['Code Snippets', 'Type a snippet prefix and press Tab to expand — 664 built-in snippets across 21 languages'],
+                  ['Compare Files', 'Right-click a code tab → Compare With... to open side-by-side diff'],
                   ['REST Client', 'Ctrl+Shift+R — test APIs without leaving the editor'],
                   ['AI Agent', 'Ctrl+Shift+A — ask AI to write, fix, or explain code'],
+                  ['Chat Collaboration', 'Chat icon — collaborate with teammates in real-time, use @ai to invoke AI'],
                   ['Web Browser', 'Ctrl+Shift+B — browse the web inside the editor'],
                   ['Tunnels', 'Expose local ports to the internet via localtunnel'],
                   ['Live Server', 'Serve local folders with live-reload on file changes'],
-                  ['Database Explorer', 'Connect, browse, and query databases visually'],
+                  ['Database Explorer', 'Connect, browse, and query databases — generate ER diagrams in one click'],
                   ['Project Insights', 'Dashboard icon — check code health before shipping'],
                   ['File Preview', 'Click any image/markdown/HTML in Explorer to preview'],
                   ['Breadcrumbs', 'Click symbols in breadcrumb bar to navigate functions'],

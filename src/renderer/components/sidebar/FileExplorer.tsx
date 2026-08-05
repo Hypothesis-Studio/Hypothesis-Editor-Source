@@ -718,7 +718,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
       )}
 
       {/* ── Tree content ── */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
         {isLoading ? (
           <div className="flex items-center justify-center h-20">
             <div className="text-xs animate-pulse" style={{ color: 'var(--theme-fg-muted)' }}>Loading...</div>
@@ -728,7 +728,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ rootPath, activeFile
             {'No folder opened.\nUse File → Open Folder to get started.'}
           </div>
         ) : (
-          <div className="py-0.5">
+          <div className="py-0.5 min-h-full" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
             {rootPaths.map(rp => renderWorkspace(rp))}
           </div>
         )}

@@ -187,7 +187,7 @@ export const EditorTabs: React.FC = () => {
           <div className="context-menu-item" onClick={ctxCopyFileName}>Copy File Name</div>
           <div className={`context-menu-item ${!ctxTab?.filePath ? 'opacity-40 cursor-default' : ''}`} onClick={ctxTab?.filePath ? ctxRevealInExplorer : undefined}>Reveal in File Explorer</div>
           <div className="context-menu-separator" />
-          <div className={`context-menu-item ${tabs.length < 2 ? 'opacity-40 cursor-default' : ''}`} onClick={tabs.length >= 2 ? ctxCompareWith : undefined}>Compare With...</div>
+          <div className={`context-menu-item ${tabs.length < 2 || !ctxTab?.filePath ? 'opacity-40 cursor-default' : ''}`} onClick={tabs.length >= 2 && ctxTab?.filePath ? ctxCompareWith : undefined}>Compare With...</div>
         </div>
       )}
 
@@ -206,7 +206,7 @@ export const EditorTabs: React.FC = () => {
               Compare "{tabs.find(t => t.id === diffPickerSource)?.fileName}" with:
             </div>
             <div className="context-menu-separator" />
-            {tabs.filter(t => t.id !== diffPickerSource).map(t => (
+            {tabs.filter(t => t.id !== diffPickerSource && t.filePath !== null).map(t => (
               <div
                 key={t.id}
                 className="context-menu-item"

@@ -326,7 +326,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onNewFile, onOpenFile, onOpe
       }
     }},
     { separator: true, label: '' },
-    { label: `About ${APP_NAME}`, action: () => showAbout(`Version: ${APP_VERSION}`) },
+    { label: `About ${APP_NAME}`, action: () => window.dispatchEvent(new CustomEvent('hypothesis:open-about')) },
   ];
 
   const menus: Record<string, { label: string; items: MenuItem[] }> = {

@@ -722,6 +722,13 @@ const App: React.FC = () => {
     return () => window.removeEventListener('hypothesis:open-welcome', handler);
   }, []);
 
+  // Listen for open-about event from TitleBar Help menu
+  useEffect(() => {
+    const handler = () => setShowAbout(true);
+    window.addEventListener('hypothesis:open-about', handler);
+    return () => window.removeEventListener('hypothesis:open-about', handler);
+  }, []);
+
   // ── Open AI Agent as editor tab ──────────────────────────────────
   const openAgentTab = useCallback(() => {
     if (!agentEnabled) return;
