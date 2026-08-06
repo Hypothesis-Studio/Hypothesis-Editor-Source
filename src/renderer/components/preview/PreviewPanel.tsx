@@ -171,6 +171,22 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ filePath, onOpenSour
   const [zoom, setZoom]       = useState(100);
   const [autoReload, setAutoReload] = useState(true);
 
+  // Track system/app theme for preview background
+  const [isDark, setIsDark] = React.useState(
+    !document.body.classList.contains('hypothesis-light')
+  );
+  React.useEffect(() => {
+    const obs = new MutationObserver(() => {
+      setIsDark(!document.body.classList.contains('hypothesis-light'));
+    });
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    // also react to OS-level preference changes
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const mqHandler = () => setIsDark(!document.body.classList.contains('hypothesis-light'));
+    mq?.addEventListener('change', mqHandler);
+    return () => { obs.disconnect(); mq?.removeEventListener('change', mqHandler); };
+  }, []);
+
   // Viewport state — only meaningful for HTML previews
   const [viewportPreset, setViewportPreset]   = useState<ViewportPresetId>('responsive');
   const [customWidth, setCustomWidth]         = useState<string>('1024');
@@ -295,19 +311,24 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ filePath, onOpenSour
 
       {/* ── Toolbar ── */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '0 10px', height: 38, flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 4,
+        padding: '0 8px', height: 36, flexShrink: 0,
         borderBottom: '1px solid var(--theme-border)',
         background: 'var(--theme-bg-secondary)',
+        overflow: 'hidden',
       }}>
 
         {/* Left: file info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: '0 1 auto', overflow: 'hidden' }}>
-          <Icon name={getCategoryIcon(category!)} size={13} style={{ color: 'var(--theme-accent)', flexShrink: 0 }} />
-          <span style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: '0 1 auto', overflow: 'hidden' }}>
+          <Icon name={getCategoryIcon(category!)} size={12} style={{ color: 'var(--theme-accent)', flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: 'var(--theme-fg)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
             {data.fileName}
           </span>
-          <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)', flexShrink: 0 }}>
+          <span style={{
+            fontSize: 10, color: 'var(--theme-fg-muted)', flexShrink: 0,
+            background: 'var(--theme-bg-tertiary)', borderRadius: 3,
+            padding: '1px 5px', border: '1px solid var(--theme-border)',
+          }}>
             {formatFileSize(data.fileSize)}
           </span>
         </div>
@@ -318,20 +339,20 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ filePath, onOpenSour
         {isHtml && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
             {/* Separator */}
-            <div style={{ width: 1, height: 16, background: 'var(--theme-border)', marginRight: 6 }} />
+            <div style={{ width: 1, height: 14, background: 'var(--theme-border)', marginRight: 4 }} />
 
             {VIEWPORT_PRESETS.map(preset => {
               const isActive = viewportPreset === preset.id;
 
               if (preset.id === 'custom') {
                 return (
-                  <div key="custom" style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <div key="custom" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <button
                       onClick={() => handlePresetClick(preset)}
                       title={preset.tooltip}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        padding: '2px 7px', height: 24, borderRadius: 4,
+                        display: 'flex', alignItems: 'center', gap: 3,
+                        padding: '2px 6px', height: 22, borderRadius: 4,
                         border: isActive ? '1px solid var(--theme-accent)' : '1px solid transparent',
                         background: isActive ? 'var(--theme-accent)18' : 'transparent',
                         color: isActive ? 'var(--theme-accent)' : 'var(--theme-fg-muted)',
@@ -358,7 +379,7 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ filePath, onOpenSour
                             if (e.key === 'Escape') setShowCustomInput(false);
                           }}
                           style={{
-                            width: 58, padding: '2px 5px', fontSize: 11,
+                            width: 52, padding: '2px 4px', fontSize: 11,
                             background: 'var(--theme-bg)',
                             border: '1px solid var(--theme-accent)',
                             borderRadius: 4, color: 'var(--theme-fg)', outline: 'none',
@@ -380,8 +401,8 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ filePath, onOpenSour
                   onClick={() => handlePresetClick(preset)}
                   title={preset.tooltip}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '2px 7px', height: 24, borderRadius: 4,
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    padding: '2px 6px', height: 22, borderRadius: 4,
                     border: isActive ? '1px solid var(--theme-accent)' : '1px solid transparent',
                     background: isActive ? 'var(--theme-accent)18' : 'transparent',
                     color: isActive ? 'var(--theme-accent)' : 'var(--theme-fg-muted)',
@@ -394,35 +415,41 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ filePath, onOpenSour
                   <ViewportIcon id={preset.id} />
                   {preset.label}
                   {isActive && preset.width !== null && (
-                    <span style={{ fontSize: 9, opacity: 0.65, marginLeft: 1 }}>{preset.width}px</span>
+                    <span style={{ fontSize: 9, opacity: 0.6, marginLeft: 1 }}>{preset.width}px</span>
                   )}
                 </button>
               );
             })}
 
-            <div style={{ width: 1, height: 16, background: 'var(--theme-border)', marginLeft: 6 }} />
+            <div style={{ width: 1, height: 14, background: 'var(--theme-border)', marginLeft: 4 }} />
           </div>
         )}
 
         {/* Right: zoom + reload + open */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
           {(category === 'image' || category === 'svg' || category === 'markdown' || category === 'pdf') && (
             <>
               <ToolbarButton icon="remove"        onClick={handleZoomOut}   title="Zoom Out" />
-              <span style={{ fontSize: 10, color: 'var(--theme-fg-muted)', minWidth: 34, textAlign: 'center' }}>{zoom}%</span>
+              <span style={{
+                fontSize: 10, color: 'var(--theme-fg-muted)',
+                minWidth: 36, textAlign: 'center',
+                background: 'var(--theme-bg-tertiary)',
+                border: '1px solid var(--theme-border)',
+                borderRadius: 3, padding: '1px 4px', cursor: 'default',
+              }}>{zoom}%</span>
               <ToolbarButton icon="add"           onClick={handleZoomIn}    title="Zoom In" />
               <ToolbarButton icon="screen-normal" onClick={handleZoomReset} title="Reset Zoom" />
-              <div style={{ width: 1, height: 16, background: 'var(--theme-border)', margin: '0 4px' }} />
+              <div style={{ width: 1, height: 14, background: 'var(--theme-border)', margin: '0 3px' }} />
             </>
           )}
           <ToolbarButton icon="refresh"       onClick={loadPreview}          title="Reload" />
-          <div style={{ width: 1, height: 16, background: 'var(--theme-border)', margin: '0 4px' }} />
+          <div style={{ width: 1, height: 14, background: 'var(--theme-border)', margin: '0 3px' }} />
           <ToolbarButton icon="link-external" onClick={handleOpenInBrowser}  title="Open in System Viewer" />
         </div>
       </div>
 
       {/* ── Preview content ── */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         {category === 'html'     && <HtmlPreview     data={data} viewportWidth={resolvedViewportWidth} />}
         {category === 'markdown' && <MarkdownPreview data={data} zoom={zoom} />}
         {category === 'svg'      && <SvgPreview      data={data} zoom={zoom} />}

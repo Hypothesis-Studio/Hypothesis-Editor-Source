@@ -67,6 +67,11 @@ export const DEFAULT_SHORTCUTS: ShortcutDef[] = [
   { id: 'close-folder',         label: 'Close Folder',            category: 'General',            description: 'Close the current workspace folder',           defaultKeys: 'Ctrl+K F',     currentKeys: 'Ctrl+K F',     isChord: true, chordKey: 'F' },
   { id: 'rename-file',          label: 'Rename File',             category: 'General',            description: 'Rename the selected file in explorer',         defaultKeys: 'F2',           currentKeys: 'F2' },
 
+  // Screenshot
+  { id: 'screenshot-visible',   label: 'Screenshot Visible Code', category: 'Screenshot',         description: 'Capture visible code in editor',               defaultKeys: 'Ctrl+Shift+C', currentKeys: 'Ctrl+Shift+C' },
+  { id: 'screenshot-full',      label: 'Screenshot Full Code',    category: 'Screenshot',         description: 'Capture entire code in current tab',           defaultKeys: 'Ctrl+Shift+Alt+C', currentKeys: 'Ctrl+Shift+Alt+C' },
+  { id: 'screenshot-selection', label: 'Screenshot Selection',    category: 'Screenshot',         description: 'Capture selected code block only',             defaultKeys: 'Ctrl+K Ctrl+C', currentKeys: 'Ctrl+K Ctrl+C', isChord: true, chordKey: 'C', scope: 'editor' },
+
   // Search & Navigation
   { id: 'find',                 label: 'Find',                    category: 'Search & Navigation', description: 'Find text in the current file',                defaultKeys: 'Ctrl+F',       currentKeys: 'Ctrl+F',       scope: 'editor' },
   { id: 'replace',              label: 'Find & Replace',          category: 'Search & Navigation', description: 'Find and replace text in the current file',    defaultKeys: 'Ctrl+H',       currentKeys: 'Ctrl+H',       scope: 'editor' },

@@ -706,6 +706,18 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         { label: 'Peek Definition', shortcut: 'Alt+F12', action: () => { editor.trigger('menu', 'editor.action.peekDefinition', undefined); } },
       ...(hasSelection ? [
           'separator',
+          { label: 'Screenshot Selection', shortcut: 'Ctrl+K Ctrl+C', action: () => {
+            window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'selection' } }));
+          }},
+      ] as const : []),
+      { label: 'Screenshot Visible', shortcut: 'Ctrl+Shift+C', action: () => {
+        window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'visible' } }));
+      }},
+      { label: 'Screenshot Full Code', shortcut: 'Ctrl+Shift+Alt+C', action: () => {
+        window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'full' } }));
+      }},
+      ...(hasSelection ? [
+          'separator',
           { label: 'Ask AI Agent', action: () => {
             const sel = editor.getSelection();
             const selectedText = sel && !sel.isEmpty() ? editor.getModel()?.getValueInRange(sel) || '' : '';
@@ -717,22 +729,37 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
         { label: 'Command Palette', shortcut: 'Ctrl+Shift+P', action: () => { useAppStore.getState().toggleCommandPalette(); } },
       ];
 
+      // Resolve live theme colors at open time
+      const _themeState = useThemeStore.getState();
+      const _isDarkCtx = (() => {
+        const ct = _themeState.currentTheme;
+        if (ct === 'hypothesis-light') return false;
+        if (ct === 'hypothesis-dark' || ct === 'vs-dark' || ct === 'hc-black') return true;
+        const ext = _themeState.extensionThemes[ct];
+        return ext ? (ext.type !== 'light') : true;
+      })();
+      const _menuBg     = _isDarkCtx ? (_themeState.colors.bgSecondary || '#252526') : (_themeState.colors.bgSecondary || '#f3f3f3');
+      const _menuBorder = _themeState.colors.border || (_isDarkCtx ? '#3c3c3c' : '#d4d4d4');
+      const _menuFg     = _themeState.colors.fg     || (_isDarkCtx ? '#cccccc'  : '#333333');
+      const _menuHover  = _themeState.colors.bgActive || (_isDarkCtx ? '#094771' : '#d6ebff');
+      const _menuShadow = _isDarkCtx ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.18)';
+
       const menu = document.createElement('div');
       menu.className = 'hypothesis-context-menu';
       menu.style.cssText = `position:fixed;z-index:99999;left:${Math.min(e.clientX, window.innerWidth - 220)}px;top:${Math.min(e.clientY, window.innerHeight - items.length * 30)}px;`
-        + `background:var(--theme-editor-background,#1e1e1e);border:1px solid var(--theme-border,#3c3c3c);`
-        + `border-radius:4px;padding:4px 0;min-width:200px;box-shadow:0 4px 12px rgba(0,0,0,0.4);font-size:13px;`
-        + `font-family:var(--theme-font-family,sans-serif);color:var(--theme-foreground,#ccc);`;
+        + `background:${_menuBg};border:1px solid ${_menuBorder};`
+        + `border-radius:6px;padding:4px 0;min-width:200px;box-shadow:0 6px 20px ${_menuShadow};font-size:12px;`
+        + `font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${_menuFg};`;
 
       items.forEach(item => {
         if (item === 'separator') {
           const sep = document.createElement('div');
-          sep.style.cssText = 'height:1px;background:var(--theme-border,#3c3c3c);margin:4px 0;';
+          sep.style.cssText = `height:1px;background:${_menuBorder};margin:4px 0;`;
           menu.appendChild(sep);
         } else {
           const row = document.createElement('div');
-          row.style.cssText = 'display:flex;justify-content:space-between;padding:4px 12px;cursor:pointer;white-space:nowrap;';
-          row.onmouseenter = () => { row.style.background = 'var(--theme-accent,#094771)'; };
+          row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:4px 12px;cursor:pointer;white-space:nowrap;border-radius:3px;margin:1px 4px;';
+          row.onmouseenter = () => { row.style.background = _menuHover; };
           row.onmouseleave = () => { row.style.background = 'transparent'; };
           row.textContent = item.label;
           if ('shortcut' in item && item.shortcut) {
@@ -801,6 +828,77 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       editor.focus();
     }
 
+    // ── Screenshot event listener ────────────────────────────────
+    // Remove any stale listener from a previous effect run on this window
+    const _prevHandler = (window as any).__hypothesisScreenshotHandler;
+    if (_prevHandler) {
+      window.removeEventListener('hypothesis:screenshot', _prevHandler);
+    }
+
+    const screenshotHandler = async (e: Event) => {
+      const customEvent = e as CustomEvent<{ mode: 'visible' | 'full' | 'selection' }>;
+      const { mode } = customEvent.detail;
+      
+      // Only handle if this editor is active
+      if (!monacoRef.current || monacoRef.current !== editor) return;
+
+      try {
+        const { captureEditorScreenshot, showScreenshotPreviewAndSave } = await import('../../utils/editorScreenshot');
+        const model = editor.getModel();
+        if (!model) return;
+        
+        const language = model.getLanguageId();
+        const filename = tab.filePath ? 
+          `${tab.filePath.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '')}-screenshot.png` :
+          `code-screenshot.png`;
+
+        // Resolve theme from store — single source of truth
+        const { useThemeStore } = await import('../../stores/themeStore');
+        const { currentTheme, extensionThemes } = useThemeStore.getState();
+        let resolvedTheme: 'dark' | 'light' = 'dark';
+        if (currentTheme === 'hypothesis-light') {
+          resolvedTheme = 'light';
+        } else if (
+          currentTheme === 'hypothesis-dark' ||
+          currentTheme === 'vs-dark' ||
+          currentTheme === 'hc-black'
+        ) {
+          resolvedTheme = 'dark';
+        } else {
+          const ext = extensionThemes[currentTheme];
+          resolvedTheme = ext?.type === 'light' ? 'light' : 'dark';
+        }
+
+        // Read line numbers setting (default false)
+        const { useSettingsStore } = await import('../../stores/settingsStore');
+        const showLineNumbers = (useSettingsStore.getState().settings['editor.screenshot.showLineNumbers'] as boolean) === true;
+        
+        const result = await captureEditorScreenshot({
+          mode,
+          editor,
+          language,
+          filename,
+          theme: resolvedTheme,
+          showLineNumbers,
+        });
+        
+        await showScreenshotPreviewAndSave(result);
+      } catch (error) {
+        console.error('Screenshot failed:', error);
+        const { showAlert } = await import('../../stores/dialogStore');
+        const msg = error instanceof Error ? error.message : 'Unknown error';
+        if (msg === 'No text selected') {
+          await showAlert('Select some code first to take a selection screenshot.', 'Screenshot');
+        } else {
+          await showAlert(`Screenshot failed: ${msg}`, 'Screenshot');
+        }
+      }
+    };
+
+    // Store ref so next effect run can remove stale listener
+    (window as any).__hypothesisScreenshotHandler = screenshotHandler;
+    window.addEventListener('hypothesis:screenshot', screenshotHandler);
+
     return () => {
       formatAction.dispose();
       snippetProvider.dispose();
@@ -811,6 +909,7 @@ const MonacoEditorInner: React.FC<MonacoEditorProps> = ({ tab, isActive }) => {
       scrollChangeDisposable.dispose();
       if (editorDom) editorDom.removeEventListener('contextmenu', contextMenuHandler);
       document.querySelectorAll('.hypothesis-context-menu').forEach(el => el.remove());
+      window.removeEventListener('hypothesis:screenshot', screenshotHandler);
       editor.dispose();
       monacoRef.current = null;
     };

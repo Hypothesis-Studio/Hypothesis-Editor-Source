@@ -405,6 +405,33 @@ export function registerDefaultCommands(): void {
         useSettingsStore.getState().setSetting('editor.fontSize', 14);
       },
     },
+    {
+      id: 'editor.screenshot.visible',
+      label: 'Screenshot: Visible Code',
+      category: 'Screenshot',
+      keybinding: 'Ctrl+Shift+C',
+      handler: () => {
+        window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'visible' } }));
+      },
+    },
+    {
+      id: 'editor.screenshot.full',
+      label: 'Screenshot: Full Code',
+      category: 'Screenshot',
+      keybinding: 'Ctrl+Shift+Alt+C',
+      handler: () => {
+        window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'full' } }));
+      },
+    },
+    {
+      id: 'editor.screenshot.selection',
+      label: 'Screenshot: Selected Code',
+      category: 'Screenshot',
+      keybinding: 'Ctrl+K Ctrl+C',
+      handler: () => {
+        window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'selection' } }));
+      },
+    },
   ];
 
   for (const cmd of defaults) {

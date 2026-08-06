@@ -16,6 +16,7 @@ interface PageProps {
 const NAV_SECTIONS = [
   { id: 'getting-started', label: 'Getting Started' },
   { id: 'editor', label: 'Editor' },
+  { id: 'screenshot', label: 'Screenshot' },
   { id: 'snippets', label: 'Code Snippets' },
   { id: 'sidebar', label: 'Sidebar & Panels' },
   { id: 'terminal', label: 'Terminal' },
@@ -143,6 +144,52 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                   ['Unicode Highlight', 'Flags ambiguous or invisible characters for security'],
                   ['Compare Files', 'Right-click any code tab → Compare With... to open a side-by-side diff'],
                 ]} />
+              </Card>
+            </Section>
+          </div>
+
+          {/* Screenshot */}
+          <div id="doc-screenshot">
+            <Section title="Screenshot">
+              <Card>
+                <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)', marginBottom: 12 }}>
+                  Capture beautiful code screenshots directly from the editor with macOS-style traffic light header.
+                  Use via keyboard shortcuts, right-click context menu, or Command Palette (<Kbd>Ctrl+Shift+P</Kbd> → Screenshot).
+                </p>
+                <SubSection title="Screenshot Modes">
+                  <List items={[
+                    ['Visible Code', 'Capture only the code currently visible on screen — Ctrl+Shift+C'],
+                    ['Full Code', 'Capture the entire file content in the current tab — Ctrl+Shift+Alt+C'],
+                    ['Selection', 'Select a code block first, then capture just the selection — Ctrl+K Ctrl+C'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="How It Works">
+                  <List items={[
+                    ['Preview', 'A preview dialog opens showing the rendered screenshot before saving'],
+                    ['Save As...', 'Choose save location via the native file dialog — defaults to PNG format'],
+                    ['Design', 'macOS-style traffic light header with language label and line count'],
+                    ['Theme-aware', 'Automatically uses dark or light colors matching your current editor theme'],
+                    ['Syntax Highlighting', 'Code is syntax-highlighted using the same language as the active tab'],
+                    ['High DPI', 'Rendered at 2x pixel density for crisp display on retina screens'],
+                  ]} />
+                </SubSection>
+              </Card>
+              <Card>
+                <SubSection title="Keyboard Shortcuts">
+                  <List items={[
+                    ['Ctrl+Shift+C', 'Screenshot visible code (what\'s on screen)'],
+                    ['Ctrl+Shift+Alt+C', 'Screenshot full code (entire file)'],
+                    ['Ctrl+K Ctrl+C', 'Screenshot selected code block'],
+                  ]} />
+                </SubSection>
+                <SubSection title="Customizing Shortcuts">
+                  <p style={{ fontSize: 12, color: 'var(--theme-fg-muted)' }}>
+                    All screenshot shortcuts can be customized in <Kbd>Help → Keyboard Shortcuts</Kbd>.
+                    Look for the <strong>Screenshot</strong> category and click any shortcut to reassign it.
+                  </p>
+                </SubSection>
               </Card>
             </Section>
           </div>
@@ -688,6 +735,7 @@ export const DocumentationPage: React.FC<PageProps> = ({ onClose }) => {
                   ['File Preview', 'Click any image/markdown/HTML in Explorer to preview'],
                   ['Breadcrumbs', 'Click symbols in breadcrumb bar to navigate functions'],
                   ['Keyboard Shortcuts', 'Help → Keyboard Shortcuts for full reference'],
+                  ['Screenshot Code', 'Ctrl+Shift+C — capture visible code as a styled PNG image'],
                 ]} />
               </Card>
             </Section>

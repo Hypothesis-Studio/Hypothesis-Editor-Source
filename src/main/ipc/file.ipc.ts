@@ -3,6 +3,7 @@
  */
 import { ipcMain, dialog, BrowserWindow, shell } from 'electron';
 import { spawn } from 'child_process';
+import * as fs from 'fs/promises';
 import * as os from 'os';
 import { IPC_CHANNELS } from '../../shared/types';
 import type { FileService } from '../services/FileService';
@@ -105,6 +106,9 @@ export function registerFileIPC(fileService: FileService, recentService: RecentS
   });
 
   ipcMain.handle(IPC_CHANNELS.FILE_READ, async (_event, filePath: string) => {
+    if (!filePath) {
+      throw new Error('File path is required');
+    }
     return fileService.readFile(filePath);
   });
 
@@ -176,5 +180,25 @@ export function registerFileIPC(fileService: FileService, recentService: RecentS
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window) return null;
     return dialog.showSaveDialog(window, options);
+  });
+
+  // Save screenshot with save dialog
+  ipcMain.handle('file:saveScreenshot', async (event, blobBuffer: Buffer, defaultFilename: string) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) return null;
+
+    const result = await dialog.showSaveDialog(window, {
+      defaultPath: defaultFilename,
+      filters: [
+        { name: 'PNG Image', extensions: ['png'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    });
+
+    if (!result.canceled && result.filePath) {
+      await fs.writeFile(result.filePath, blobBuffer);
+      return result.filePath;
+    }
+    return null;
   });
 }

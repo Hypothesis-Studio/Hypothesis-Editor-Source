@@ -37,6 +37,7 @@ interface Window {
       dialogSave(options: unknown): Promise<{ canceled: boolean; filePath?: string }>;
       revealInFileManager(filePath: string): Promise<boolean>;
       openInTerminal(dirPath: string): Promise<boolean>;
+      saveScreenshot(blob: Blob, filename: string): Promise<string | null>;
     };
     directory: {
       read(dirPath: string): Promise<Array<{ name: string; path: string; type: 'file' | 'directory' | 'symlink'; size: number; modifiedAt: Date; createdAt: Date; isHidden: boolean; extension: string; depth: number }>>;

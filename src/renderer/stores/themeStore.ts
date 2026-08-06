@@ -223,11 +223,18 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
           }
         }
       }
+      // 5. Set body class based on theme type (dark/light)
+      document.body.classList.remove('hypothesis-dark', 'hypothesis-light');
+      const isDark = extTheme.type === 'dark' || extTheme.type === 'hc';
+      document.body.classList.add(isDark ? 'hypothesis-dark' : 'hypothesis-light');
       set({ currentTheme: themeId, colors: extTheme.colors });
       return;
     }
     const colors = themeDefinitions[themeId] || themeDefinitions['hypothesis-dark'];
     applyThemeToDocument(colors);
+    // Set body class for built-in themes
+    document.body.classList.remove('hypothesis-dark', 'hypothesis-light');
+    document.body.classList.add(themeId);
     set({ currentTheme: themeId, colors });
   },
 

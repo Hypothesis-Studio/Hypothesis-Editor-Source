@@ -90,6 +90,11 @@ const api = {
     dialogSave: (options: unknown) => ipcRenderer.invoke(CH.FILE_DIALOG_SAVE, options),
     revealInFileManager: (filePath: string) => ipcRenderer.invoke('file:revealInFileManager', filePath),
     openInTerminal: (dirPath: string) => ipcRenderer.invoke('file:openInTerminal', dirPath),
+    saveScreenshot: async (blob: Blob, filename: string) => {
+      const arrayBuffer = await blob.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      return ipcRenderer.invoke('file:saveScreenshot', buffer, filename);
+    },
   },
 
   // Directory

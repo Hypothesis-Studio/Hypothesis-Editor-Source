@@ -218,6 +218,10 @@ export const KeyboardShortcutsPage: React.FC<PageProps> = ({ onClose }) => {
             <Section title="Terminal">
               {renderIds(['toggle-terminal', 'new-terminal', 'run-file', 'stop-process'])}
             </Section>
+
+            <Section title="Screenshot">
+              {renderIds(['screenshot-visible', 'screenshot-full', 'screenshot-selection'])}
+            </Section>
           </div>
 
           {/* Right column */}

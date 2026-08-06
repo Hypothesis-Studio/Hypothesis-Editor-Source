@@ -153,6 +153,9 @@ const SETTINGS_SCHEMA: SettingItem[] = [
   // Editor - Semantic Highlighting
   { key: 'editor.semanticHighlighting.enabled', label: 'Semantic Highlighting', description: 'Use semantic token colors for more accurate syntax highlighting in TypeScript/JavaScript.', type: 'boolean', default: true, category: 'Editor' },
 
+  // Editor - Screenshots
+  { key: 'editor.screenshot.showLineNumbers', label: 'Screenshot Line Numbers', description: 'Show line numbers in editor screenshots.', type: 'boolean', default: false, category: 'Editor' },
+
   // AI Agent - Basic toggles only (detailed config is in AgentSettingsPanel)
   { key: 'agent.enabled', label: 'Agent Enabled', description: 'Enable or disable the AI agent system.', type: 'boolean', default: true, category: 'AI Agent' },
   { key: 'agent.streaming', label: 'Streaming Responses', description: 'Stream agent responses in real-time.', type: 'boolean', default: true, category: 'AI Agent' },

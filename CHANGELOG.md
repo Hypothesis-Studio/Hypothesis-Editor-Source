@@ -15,6 +15,16 @@
 - **Documentation updated** — In-app documentation page now covers Code Snippets (built-in library, manager, import/export, syntax), Chat Collaboration (messaging, AI assistant, host controls), ER Diagram, Inline Cell Editing, Foreign Key Navigation, Export Table Data, and Compare Files. Editor and Settings sections also expanded with new features.
 - **File Explorer selection preserved** — Clicking empty space in the file explorer no longer clears the focused folder/file selection.
 - **About page redesigned** — Help → About now opens a full dedicated page with hero section, feature grid, tech stack, and version badge. Replaces the old small dialog.
+- **Screenshot line numbers toggle** — Added setting in Editor category to enable/disable line numbers in editor screenshots (disabled by default).
+- **Expanded syntax highlighting language support** — Screenshot syntax highlighting now supports 90+ languages including JSX/TSX, Swift, Kotlin, Scala, Dart, Elixir, Haskell, F#, Solidity, GLSL/HLSL, and more, matching Monaco editor language coverage.
+
+### Improved
+- **Editor screenshot preview modal redesigned** — Cleaner layout with theme-aware colors (light/dark), size label in header, SVG close button, proper shadow, and saving state feedback.
+- **Screenshot and preview themes now follow system dark/light mode** — Editor screenshots, screenshot preview modal, HTML preview viewport container, Markdown preview styles, and editor right-click context menu all automatically sync with the active app theme.
+- **Markdown preview styling upgraded** — Full GitHub-style rendering with properly styled headings, code blocks, tables, blockquotes, links, and responsive padding.
+- **HTML preview viewport simulation enhanced** — Device frame shadow and border radius now adapt based on viewport size (mobile/tablet/desktop).
+- **Preview panel toolbar redesigned** — Tighter spacing (36px height), compact buttons, zoom level shown as styled pill, file size as badge, consistent separators.
+- **Enhanced syntax token colors** — Screenshot rendering now recognizes 35+ highlight.js token classes including template literals, regex, char escapes, selectors, doctags, diff additions/deletions, and compound class names.
 
 ### Fixed
 - **Builtin snippets now appear in editor completion** — 664 built-in snippets across 21 languages were previously blocked from showing up in the editor autocomplete due to an incorrect filter. They now appear correctly when typing a matching prefix.
@@ -24,6 +34,10 @@
 - **Hover delay fixed** — Hover was previously set to `delay: 0` (instant, disruptive). Default is now 300ms and fully configurable.
 - **Settings changes now live-apply** — All new editor settings sync to the running editor immediately when changed in Settings, no restart required.
 - **File Explorer selection no longer clears on empty space click** — Clicking empty space below the file list no longer deselects the active folder/file.
+- **Screenshot theme sync fixed** — Editor screenshots and preview modal now correctly follow the active app theme instead of always defaulting to dark mode.
+- **Editor right-click context menu theme fixed** — Context menu colors now read live theme state at open time instead of using hardcoded fallback values.
+- **Screenshot line numbers setting now works** — Toggle is now properly read from settings and applied to screenshot output.
+- **File:read undefined path error fixed** — Added validation in IPC handler to prevent crashes when file path is undefined.
 
 ## [0.2.10] - 2026-08-04
 

@@ -1,7 +1,9 @@
 /**
  * HTML Preview — Renders HTML content in a sandboxed iframe with viewport simulation.
+ * Follows system/app theme for container background.
  */
 import React, { useRef, useEffect, useState } from 'react';
+import { useThemeStore } from '../../stores/themeStore';
 import type { PreviewData } from '../../../shared/types/preview';
 
 interface HtmlPreviewProps {
@@ -13,6 +15,8 @@ export const HtmlPreview: React.FC<HtmlPreviewProps> = ({ data, viewportWidth })
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const { currentTheme } = useThemeStore();
+  const isDark = currentTheme !== 'hypothesis-light';
 
   useEffect(() => {
     if (!iframeRef.current || !data.content) return;
@@ -50,6 +54,10 @@ export const HtmlPreview: React.FC<HtmlPreviewProps> = ({ data, viewportWidth })
   }
 
   // Viewport simulation — iframe is fixed width, centered in a scrollable container
+  const bgColor = isDark ? '#1a1a1a' : '#e8e8e8';
+  const shadowColor = isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.15)';
+  const borderRadius = viewportWidth <= 430 ? 16 : viewportWidth <= 820 ? 10 : 6;
+
   return (
     <div
       ref={containerRef}
@@ -57,12 +65,13 @@ export const HtmlPreview: React.FC<HtmlPreviewProps> = ({ data, viewportWidth })
         width: '100%',
         height: '100%',
         overflow: 'auto',
-        background: 'var(--theme-bg-secondary)',
+        background: bgColor,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: 16,
-        paddingBottom: 16,
+        paddingTop: 24,
+        paddingBottom: 24,
+        transition: 'background 0.2s',
       }}
     >
       {/* Device frame */}
@@ -70,8 +79,8 @@ export const HtmlPreview: React.FC<HtmlPreviewProps> = ({ data, viewportWidth })
         width: viewportWidth,
         minHeight: '100%',
         background: '#fff',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-        borderRadius: viewportWidth <= 430 ? 12 : viewportWidth <= 820 ? 8 : 4,
+        boxShadow: `0 8px 40px ${shadowColor}, 0 2px 12px rgba(0,0,0,0.08)`,
+        borderRadius,
         overflow: 'hidden',
         flexShrink: 0,
         position: 'relative',

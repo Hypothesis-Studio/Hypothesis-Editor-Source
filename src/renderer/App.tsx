@@ -639,6 +639,19 @@ const App: React.FC = () => {
           (window as any).__terminalPanel?.killTerminal?.() ??
             (() => { const tid = useAppStore.getState().activeTerminalId; if (tid) window.api.terminal.write(tid, '\x03'); })();
           break;
+        case 'screenshot-visible':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'visible' } }));
+          break;
+        case 'screenshot-full':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'full' } }));
+          break;
+        case 'screenshot-selection':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('hypothesis:screenshot', { detail: { mode: 'selection' } }));
+          break;
+        case 'stop-process':
           e.preventDefault();
           (async () => {
             try {
